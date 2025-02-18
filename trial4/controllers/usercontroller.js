@@ -1,5 +1,6 @@
-const express = require("express");
+const { sendMail } = require("./mailer");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const mysql = require("mysql");
 // console.log(secret);
 
@@ -72,6 +73,14 @@ const registerUser = async (req, res) => {
             [newId, username, email, hashedPassword, address, pincode, mobile],
             (err, result) => {
               if (err) throw err;
+
+              // Send welcome email
+              sendMail(
+                email,
+                "Welcome to Nature's Palette",
+                `Hello ${username},\n\nThank you for registering with us! We're glad to have you on board.\n\nBest regards,\nThe Team`
+              );
+
               res
                 .status(201)
                 .json({ message: "User registered successfully!" });
@@ -277,6 +286,61 @@ const verifyPassword = (req, res) => {
   });
 };
 
+// Forgot Password
+const forgotPassword = (req, res) => {
+  const { email } = req.body;
+
+  // Validate email exists in the database
+  const sql = "SELECT C_ID FROM customer WHERE C_EMAIL = ?";
+  conn.query(sql, [email], (err, result) => {
+    if (err) {
+      console.error("Database query error: ", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+
+    if (result.length === 0) {
+      return res.status(400).json({ error: "Email not found." });
+    }
+
+    // Send the password reset email
+    const resetLink = `http://localhost:3000/user/reset-password?email=${email}`;
+    sendMail(
+      email,
+      "Password Reset Request",
+      `Hello,\n\nPlease click the following link to reset your password: ${resetLink}\n\nBest regards,\nThe Team`
+    );
+
+    res.send("Password reset email sent.");
+  });
+};
+
+// Reset Password
+const resetPassword = async (req, res) => {
+  const { email, newPassword, confirmPassword } = req.body;
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ error: "Passwords do not match." });
+  }
+
+  // Update the password in the database
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const updateSql = "UPDATE customer SET C_PASSWORD = ? WHERE C_EMAIL = ?";
+
+  conn.query(updateSql, [hashedPassword, email], (err) => {
+    if (err) {
+      console.error("Error updating password: ", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+
+    res
+      .status(200)
+      .json({
+        message:
+          "Password reset successful! Please log in with your new password.",
+      });
+  });
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -285,4 +349,6 @@ module.exports = {
   logoutUser,
   updatePassword,
   verifyPassword,
+  forgotPassword,
+  resetPassword,
 };

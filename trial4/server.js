@@ -55,6 +55,9 @@ app.use(
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "index.html"));
 });
+app.get("/forgot", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "html", "forgot.html"));
+});
 app.get(
   [
     "/plants",
@@ -170,7 +173,9 @@ app.use(
   },
   user
 );
-
+app.get("/user/reset-password", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "html", "resetpassword.html"));
+});
 // Cart management
 const cart = require("./routes/cartrouter");
 app.use(
@@ -258,6 +263,9 @@ app.get("/header", (req, res) => {
 
 app.get("/footer", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "footer.html"));
+});
+app.get("/login.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "html", "login.html"));
 });
 
 // Start the server
