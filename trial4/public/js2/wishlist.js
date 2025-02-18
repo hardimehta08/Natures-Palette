@@ -19,9 +19,8 @@ function fetchWishlist() {
                         <td><img src="${item.image}" alt="${item.name}" width="50"></td>
                         <td><a href="/product.html?product=${item.name}">${item.name}</a></td>
                         <td>${item.price}</td>
-                        <td>${item.stock}</td>
-                        <td><button onclick="removeFromWishlist('${item.w_id}')">Remove</button></td>
-                        <td><button class="add-btn" onclick="addToCart('${item.w_id}','1')">Add to Cart</button></td>
+                        <td><button onclick="removeFromWishlist('${item.w_id}');updateCartAndWishlistCounts();">Remove</button></td>
+                        <td><button class="add-btn" onclick="addToCart('${item.w_id}','1');updateCartAndWishlistCounts();">Add to Cart</button></td>
                     </tr>
                 `;
         });
@@ -69,7 +68,7 @@ function removeFromWishlist(wishlistId) {
     });
 }
 
-function addToCart(wishlistId,quantity) {
+function addToCart(wishlistId, quantity) {
   fetch("/wishlist/moveToCart", {
     method: "POST",
     headers: {

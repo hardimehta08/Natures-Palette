@@ -55,14 +55,14 @@
             <button
               class="cart__btn wishlist"
               id="add-to-wishlist"
-              onclick="wishlist()"
+              onclick="wishlist();updateWishlistCount();"
             >
               Add to Wishlist
             </button>
             <button
               class="cart__btn cart"
               id="add-to-cart"
-              onclick="addtocart()"
+              onclick="addtocart();updateCartCount();"
             >
               Add to Cart
             </button>
@@ -156,7 +156,22 @@
       }
       document.addEventListener("DOMContentLoaded", loadNav);
       document.addEventListener("DOMContentLoaded", loadFooter);
-      // Populate reviews dynamically
+
+      document
+        .getElementById("quantity")
+        .addEventListener("keydown", function (e) {
+          // Allow arrow keys (left, up, right, down)
+          if (
+            e.key === "ArrowUp" ||
+            e.key === "ArrowDown" ||
+            e.key === "ArrowLeft" ||
+            e.key === "ArrowRight"
+          ) {
+            return;
+          }
+          // Prevent other keys
+          e.preventDefault();
+        });
     </script>
     <script src="../js2/search.js"></script>
     <script src="../js/main.js"></script>

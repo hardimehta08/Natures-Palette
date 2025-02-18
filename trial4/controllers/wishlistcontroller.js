@@ -202,9 +202,25 @@ const generateCartId = (callback) => {
   });
 };
 
+// Get Wishlist Count for a Specific User
+const getWishlistCount = (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).send("Please login to view your wishlist count.");
+  }
+
+  const sql = "SELECT COUNT(*) AS count FROM wishlist WHERE c_id = ?";
+  conn.query(sql, [req.session.userId], (err, result) => {
+    if (err) return res.status(500).send("Database error.");
+
+    const count = result[0].count;
+    res.status(200).json({ count });
+  });
+};
+
 module.exports = {
   addItemToWishlist,
   getUserWishlist,
   removeItemFromWishlist,
   moveItemToCart,
+  getWishlistCount
 };

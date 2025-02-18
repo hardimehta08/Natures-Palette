@@ -206,12 +206,32 @@ const removeItemFromCart = (req, res) => {
   if (!req.session.userId) {
     return res.status(401).send("Please login to remove items from your cart.");
   }
-
   const { cartId } = req.body;
-  const sql = "DELETE FROM cart WHERE ca_id = ?";
-  conn.query(sql, [cartId], (err, result) => {
-    if (err) throw err;
-    res.status(200).send({message:"Item removed from cart."});
+  const sql = "DELETE FROM cart WHERE ca_id = ? AND c_id=?";
+  conn.query(sql, [cartId, req.session.userId], (err, result) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).send("Database error.");
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).send("Item not found.");
+    }
+
+    res.status(200).send({ message: "Item removed from cart." });
+  });
+};
+
+const getCartCount = (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).send("Please login to view your cart count.");
+  }
+
+  const sql = "SELECT COUNT(*) AS count FROM cart WHERE c_id = ?";
+  conn.query(sql, [req.session.userId], (err, result) => {
+    if (err) return res.status(500).send("Database error.");
+
+    const count = result[0].count;
+    res.status(200).json({ count });
   });
 };
 
@@ -221,4 +241,5 @@ module.exports = {
   getUserCart,
   updateCartItem,
   removeItemFromCart,
+  getCartCount,
 };

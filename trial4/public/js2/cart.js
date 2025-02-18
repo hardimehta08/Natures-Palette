@@ -19,14 +19,14 @@ function loadCart(data) {
         <td>${item.price}</td>
         <td><input type="number" value="${item.ca_qty}" id="qty_num${item.ca_id}" style="width:30px;" onchange="updatecart('${item.ca_id}', this.value)"></td>
         <td>${item.total}</td>
-        <td><button onclick="removeFromCart('${item.ca_id}')">Remove</button></td>
+        <td><button onclick="removeFromCart('${item.ca_id}');updateCartAndWishlistCounts();">Remove</button></td>
       </tr>
     `;
     Stotal += item.total;
   });
 
   const total = document.getElementById("total");
-  total.innerHTML = "Total : &#8377; "+Stotal;
+  total.innerHTML = "Total : &#8377; " + Stotal;
 }
 
 fetch("/cart/user")
@@ -71,7 +71,6 @@ function updatecart(id, newQty) {
     console.error("Item not found in cart");
   }
 }
-
 function removeFromCart(ca_id) {
   // Find the item index in the data array
   const itemIndex = fdata.findIndex((item) => item.ca_id === ca_id);
@@ -86,13 +85,17 @@ function removeFromCart(ca_id) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ca_id }),
+      body: JSON.stringify({ cartId: ca_id }), // Ensure the correct parameter name
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log("Item removed from database:", data);
-        // Reload the cart to reflect the updated cart items
-        loadCart(fdata);
+        if (data.message) {
+          console.log(data.message);
+          // Reload the cart to reflect the updated cart items
+          loadCart(fdata);
+        } else {
+          console.error("Error removing item:", data);
+        }
       })
       .catch((error) => {
         console.error("Error removing item from database:", error);
