@@ -90,6 +90,35 @@ body {
   cursor: pointer;
 }
 /* Header section starts */
+/* Dropdown Menu Styling */
+#dropdown-menu {
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ccc;
+  width: calc(100% - 22px); /* Adjust to fit your input width */
+  max-height: 200px; /* Adjust the height as needed */
+  overflow-y: auto; /* Enable vertical scrolling */
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  z-index: 1000; /* Ensure it appears above other elements */
+  font-size: medium;
+  font-family: Quicksand;
+}
+
+#dropdown-menu li {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+#dropdown-menu li:last-child {
+  border-bottom: none;
+}
+
+#dropdown-menu li:hover {
+  background-color: #f0f0f0;
+}
 
 .header-main .header-container {
   display: flex;

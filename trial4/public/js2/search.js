@@ -1,5 +1,4 @@
 let debounceTimer;
-
 async function fetchKeywords() {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(async () => {
@@ -7,7 +6,6 @@ async function fetchKeywords() {
     if (searchTerm.length > 2) {
       const response = await fetch(`/search/searchKeywords?q=${searchTerm}`);
       const keywords = await response.json();
-      console.log(searchTerm);
 
       const dropdownMenu = document.getElementById("dropdown-menu");
       dropdownMenu.innerHTML = "";
@@ -33,5 +31,5 @@ async function fetchKeywords() {
 }
 
 function navigateToProductDetail(keyword) {
-  window.location.href = `/product.html?name=${keyword}`;
+  window.location.href = `/product.html?product=${keyword}`;
 }
