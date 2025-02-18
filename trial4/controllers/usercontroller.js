@@ -40,7 +40,9 @@ const registerUser = async (req, res) => {
       if (err) throw err;
 
       if (result.length > 0) {
-        return res.status(400).send("Email or username already in use.");
+        return res
+          .status(400)
+          .json({ error: "Email or username already in use." });
       }
 
       // Validate pincode
@@ -49,7 +51,7 @@ const registerUser = async (req, res) => {
         if (err) throw err;
 
         if (pincodeResult.length === 0) {
-          return res.status(400).send("Invalid pincode.");
+          return res.status(400).json({ error: "Invalid pincode." });
         }
 
         // Hash the password before saving it to the database
@@ -57,7 +59,10 @@ const registerUser = async (req, res) => {
 
         // Generate new customer ID
         generateCustomerId((err, newId) => {
-          if (err) return res.status(500).send("Error generating customer ID.");
+          if (err)
+            return res
+              .status(500)
+              .json({ error: "Error generating customer ID." });
 
           // Create a new user
           const insertUserSql =
@@ -67,14 +72,16 @@ const registerUser = async (req, res) => {
             [newId, username, email, hashedPassword, address, pincode, mobile],
             (err, result) => {
               if (err) throw err;
-              res.status(201).send("User registered successfully!");
+              res
+                .status(201)
+                .json({ message: "User registered successfully!" });
             }
           );
         });
       });
     });
   } catch (error) {
-    res.status(500).send("Error registering user: " + error.message);
+    res.status(500).json({ error: "Error registering user: " + error.message });
   }
 };
 
@@ -107,7 +114,9 @@ const loginUser = (req, res) => {
 // Get User Profile
 const getUserProfile = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to access this information.");
+    return res
+      .status(401)
+      .json({ error: "Please login to access this information." });
   }
 
   const sql =
@@ -239,7 +248,7 @@ const updatePassword = (req, res) => {
 const logoutUser = (req, res) => {
   req.session.destroy((err) => {
     if (err) return res.status(500).send("Error logging out.");
-    res.status(200).send("Logout successful.");
+    res.status(200).json({ message: "Logout successful." });
   });
 };
 

@@ -67,18 +67,9 @@
             <input
               type="text"
               class="input-field"
-              placeholder="Firstname"
-              name="firstname"
-              id="fn"
-              required
-            />
-            <div id="error_message1"></div>
-            <input
-              type="text"
-              class="input-field"
-              placeholder="Lastname"
-              name="lastname"
-              id="ln"
+              placeholder="Username"
+              name="username"
+              id="un"
               required
             />
             <div id="error_message2"></div>
@@ -107,6 +98,15 @@
               id="ad"
               required
             />
+            <div id="error_message1"></div>
+            <input
+              type="text"
+              class="input-field"
+              placeholder="Pincode"
+              name="pincode"
+              id="pc"
+              required
+            />
             <input
               type="password"
               class="input-field"
@@ -120,6 +120,7 @@
               type="submit"
               class="submit-btn"
               onsubmit="return validateForm()"
+              id="registerbtn"
             >
               Register
             </button>
@@ -143,24 +144,6 @@
         y.style.left = "450px";
         z.style.left = "0px";
       }
-
-      async function loadNav() {
-        try {
-          const response = await fetch("/header");
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          const data = await response.text();
-          document.getElementById("nav").innerHTML = data;
-          console.log("Navigation loaded successfully");
-        } catch (error) {
-          console.error("Error loading navigation:", error);
-          // Optionally, you can show an error message to the user
-          document.getElementById("nav").innerHTML =
-            "<p>Failed to load navigation.</p>";
-        }
-      }
-      document.addEventListener("DOMContentLoaded", loadNav);
     </script>
     <script
       type="module"
