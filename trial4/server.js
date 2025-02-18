@@ -219,7 +219,7 @@ app.use(
 // Search product
 const search = require("./routes/searchprodrouter");
 app.use(
-  "/",
+  "/search",
   (req, res, next) => {
     next();
   },

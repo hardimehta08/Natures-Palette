@@ -224,3 +224,4 @@ async function loadNav() {
 }
 
 document.addEventListener("DOMContentLoaded", loadNav);
+

@@ -61,6 +61,38 @@ const searchProducts = (req, res) => {
   );
 };
 
+const searchKeywords = (req, res) => {
+  const searchTerm = req.query.q;
+  const searchPattern = `%${searchTerm}%`;
+
+  const query = `
+    SELECT P_NAME AS keyword FROM PLANTS WHERE P_NAME LIKE ?
+    UNION
+    SELECT B_NAME AS keyword FROM BOUQUET WHERE B_NAME LIKE ?
+    UNION
+    SELECT PT_NAME AS keyword FROM POTS WHERE PT_NAME LIKE ?
+    UNION
+    SELECT Ft_NAME AS keyword FROM FERTILIZERS WHERE Ft_NAME LIKE ?
+    UNION
+    SELECT T_NAME AS keyword FROM TOOLS WHERE T_NAME LIKE ?
+  `;
+
+  conn.query(
+    query,
+    [searchPattern, searchPattern, searchPattern, searchPattern, searchPattern],
+    (err, results) => {
+      if (err) {
+        console.error("Error executing query: " + err.message);
+        res.status(500).send("Error executing query");
+        return;
+      }
+
+      res.json(results);
+    }
+  );
+};
+
 module.exports = {
   searchProducts,
+  searchKeywords,
 };
