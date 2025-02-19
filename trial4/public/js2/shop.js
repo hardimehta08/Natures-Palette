@@ -534,7 +534,7 @@ const fetchData = (endpoint) => {
 
                 var sub_cat1 = document.getElementById("sub_cat1");
                 var sub_cat_img1 = document.getElementById("sub_cat_img1");
-                sub_cat_img1.src = "../images/summer.jpeg";
+                sub_cat_img1.src = "../images/heart shape.jpeg";
                 sub_cat1.textContent = "Heart Shape";
                 var a1 = document.getElementById("a1");
                 sub_cat1.href = "/arrangement-type/heart-shape";
@@ -542,7 +542,7 @@ const fetchData = (endpoint) => {
 
                 var sub_cat2 = document.getElementById("sub_cat2");
                 var sub_cat_img2 = document.getElementById("sub_cat_img2");
-                sub_cat_img2.src = "../images/winter.jpeg";
+                sub_cat_img2.src = "../images/flower in basket.jpeg";
                 sub_cat2.textContent = "Flowers Basket";
                 a1 = document.getElementById("a2");
                 sub_cat2.href = "/arrangement-type/flower-basket";
@@ -550,7 +550,7 @@ const fetchData = (endpoint) => {
 
                 var sub_cat3 = document.getElementById("sub_cat3");
                 var sub_cat_img3 = document.getElementById("sub_cat_img3");
-                sub_cat_img3.src = "../images/monsoon.jpeg";
+                sub_cat_img3.src = "../images/flower in glass.jpeg";
                 sub_cat3.textContent = "Flowers in Glass";
                 a1 = document.getElementById("a3");
                 sub_cat3.href = "/arrangement-type/flower-in-glass";
@@ -558,7 +558,7 @@ const fetchData = (endpoint) => {
 
                 var sub_cat4 = document.getElementById("sub_cat4");
                 var sub_cat_img4 = document.getElementById("sub_cat_img4");
-                sub_cat_img4.src = "../images/spring.jpeg";
+                sub_cat_img4.src = "../images/hand bouquet.jpeg";
                 sub_cat4.textContent = "Hand Bouquet";
                 a1 = document.getElementById("a4");
                 sub_cat4.href = "/arrangement-type/hand-bouquet";
@@ -589,7 +589,7 @@ const fetchData = (endpoint) => {
 
                 var sub_cat1 = document.getElementById("sub_cat1");
                 var sub_cat_img1 = document.getElementById("sub_cat_img1");
-                sub_cat_img1.src = "../images/summer.jpeg";
+                sub_cat_img1.src = "../images/rose bouquet.jpeg";
                 sub_cat1.textContent = "Rose";
                 var a1 = document.getElementById("a1");
                 sub_cat1.href = "/flower-varieties/rose-bouquet";
@@ -597,7 +597,7 @@ const fetchData = (endpoint) => {
 
                 var sub_cat2 = document.getElementById("sub_cat2");
                 var sub_cat_img2 = document.getElementById("sub_cat_img2");
-                sub_cat_img2.src = "../images/winter.jpeg";
+                sub_cat_img2.src = "../images/carnations bouquet.jpeg";
                 sub_cat2.textContent = "Carnations";
                 a1 = document.getElementById("a2");
                 sub_cat2.href = "/flower-varieties/carnations-bouquet";
@@ -605,7 +605,7 @@ const fetchData = (endpoint) => {
 
                 var sub_cat3 = document.getElementById("sub_cat3");
                 var sub_cat_img3 = document.getElementById("sub_cat_img3");
-                sub_cat_img3.src = "../images/monsoon.jpeg";
+                sub_cat_img3.src = "../images/liliy bouquet.jpeg";
                 sub_cat3.textContent = "Lilies";
                 a1 = document.getElementById("a3");
                 sub_cat3.href = "/flower-varieties/lily-bouquet";
@@ -613,7 +613,7 @@ const fetchData = (endpoint) => {
 
                 var sub_cat4 = document.getElementById("sub_cat4");
                 var sub_cat_img4 = document.getElementById("sub_cat_img4");
-                sub_cat_img4.src = "../images/spring.jpeg";
+                sub_cat_img4.src = "../images/mixed flowers bouquet.jpeg";
                 sub_cat4.textContent = "Mixed Flowers";
                 a1 = document.getElementById("a4");
                 sub_cat4.href = "/flower-varieties/mixed-flowers-bouquet";
@@ -758,7 +758,7 @@ const fetchData = (endpoint) => {
             tp.textContent = data.count;
             var sub_cat1 = document.getElementById("sub_cat1");
             var sub_cat_img1 = document.getElementById("sub_cat_img1");
-            sub_cat_img1.src = "../images/season.jpeg";
+            sub_cat_img1.src = "../images/plastic pots.jpeg";
             sub_cat1.textContent = "Plastic";
             var a1 = document.getElementById("a1");
             sub_cat1.href = "/pots/plastic";
@@ -766,7 +766,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat2 = document.getElementById("sub_cat2");
             var sub_cat_img2 = document.getElementById("sub_cat_img2");
-            sub_cat_img2.src = "../images/suitable location.jpeg";
+            sub_cat_img2.src = "../images/ceramic pot.jpeg";
             sub_cat2.textContent = "Ceramic";
             a1 = document.getElementById("a2");
             sub_cat2.href = "/pots/ceramic";
@@ -774,7 +774,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat3 = document.getElementById("sub_cat3");
             var sub_cat_img3 = document.getElementById("sub_cat_img3");
-            sub_cat_img3.src = "../images/plant types.jpeg";
+            sub_cat_img3.src = "../images/glass pot.jpeg";
             sub_cat3.textContent = "Glass";
             a1 = document.getElementById("a3");
             sub_cat3.href = "/pots/glass";
@@ -782,7 +782,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat4 = document.getElementById("sub_cat4");
             var sub_cat_img4 = document.getElementById("sub_cat_img4");
-            sub_cat_img4.src = "../images/flower varieties.jpeg";
+            sub_cat_img4.src = "../images/resin pots.jpeg";
             sub_cat4.textContent = "Resin";
             a1 = document.getElementById("a4");
             sub_cat4.href = "/pots/resin";
@@ -790,7 +790,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat5 = document.getElementById("sub_cat5");
             var sub_cat_img5 = document.getElementById("sub_cat_img5");
-            sub_cat_img5.src = "../images/flower varieties.jpeg";
+            sub_cat_img5.src = "../images/vases.jpeg";
             sub_cat5.textContent = "Vases";
             a1 = document.getElementById("a5");
             sub_cat5.href = "/pots/vase";
@@ -798,7 +798,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat6 = document.getElementById("sub_cat6");
             var sub_cat_img6 = document.getElementById("sub_cat_img6");
-            sub_cat_img6.src = "../images/flower varieties.jpeg";
+            sub_cat_img6.src = "../images/hanging pots.jpeg";
             sub_cat6.textContent = "Hanging Pots";
             a1 = document.getElementById("a6");
             sub_cat6.href = "/pots/hanging-pots";
@@ -823,7 +823,7 @@ const fetchData = (endpoint) => {
             tp.textContent = data.count;
             var sub_cat1 = document.getElementById("sub_cat1");
             var sub_cat_img1 = document.getElementById("sub_cat_img1");
-            sub_cat_img1.src = "../images/season.jpeg";
+            sub_cat_img1.src = "../images/organic.jpeg";
             sub_cat1.textContent = "Organic";
             var a1 = document.getElementById("a1");
             sub_cat1.href = "/fertilizers/organic";
@@ -831,7 +831,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat2 = document.getElementById("sub_cat2");
             var sub_cat_img2 = document.getElementById("sub_cat_img2");
-            sub_cat_img2.src = "../images/suitable location.jpeg";
+            sub_cat_img2.src = "../images/potting soil.jpeg";
             sub_cat2.textContent = "Potting Soil";
             a1 = document.getElementById("a2");
             sub_cat2.href = "/fertilizers/potting-soil";
@@ -839,7 +839,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat3 = document.getElementById("sub_cat3");
             var sub_cat_img3 = document.getElementById("sub_cat_img3");
-            sub_cat_img3.src = "../images/plant types.jpeg";
+            sub_cat_img3.src = "../images/cocopeat.jpeg";
             sub_cat3.textContent = "Cocopeat";
             a1 = document.getElementById("a3");
             sub_cat3.href = "/fertilizers/cocopeat";
@@ -847,7 +847,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat4 = document.getElementById("sub_cat4");
             var sub_cat_img4 = document.getElementById("sub_cat_img4");
-            sub_cat_img4.src = "../images/flower varieties.jpeg";
+            sub_cat_img4.src = "../images/manure.jpeg";
             sub_cat4.textContent = "Manure";
             a1 = document.getElementById("a4");
             sub_cat4.href = "/fertilizers/manure";
@@ -855,7 +855,7 @@ const fetchData = (endpoint) => {
 
             var sub_cat5 = document.getElementById("sub_cat5");
             var sub_cat_img5 = document.getElementById("sub_cat_img5");
-            sub_cat_img5.src = "../images/flower varieties.jpeg";
+            sub_cat_img5.src = "../images/compost.jpeg";
             sub_cat5.textContent = "Compost";
             a1 = document.getElementById("a5");
             sub_cat5.href = "/fertilizers/compost";

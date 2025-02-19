@@ -138,8 +138,10 @@ async function updateWishlistCount() {
   try {
     const response = await fetch("/wishlist/wishlistCount");
     const data = await response.json();
+    if (data.count == null) {
+      document.getElementById("cart_count").textContent = 0;
+    }
     document.getElementById("wishlist_count").textContent = data.count;
-    console.log(data.count);
   } catch (error) {
     console.error("Error fetching wishlist count:", error);
   }
@@ -149,8 +151,10 @@ async function updateCartCount() {
   try {
     const response = await fetch("/cart/cartCount");
     const data = await response.json();
+    if (data.count == null) {
+      document.getElementById("cart_count").textContent = 0;
+    }
     document.getElementById("cart_count").textContent = data.count;
-    console.log(data.count);
   } catch (error) {
     console.error("Error fetching cart count:", error);
   }
@@ -162,4 +166,4 @@ function updateCartAndWishlistCounts() {
 }
 
 // Call the function to update the cart count on page load
-window.onload= updateCartAndWishlistCounts;
+window.onload = updateCartAndWishlistCounts;
