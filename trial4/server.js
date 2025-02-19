@@ -247,6 +247,14 @@ app.use(
   },
   feedback
 );
+const cat = require("./routes/categoriesrouter");
+app.use(
+  "/fetch",
+  (req, res, next) => {
+    next();
+  },
+  cat
+);
 app.get("/contactus.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "contactus.html"));
 });

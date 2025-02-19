@@ -103,7 +103,7 @@ const fetchData = (endpoint) => {
 
                 var info1 = document.getElementById("info1");
                 info1.textContent =
-                  "Did you know that pumpkins are actually a type of squash, and they're considered a fruit? They grow in autumn and are famous for their role in Halloween as jack-o'-lanterns. 🎃";
+                  "";
                 plantsdata = data;
                 var tp = document.getElementById("tp");
                 tp.textContent = data.count;
@@ -169,7 +169,7 @@ const fetchData = (endpoint) => {
 
                 var info1 = document.getElementById("info1");
                 info1.textContent =
-                  "Snake Plant (Sansevieria) is a fantastic choice for offices or rooms in a house. It's incredibly low-maintenance and thrives in low-light conditions, making it perfect for spaces with limited natural sunlight. Plus, it helps purify the air by removing toxins like formaldehyde and benzene. Placing a snake plant in your bedroom or office can improve air quality and create a more pleasant environment. 🌿";
+                  "";
                 plantsdata = data;
                 var tp = document.getElementById("tp");
                 tp.textContent = data.count;
@@ -240,7 +240,7 @@ const fetchData = (endpoint) => {
 
                 var info1 = document.getElementById("info1");
                 info1.textContent =
-                  "Bamboo is the fastest-growing plant on Earth. Some species of bamboo can grow up to 35 inches (91 centimeters) in a single day! 🌱";
+                  "";
                 plantsdata = data;
                 var tp = document.getElementById("tp");
                 tp.textContent = data.count;
@@ -311,7 +311,7 @@ const fetchData = (endpoint) => {
 
                 var info1 = document.getElementById("info1");
                 info1.textContent =
-                  "Did you know that flowers have been used in traditional medicines for thousands of years? Many plants, like chamomile and lavender, are known for their calming properties.🌻";
+                  "";
                 plantsdata = data;
                 var tp = document.getElementById("tp");
                 tp.textContent = data.count;
@@ -395,7 +395,7 @@ const fetchData = (endpoint) => {
 
                 var info1 = document.getElementById("info1");
                 info1.textContent =
-                  "Kraft paper wraps are popular for bouquets because they provide a rustic and eco-friendly charm. 🌿 This type of wrapping adds a natural look, often complemented with simple twine or ribbon, making the flowers stand out beautifully.";
+                  "";
                 plantsdata = data;
                 var tp = document.getElementById("tp");
                 tp.textContent = data.count;
@@ -461,7 +461,7 @@ const fetchData = (endpoint) => {
 
                 var info1 = document.getElementById("info1");
                 info1.textContent =
-                  "Fabric wraps, like burlap, add a rustic, reusable, and eco-friendly touch to bouquets. 😊";
+                  "";
                 plantsdata = data;
                 var tp = document.getElementById("tp");
                 tp.textContent = data.count;
@@ -527,7 +527,7 @@ const fetchData = (endpoint) => {
 
                 var info1 = document.getElementById("info1");
                 info1.textContent =
-                  "The spiral technique in bouquet arrangement helps create a fuller and balanced look. 🌸";
+                  "";
                 plantsdata = data;
                 var tp = document.getElementById("tp");
                 tp.textContent = data.count;
@@ -582,7 +582,7 @@ const fetchData = (endpoint) => {
 
                 var info1 = document.getElementById("info1");
                 info1.textContent =
-                  "Bouquets can feature a variety of flowers such as roses, lilies, tulips, and daisies, each adding unique beauty and fragrance.";
+                  "";
                 plantsdata = data;
                 var tp = document.getElementById("tp");
                 tp.textContent = data.count;
@@ -645,7 +645,7 @@ const fetchData = (endpoint) => {
 
             var info1 = document.getElementById("info1");
             info1.textContent =
-              "Plants produce their own food through a process called photosynthesis, where they convert sunlight, carbon dioxide, and water into glucose and oxygen.";
+              "";
             var plantsdata;
             plantsdata = data;
             var tp = document.getElementById("tp");
@@ -698,7 +698,7 @@ const fetchData = (endpoint) => {
 
             var info1 = document.getElementById("info1");
             info1.textContent =
-              "The tradition of giving floral bouquets dates back thousands of years. In ancient times, the Greeks, Romans, and Egyptians created bouquets to honor gods and celebrate special occasions. Each flower carried its own symbolism, conveying messages and emotions without words.";
+              "";
             var plantsdata;
             plantsdata = data;
             var tp = document.getElementById("tp");
@@ -751,7 +751,7 @@ const fetchData = (endpoint) => {
 
             var info1 = document.getElementById("info1");
             info1.textContent =
-              "The art of pottery dates back to prehistoric times. The oldest known ceramic artifact, the Venus of Dolní Věstonice, is around 29,000 years old. Pottery allowed ancient humans to store food, water, and other goods, revolutionizing daily life and enabling settled communities.";
+              "";
             var plantsdata;
             plantsdata = data;
             var tp = document.getElementById("tp");
@@ -816,7 +816,7 @@ const fetchData = (endpoint) => {
 
             var info1 = document.getElementById("info1");
             info1.textContent =
-              "Fertilizers provide plants with essential nutrients like nitrogen (N), phosphorus (P), and potassium (K). These nutrients help plants grow better, develop strong roots, and resist diseases.";
+              "";
             var plantsdata;
             plantsdata = data;
             var tp = document.getElementById("tp");
@@ -874,7 +874,7 @@ const fetchData = (endpoint) => {
 
             var info1 = document.getElementById("info1");
             info1.textContent =
-              "Did you know that one of the smallest and simplest gardening tools is the hand trowel? It's a small, handheld tool with a pointed, scoop-shaped metal blade. The hand trowel is perfect for digging small holes, planting seedlings, and transplanting flowers. Despite its size, it's incredibly versatile and a must-have for any gardener's toolkit.";
+              "";
             var plantsdata;
             plantsdata = data;
             var tp = document.getElementById("tp");
@@ -971,3 +971,107 @@ function setupSlider(containerId, leftBtnId, rightBtnId) {
     container.scrollTo({ left: scrollAmount, behavior: "smooth" });
   });
 }
+
+
+// document.addEventListener("DOMContentLoaded", async () => {
+//   const pathSegments = window.location.pathname.split('/').filter(segment => segment);
+//   let endpoint;
+
+//   if (pathSegments.length > 1) {
+//       const subcategoryId = pathSegments[1];
+//       endpoint = `/sub-subcategories/${subcategoryId}`;
+//   } else {
+//       const categoryId = pathSegments[0];
+//       endpoint = `/subcategories/${categoryId}`;
+//   }
+
+//   try {
+//       const response = await fetch(endpoint);
+//       const { template, data } = await response.json();
+
+//       renderPage(template, data, pathSegments);
+//   } catch (error) {
+//       console.error("Error fetching data:", error);
+//   }
+// });
+
+// function renderPage(template, data, pathSegments) {
+//   const container = document.getElementById("categories-container");
+//   container.innerHTML = ""; // Clear the container before adding new content
+
+//   if (template === 'shop.html') {
+//       document.getElementById("breadcrumb1").innerHTML = generateBreadcrumb(pathSegments);
+//       document.getElementById("heading").textContent = getHeading(pathSegments);
+//       document.getElementById("info1").textContent = ""; // Add any additional info here
+//       document.getElementById("tp").textContent = data.count || 0;
+
+//       data.forEach((item, index) => {
+//           const itemDiv = document.createElement("div");
+//           itemDiv.className = "category__item";
+
+//           const itemLink = document.createElement("a");
+//           itemLink.href = `/${item.CY_NAME?.toLowerCase() || item.sub_name?.toLowerCase()}`;
+//           itemLink.className = "category__item";
+
+//           const itemImg = document.createElement("img");
+//           itemImg.src = item.CY_IMAGE || item.sub_image;
+//           itemImg.alt = "";
+//           itemImg.className = "category__img";
+
+//           const itemTitle = document.createElement("h3");
+//           itemTitle.className = "category__title";
+//           itemTitle.textContent = `${item.CY_NAME || item.sub_name} →`;
+
+//           itemLink.appendChild(itemImg);
+//           itemLink.appendChild(itemTitle);
+//           itemDiv.appendChild(itemLink);
+//           container.appendChild(itemDiv);
+
+//           // Hide unused subcategories
+//           if (index >= 7) {
+//               itemDiv.hidden = true;
+//           }
+//       });
+//   } else {
+//       document.getElementById("breadcrumb1").innerHTML = generateBreadcrumb(pathSegments);
+//       document.getElementById("heading").textContent = getHeading(pathSegments);
+//       document.getElementById("info1").textContent = ""; // Add any additional info here
+//       document.getElementById("tp").textContent = data.count || 0;
+
+//       data.forEach((item, index) => {
+//           const itemDiv = document.createElement("div");
+//           itemDiv.className = "subcategory__item";
+
+//           const itemLink = document.createElement("a");
+//           itemLink.href = `/${item.sub_name?.toLowerCase() || item.ss_name?.toLowerCase()}`;
+//           itemLink.className = "subcategory__item";
+
+//           const itemImg = document.createElement("img");
+//           itemImg.src = item.sub_image || item.ss_image;
+//           itemImg.alt = "";
+//           itemImg.className = "subcategory__img";
+
+//           const itemTitle = document.createElement("h3");
+//           itemTitle.className = "subcategory__title";
+//           itemTitle.textContent = `${item.sub_name || item.ss_name} →`;
+
+//           itemLink.appendChild(itemImg);
+//           itemLink.appendChild(itemTitle);
+//           itemDiv.appendChild(itemLink);
+//           container.appendChild(itemDiv);
+
+//           // Hide unused subcategories
+//           if (index >= 7) {
+//               itemDiv.hidden = true;
+//           }
+//       });
+//   }
+// }
+
+// function generateBreadcrumb(pathSegments) {
+//   return pathSegments.map(segment => segment.charAt(0).toUpperCase() + segment.slice(1)).join(' > ');
+// }
+
+// function getHeading(pathSegments) {
+//   return pathSegments.map(segment => segment.charAt(0).toUpperCase() + segment.slice(1)).join(' ');
+// }

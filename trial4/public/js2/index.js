@@ -106,3 +106,43 @@ function setupSlider(containerId, leftBtnId, rightBtnId) {
     }
   });
 }
+
+document.addEventListener("DOMContentLoaded", (event) => {
+  async function fetchCategories() {
+    try {
+      const response = await fetch("/fetch/fetchcategories");
+      const categories = await response.json();
+      console.log(categories);
+
+      const container = document.getElementById("categories-container");
+      container.innerHTML = ""; // Uncomment to clear the container before adding new content
+
+      categories.forEach((category) => {
+        const categoryDiv = document.createElement("div");
+        categoryDiv.className = "category__item";
+
+        const categoryLink = document.createElement("a");
+        categoryLink.href = `/${category.CY_NAME.toLowerCase()}`;
+        categoryLink.className = "category__item";
+
+        const categoryImg = document.createElement("img");
+        categoryImg.src = category.CY_IMAGE;
+        categoryImg.alt = "";
+        categoryImg.className = "category__img";
+
+        const categoryTitle = document.createElement("h3");
+        categoryTitle.className = "category__title";
+        categoryTitle.textContent = `${category.CY_NAME} →`;
+
+        categoryLink.appendChild(categoryImg);
+        categoryLink.appendChild(categoryTitle);
+        categoryDiv.appendChild(categoryLink);
+        container.appendChild(categoryDiv);
+      });
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }
+
+  fetchCategories();
+});

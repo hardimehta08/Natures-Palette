@@ -322,7 +322,7 @@
         window.scrollTo(0, 0);
       });
       function loadNav() {
-        fetch("header.html")
+        fetch("/header")
           .then((res) => {
             return res.text();
           })
@@ -331,7 +331,7 @@
           });
       }
       function loadFooter() {
-        fetch("footer.html")
+        fetch("/footer")
           .then((res) => {
             return res.text();
           })
