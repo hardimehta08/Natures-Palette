@@ -125,7 +125,9 @@ const placeOrder = async (req, res) => {
     ]);
     // console.log("Removed from cart!");
 
-    res.status(200).send({ message: "Order placed!",status: 200,orderID: o_id });
+    res
+      .status(200)
+      .send({ message: "Order placed!", status: 200, orderID: o_id });
   } catch (err) {
     console.log(err);
     res.status(500).send({ message: "Error placing order" });
@@ -139,7 +141,7 @@ const getAllOrders = async (req, res) => {
     res.status(200).json(rows);
   } catch (err) {
     console.log(err);
-    res.status(500).send("Error fetching orders");
+    res.status(500).json({ error: "Error fetching orders" });
   }
 };
 
@@ -152,13 +154,13 @@ const getOrderById = async (req, res) => {
       [orderId]
     );
     if (rows.length === 0) {
-      res.status(404).send("Order not found");
+      res.status(404).json({ error: "Order not found" });
       return;
     }
     res.status(200).json(rows[0]);
   } catch (err) {
     console.log(err);
-    res.status(500).send("Error fetching order");
+    res.status(500).json({ error: "Error fetching order" });
   }
 };
 
@@ -185,10 +187,10 @@ const deleteOrderById = async (req, res) => {
     ]);
     console.log("Deleted record from order master table");
 
-    res.status(200).send("Order deleted");
+    res.status(200).json({ message: "Order deleted" });
   } catch (err) {
     console.log(err);
-    res.status(500).send("Error deleting order");
+    res.status(500).json({ error: "Error deleting order" });
   }
 };
 
@@ -201,13 +203,13 @@ const getOrdersByCustomerId = async (req, res) => {
       [customerId]
     );
     if (rows.length === 0) {
-      res.status(404).send("No orders found for this customer");
+      res.status(404).json({ error: "No orders found for this customer" });
       return;
     }
     res.status(200).json(rows);
   } catch (err) {
     console.log(err);
-    res.status(500).send("Error fetching customer orders");
+    res.status(500).json({ error: "Error fetching customer orders" });
   }
 };
 

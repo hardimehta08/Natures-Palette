@@ -31,7 +31,9 @@ const generateCartId = (callback) => {
 // Add Item to Cart
 const addItemToCart = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to add items to the cart.");
+    return res
+      .status(401)
+      .json({ message: "Please login to add items to the cart." });
   }
 
   const { productId } = req.body;
@@ -56,11 +58,12 @@ const addItemToCart = (req, res) => {
       if (err) throw err;
 
       if (productResult.length === 0) {
-        return res.status(400).send("Invalid product ID.");
+        return res.status(400).json({ error: "Invalid product ID." });
       }
 
       generateCartId((err, newCartId) => {
-        if (err) return res.status(500).send("Error generating cart ID.");
+        if (err)
+          return res.status(500).json({ error: "Error generating cart ID." });
 
         const sql =
           "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
@@ -69,7 +72,7 @@ const addItemToCart = (req, res) => {
           [newCartId, req.session.userId, productId, quantity],
           (err, result) => {
             if (err) throw err;
-            res.status(200).send("Item added to cart.");
+            res.status(200).json({ message: "Item added to cart." });
           }
         );
       });
@@ -80,7 +83,9 @@ const addItemToCart = (req, res) => {
 // Add Item to Cart from Product Detail Page
 const addItemToCartFromProduct = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to add items to the cart.");
+    return res
+      .status(401)
+      .json({ message: "Please login to add items to the cart." });
   }
   // console.log(req.body);
   const { prodname: productName, quantity } = req.body;
@@ -102,16 +107,17 @@ const addItemToCartFromProduct = (req, res) => {
     getProductIDSql,
     [productName, productName, productName, productName, productName],
     (err, result) => {
-      if (err) return res.status(500).send("Error executing query");
+      if (err) return res.status(500).json({ error: "Error executing query" });
 
       if (result.length === 0) {
-        return res.status(404).send("Product not found");
+        return res.status(404).json({ error: "Product not found" });
       }
 
       const productId = result[0].id;
 
       generateCartId((err, newCartId) => {
-        if (err) return res.status(500).send("Error generating cart ID.");
+        if (err)
+          return res.status(500).json({ error: "Error generating cart ID." });
 
         const sql =
           "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
@@ -120,7 +126,7 @@ const addItemToCartFromProduct = (req, res) => {
           [newCartId, req.session.userId, productId, quantity],
           (err, result) => {
             if (err) throw err;
-            res.status(200).send("Item added to cart.");
+            res.status(200).json({ message: "Item added to cart." });
           }
         );
       });
@@ -131,7 +137,7 @@ const addItemToCartFromProduct = (req, res) => {
 // Get User Cart
 const getUserCart = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to view your cart.");
+    return res.status(401).json({ error: "Please login to view your cart." });
   }
 
   const sql = `SELECT c.ca_id, c.c_id, c.product_id, c.ca_qty, p.P_NAME AS name, p.P_PRICE AS price, img.PATH1 AS image
@@ -189,7 +195,7 @@ WHERE c.c_id = ?
 // Update Cart Item
 const updateCartItem = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to update your cart.");
+    return res.status(401).json({ error: "Please login to update your cart." });
   }
   // console.log(req.body)
   const cartId = req.body.ca_id;
@@ -197,38 +203,42 @@ const updateCartItem = (req, res) => {
   const sql = "UPDATE cart SET ca_qty = ? WHERE ca_id = ?";
   conn.query(sql, [quantity, cartId], (err, result) => {
     if (err) throw err;
-    res.status(200).send({ message: "Cart item updated." });
+    res.status(200).json({ message: "Cart item updated." });
   });
 };
 
 // Remove Item from Cart
 const removeItemFromCart = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to remove items from your cart.");
+    return res
+      .status(401)
+      .json({ error: "Please login to remove items from your cart." });
   }
   const { cartId } = req.body;
   const sql = "DELETE FROM cart WHERE ca_id = ? AND c_id=?";
   conn.query(sql, [cartId, req.session.userId], (err, result) => {
     if (err) {
       console.error("Database error:", err);
-      return res.status(500).send("Database error.");
+      return res.status(500).json({ error: "Database error." });
     }
     if (result.affectedRows === 0) {
-      return res.status(404).send("Item not found.");
+      return res.status(404).json({ error: "Item not found." });
     }
 
-    res.status(200).send({ message: "Item removed from cart." });
+    res.status(200).json({ message: "Item removed from cart." });
   });
 };
 
 const getCartCount = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to view your cart count.");
+    return res
+      .status(401)
+      .json({ error: "Please login to view your cart count." });
   }
 
   const sql = "SELECT COUNT(*) AS count FROM cart WHERE c_id = ?";
   conn.query(sql, [req.session.userId], (err, result) => {
-    if (err) return res.status(500).send("Database error.");
+    if (err) return res.status(500).json({ error: "Database error." });
 
     const count = result[0].count;
     res.status(200).json({ count });

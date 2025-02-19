@@ -71,7 +71,7 @@ exports.generateQRCodeForOrder = (req, res) => {
       res.json({ qrCodeURL });
     } catch (error) {
       console.error("Error generating QR code:", error);
-      res.status(500).send("Error generating QR code");
+      res.status(500).json({ error: "Error generating QR code" });
     }
   });
 };
@@ -93,13 +93,13 @@ exports.getPaymentDetails = (req, res) => {
   db.query(query, [orderId], (err, results) => {
     if (err) {
       console.error("Error executing query:", err);
-      res.status(500).send("Internal Server Error");
+      res.status(500).json({ error: "Internal Server Error" });
       return;
     }
 
     if (results.length === 0) {
       console.error("Order not found for ID:", orderId);
-      res.status(404).send("Order not found");
+      res.status(404).json({ error: "Order not found" });
       return;
     }
 
@@ -121,7 +121,7 @@ exports.createPayment = (req, res) => {
   db.query(maxIdQuery, (err, result) => {
     if (err) {
       console.error("Error fetching max PY_ID:", err);
-      return res.status(500).send("Internal Server Error");
+      return res.status(500).json({ error: "Internal Server Error" });
     }
 
     let newPyId = "PY01";
@@ -151,10 +151,10 @@ exports.createPayment = (req, res) => {
       (err, result) => {
         if (err) {
           console.error("Error executing query:", err);
-          return res.status(500).send("Internal Server Error");
+          return res.status(500).json({ error: "Internal Server Error" });
         }
 
-        res.status(201).send("Payment created successfully");
+        res.status(201).json({ message: "Payment created successfully" });
       }
     );
   });

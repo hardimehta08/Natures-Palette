@@ -52,7 +52,7 @@ const searchProducts = (req, res) => {
     (err, results) => {
       if (err) {
         console.error("Error executing query: " + err.message);
-        res.status(500).send("Error executing query");
+        res.status(500).json({ error: "Error executing query" });
         return;
       }
 
@@ -83,7 +83,7 @@ const searchKeywords = (req, res) => {
     (err, results) => {
       if (err) {
         console.error("Error executing query: " + err.message);
-        res.status(500).send("Error executing query");
+        res.status(500).json({ error: "Error executing query" });
         return;
       }
 

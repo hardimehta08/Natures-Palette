@@ -11,7 +11,7 @@ const getCategoryData = (query) => (req, res) => {
   conn.query(query, (err, results) => {
     if (err) {
       console.error("Error executing query: " + err.message);
-      res.status(500).send("Error executing query");
+      res.status(500).json({ error: "Error executing query" });
       return;
     }
 
@@ -37,7 +37,7 @@ const getSubCategoryData = (query, countQuery) => (req, res) => {
   conn.query(countQuery, [subCategory], (err, countResults) => {
     if (err) {
       console.error("Error executing count query: " + err.message);
-      res.status(500).send("Error executing count query");
+      res.status(500).json({ error: "Error executing count query" });
       return;
     }
 
@@ -47,7 +47,7 @@ const getSubCategoryData = (query, countQuery) => (req, res) => {
     conn.query(query, [subCategory], (err, results) => {
       if (err) {
         console.error("Error executing query: " + err.message);
-        res.status(500).send("Error executing query");
+        res.status(500).json({ error: "Error executing query" });
         return;
       }
 
@@ -77,7 +77,7 @@ const plantsdata = (req, res) => {
   conn.query(query, (err, results) => {
     if (err) {
       console.error("Error executing query:", err.message);
-      res.status(500).send("Error executing query");
+      res.status(500).json({ error: "Error executing query" });
       return;
     }
 
@@ -104,7 +104,7 @@ const bouquetdata = (req, res) => {
   conn.query(query, (err, results) => {
     if (err) {
       console.error("Error executing query:", err.message);
-      res.status(500).send("Error executing query");
+      res.status(500).json({ error: "Error executing query" });
       return;
     }
 
@@ -131,7 +131,7 @@ const potsdata = (req, res) => {
   conn.query(query, (err, results) => {
     if (err) {
       console.error("Error executing query:", err.message);
-      res.status(500).send("Error executing query");
+      res.status(500).json({ error: "Error executing query" });
       return;
     }
 
@@ -158,7 +158,7 @@ const fertilizerdata = (req, res) => {
   conn.query(query, (err, results) => {
     if (err) {
       console.error("Error executing query:", err.message);
-      res.status(500).send("Error executing query");
+      res.status(500).json({ error: "Error executing query" });
       return;
     }
 
@@ -185,7 +185,7 @@ const toolsdata = (req, res) => {
   conn.query(query, (err, results) => {
     if (err) {
       console.error("Error executing query:", err.message);
-      res.status(500).send("Error executing query");
+      res.status(500).json({ error: "Error executing query" });
       return;
     }
 

@@ -111,12 +111,12 @@ const getProductDetails = (req, res) => {
     (err, results) => {
       if (err) {
         console.error("Error executing product query: " + err.message);
-        res.status(500).send("Error executing product query");
+        res.status(500).json({ error: "Error executing product query" });
         return;
       }
 
       if (results.length === 0) {
-        res.status(404).send("Product not found");
+        res.status(404).json({ error: "Product not found" });
         return;
       }
 
@@ -139,7 +139,7 @@ const getProductDetails = (req, res) => {
       conn.query(feedbackQuery, [product.productId], (err, feedbackResults) => {
         if (err) {
           console.error("Error executing feedback query: " + err.message);
-          res.status(500).send("Error executing feedback query");
+          res.status(500).json({ error: "Error executing feedback query" });
           return;
         }
 

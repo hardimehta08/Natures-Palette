@@ -31,14 +31,15 @@ const generateFeedbackId = (callback) => {
 // Add Feedback
 const addFeedback = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to add feedback.");
+    return res.status(401).json({ error: "Please login to add feedback." });
   }
 
   const { productId, description } = req.body;
   const date = new Date();
 
   generateFeedbackId((err, newFeedbackId) => {
-    if (err) return res.status(500).send("Error generating feedback ID.");
+    if (err)
+      return res.status(500).json({ error: "Error generating feedback ID." });
 
     const sql =
       "INSERT INTO feedback (f_id, f_desc, f_date, c_id, product_id) VALUES (?, ?, ?, ?, ?)";
@@ -47,7 +48,7 @@ const addFeedback = (req, res) => {
       [newFeedbackId, description, date, req.session.userId, productId],
       (err, result) => {
         if (err) throw err;
-        res.status(200).send("Feedback added.");
+        res.status(200).json({ message: "Feedback added." });
       }
     );
   });
@@ -72,14 +73,14 @@ const getProductFeedback = (req, res) => {
 // Delete Feedback
 const deleteFeedback = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to delete feedback.");
+    return res.status(401).json({ error: "Please login to delete feedback." });
   }
 
   const feedbackId = req.body.feedbackId;
   const sql = "DELETE FROM feedback WHERE f_id = ? AND c_id = ?";
   conn.query(sql, [feedbackId, req.session.userId], (err, result) => {
     if (err) throw err;
-    res.status(200).send("Feedback deleted.");
+    res.status(200).json({ message: "Feedback deleted." });
   });
 };
 

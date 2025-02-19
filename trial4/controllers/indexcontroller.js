@@ -12,7 +12,7 @@ const executeQuery = (query, res, req, next, key) => {
   conn.query(query, (err, results) => {
     if (err) {
       console.error("Error executing query:", err.stack);
-      res.status(500).send("Error executing query");
+      res.status(500).json({ error: "Error executing query" });
       return;
     }
     results.forEach((item) => {
@@ -31,7 +31,7 @@ const bs = (req, res) => {
   conn.query(query, (err, result) => {
     if (err) {
       console.error("Error fetching best-selling products: " + err.message);
-      res.status(500).send("Error fetching best-selling products");
+      res.status(500).json({ error: "Error fetching best-selling products" });
     } else {
       result.forEach((item) => {
         item.PATH1 = item.PATH1.toString();
@@ -46,7 +46,7 @@ const fa = (req, res) => {
   conn.query(query, (err, result) => {
     if (err) {
       console.error("Error fetching best-selling products: " + err.message);
-      res.status(500).send("Error fetching best-selling products");
+      res.status(500).json({ error: "Error fetching best-selling products" });
     } else {
       result.forEach((item) => {
         item.PATH1 = item.PATH1.toString();

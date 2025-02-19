@@ -256,7 +256,7 @@ const updatePassword = (req, res) => {
 // Logout User
 const logoutUser = (req, res) => {
   req.session.destroy((err) => {
-    if (err) return res.status(500).send("Error logging out.");
+    if (err) return res.status(500).json({ error: "Error logging out." });
     res.status(200).json({ message: "Logout successful." });
   });
 };
@@ -310,7 +310,7 @@ const forgotPassword = (req, res) => {
       `Hello,\n\nPlease click the following link to reset your password: ${resetLink}\n\nBest regards,\nThe Team`
     );
 
-    res.send("Password reset email sent.");
+    res.json({ message: "Password reset email sent." });
   });
 };
 
@@ -332,12 +332,10 @@ const resetPassword = async (req, res) => {
       return res.status(500).json({ error: "Internal server error" });
     }
 
-    res
-      .status(200)
-      .json({
-        message:
-          "Password reset successful! Please log in with your new password.",
-      });
+    res.status(200).json({
+      message:
+        "Password reset successful! Please log in with your new password.",
+    });
   });
 };
 

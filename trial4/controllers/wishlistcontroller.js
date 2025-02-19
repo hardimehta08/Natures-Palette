@@ -31,7 +31,9 @@ const generateWishlistId = (callback) => {
 // Add Item to Wishlist
 const addItemToWishlist = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to add items to the wishlist.");
+    return res
+      .status(401)
+      .json({ error: "Please login to add items to the wishlist." });
   }
   console.log(req.body.prodid);
   const productId = req.body.prodid;
@@ -39,11 +41,12 @@ const addItemToWishlist = (req, res) => {
   console.log("Received productId:", productId);
 
   if (!productId) {
-    return res.status(400).send("Product ID is required.");
+    return res.status(400).json({ error: "Product ID is required." });
   }
 
   generateWishlistId((err, newWishlistId) => {
-    if (err) return res.status(500).send("Error generating wishlist ID.");
+    if (err)
+      return res.status(500).json({ error: "Error generating wishlist ID." });
 
     const sql =
       "INSERT INTO wishlist (w_id, c_id, product_id) VALUES (?, ?, ?)";
@@ -51,10 +54,10 @@ const addItemToWishlist = (req, res) => {
       sql,
       [newWishlistId, req.session.userId, productId],
       (err, result) => {
-        if (err) return res.status(500).send("Database error.");
+        if (err) return res.status(500).json({ error: "Database error." });
 
         console.log("Item added to wishlist:", result);
-        res.status(200).send("Item added to wishlist.");
+        res.status(200).json({ message: "Item added to wishlist." });
       }
     );
   });
@@ -63,7 +66,9 @@ const addItemToWishlist = (req, res) => {
 // Get User Wishlist
 const getUserWishlist = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to view your wishlist.");
+    return res
+      .status(401)
+      .json({ error: "Please login to view your wishlist." });
   }
 
   const sql = `
@@ -131,14 +136,16 @@ const removeItemFromWishlist = (req, res) => {
   const sql = "DELETE FROM wishlist WHERE w_id = ? AND c_id = ?";
   conn.query(sql, [wishlistId, req.session.userId], (err, result) => {
     if (err) throw err;
-    res.status(200).send("Item removed from wishlist.");
+    res.status(200).json({ message: "Item removed from wishlist." });
   });
 };
 
 // Move Item from Wishlist to Cart
 const moveItemToCart = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to move items to the cart.");
+    return res
+      .status(401)
+      .json({ error: "Please login to move items to the cart." });
   }
 
   const { wishlistId, quantity } = req.body;
@@ -150,10 +157,10 @@ const moveItemToCart = (req, res) => {
     getProductIDSql,
     [wishlistId, req.session.userId],
     (err, result) => {
-      if (err) return res.status(500).send("Error executing query");
+      if (err) return res.status(500).json({ error: "Error executing query" });
 
       if (result.length === 0) {
-        return res.status(404).send("Wishlist item not found");
+        return res.status(404).json({ error: "Wishlist item not found" });
       }
 
       const productId = result[0].product_id;
@@ -165,7 +172,8 @@ const moveItemToCart = (req, res) => {
 
         // Add the item to the cart
         generateCartId((err, newCartId) => {
-          if (err) return res.status(500).send("Error generating cart ID.");
+          if (err)
+            return res.status(500).json({ error: "Error generating cart ID." });
 
           const sql =
             "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
@@ -174,7 +182,7 @@ const moveItemToCart = (req, res) => {
             [newCartId, req.session.userId, productId, quantity],
             (err, result) => {
               if (err) throw err;
-              res.status(200).send("Item moved to cart.");
+              res.status(200).json({ message: "Item moved to cart." });
             }
           );
         });
@@ -205,12 +213,14 @@ const generateCartId = (callback) => {
 // Get Wishlist Count for a Specific User
 const getWishlistCount = (req, res) => {
   if (!req.session.userId) {
-    return res.status(401).send("Please login to view your wishlist count.");
+    return res
+      .status(401)
+      .json({ error: "Please login to view your wishlist count." });
   }
 
   const sql = "SELECT COUNT(*) AS count FROM wishlist WHERE c_id = ?";
   conn.query(sql, [req.session.userId], (err, result) => {
-    if (err) return res.status(500).send("Database error.");
+    if (err) return res.status(500).json({ error: "Database error." });
 
     const count = result[0].count;
     res.status(200).json({ count });
@@ -222,5 +232,5 @@ module.exports = {
   getUserWishlist,
   removeItemFromWishlist,
   moveItemToCart,
-  getWishlistCount
+  getWishlistCount,
 };
