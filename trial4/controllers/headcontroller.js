@@ -7,9 +7,9 @@ const conn = mysql.createConnection({
   database: "main_project",
 });
 
-const getCategoryData = (category) => (req, res) => {
-  // First, check if the category exists in the categories table
-  const checkCategoryQuery = "SELECT cy_name FROM categories WHERE name = ?";
+const getCategoryData = (req, res) => {
+  const category = req.params.category;
+  const checkCategoryQuery = "SELECT cy_name FROM category WHERE cy_name = ?";
 
   conn.query(checkCategoryQuery, [category], (err, results) => {
     if (err) {
@@ -22,28 +22,36 @@ const getCategoryData = (category) => (req, res) => {
       res.status(400).json({ error: "Invalid category" });
       return;
     }
-    const dataQuery = `SELECT id, name, price, (SELECT COUNT(*) FROM ${mysql.escapeId(
-      category
-    )}) AS count
-  FROM ${mysql.escapeId(category)}`;
 
-    conn.query(dataQuery, (err, results) => {
+    const dataQuery = `
+    SELECT p.id, p.name, p.price, i.PATH1 AS image,
+    (SELECT COUNT(*) FROM ??) AS count
+    FROM ?? p
+    LEFT JOIN image i ON p.id = i.PRODUCT_ID`;
+
+    conn.query(dataQuery, [category, category], (err, results) => {
       if (err) {
         console.error("Error executing query: " + err.message);
         res.status(500).json({ error: "Error executing query" });
         return;
       }
+
+      results = results.map((result) => {
+        if (result.image) {
+          result.image = result.image.toString();
+        }
+        return result;
+      });
       res.json(results);
     });
   });
 };
 
-const getSubCategoryData = (query, countQuery) => (req, res) => {
+const getSubCategoryData = (req, res) => {
   const category = req.params.category;
   const subCategory = req.params.subCategory;
-  const checkCategoryQuery = "SELECT cy_name FROM categories WHERE name = ?";
+  const checkCategoryQuery = "SELECT cy_name FROM category WHERE cy_name = ?";
 
-  // Check if the category is valid
   conn.query(checkCategoryQuery, [category], (err, categoryResults) => {
     if (err) {
       console.error("Error executing query: " + err.message);
@@ -56,9 +64,8 @@ const getSubCategoryData = (query, countQuery) => (req, res) => {
       return;
     }
 
-    // Check if the subCategory is valid
     const checkSubCategoryQuery =
-      "SELECT sub_name FROM subcategories WHERE sub_name = ?";
+      "SELECT sub_name FROM subcategory WHERE sub_name = ?";
     conn.query(
       checkSubCategoryQuery,
       [subCategory],
@@ -74,20 +81,24 @@ const getSubCategoryData = (query, countQuery) => (req, res) => {
           return;
         }
 
-        // If both category and subCategory are valid, execute the data query
         const dataQuery = `
-        SELECT id, name, price, 
-        (SELECT COUNT(*) FROM ${mysql.escapeId(category)}) AS count
-        FROM ${mysql.escapeId(category)}
-        ORDER BY ${mysql.escapeId(subCategory)}
-      `;
+          SELECT p.id, p.name, p.price, i.PATH1 AS image,
+    (SELECT COUNT(*) FROM ??) AS count
+    FROM ?? p
+    LEFT JOIN image i ON p.id = i.PRODUCT_ID ORDER BY ${subCategory}`;
 
-        conn.query(dataQuery, (err, results) => {
+        conn.query(dataQuery, [category, category], (err, results) => {
           if (err) {
             console.error("Error executing query: " + err.message);
             res.status(500).json({ error: "Error executing query" });
             return;
           }
+          results = results.map((result) => {
+            if (result.image) {
+              result.image = result.image.toString();
+            }
+            return result;
+          });
           res.json(results);
         });
       }

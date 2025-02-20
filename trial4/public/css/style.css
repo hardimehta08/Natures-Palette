@@ -1247,6 +1247,12 @@ border: 2px solid palevioletred;
   color: red;
 }
 
+.hero .options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem; /* Adjust the gap between subcategories */
+  justify-content: flex-start;
+}
 .hero .options .option-items img {
   width: 150px;
   height: 150px;
