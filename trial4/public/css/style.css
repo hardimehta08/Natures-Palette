@@ -262,16 +262,20 @@ a {
 .desktop-menu-category-list .menu-category > .menu-title:hover::after {
   transform: scaleX(1);
 }
-
+.dropdown-panel-container {
+  position: relative;
+  display: flex;
+  justify-content: center; /* Center the dropdown panel */
+}
 .dropdown-panel {
   position: absolute;
   top: 100%;
   left: 0;
   background: white;
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 30px;
+  width: auto;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 50px;
   padding: 30px;
   border: 1px solid hsl(0, 0%, 93%);
   box-shadow: 0 3px 5px hsla(0, 0%, 0%, 0.1);

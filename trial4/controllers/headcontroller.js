@@ -307,8 +307,49 @@ const getSubSubCategoryData = (req, res) => {
     }
   );
 };
+
+const getCategories = (req, res) => {
+  const categoriesQuery = `
+    SELECT c.CY_ID, c.CY_NAME, s.sub_id, s.sub_name 
+    FROM category c
+    LEFT JOIN subcategory s ON c.CY_ID = s.cy_id
+  `;
+
+  conn.query(categoriesQuery, (err, results) => {
+    if (err) {
+      console.error("Error executing query: " + err.message);
+      res.status(500).json({ error: "Error executing query" });
+      return;
+    }
+
+    const categories = {};
+
+    results.forEach((row) => {
+      if (!categories[row.CY_NAME]) {
+        categories[row.CY_NAME] = {
+          title: row.CY_NAME,
+          links: [],
+        };
+      }
+
+      if (row.sub_name) {
+        // Assuming the format of links you provided
+        categories[row.CY_NAME].links.push({
+          name: row.sub_name,
+          url: `/${row.CY_NAME.toLowerCase().replace(/ /g, "_")}/${row.sub_name
+            .toLowerCase()
+            .replace(/ /g, "_")}`,
+        });
+      }
+    });
+
+    const formattedCategories = Object.values(categories);
+    res.json(formattedCategories);
+  });
+};
 module.exports = {
   getCategoryData,
   getSubCategoryData,
   getSubSubCategoryData,
+  getCategories,
 };

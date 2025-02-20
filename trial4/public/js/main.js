@@ -165,5 +165,64 @@ function updateCartAndWishlistCounts() {
   updateWishlistCount();
 }
 
+document.addEventListener("DOMContentLoaded", function () {
+  fetch("/header/menu/categories")
+    .then((response) => response.json())
+    .then((data) => {
+      const container = document
+        .getElementById("dynamic-categories-container")
+        .querySelector(".dropdown-panel");
+      const mobileMenu = document.getElementById("dynamic-mobile-menu");
+
+      container.innerHTML = data
+        .map(
+          (category) => `
+            <ul class="dropdown-panel-list">
+              <li class="menu-title">
+                <a href="#">${category.title}</a>
+              </li>
+              ${category.links
+                .map(
+                  (link) => `
+                  <li class="panel-list-item">
+                    <a href="${link.url}">${link.name}</a>
+                  </li>
+                `
+                )
+                .join("")}
+            </ul>
+          `
+        )
+        .join("");
+
+      mobileMenu.innerHTML = data
+        .map(
+          (category) => `
+            <li class="menu-category">
+              <button class="accordion-menu" data-accordion-btn>
+                <p class="menu-title">${category.title}</p>
+                <div>
+                  <ion-icon name="add-outline" class="add-icon"></ion-icon>
+                  <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
+                </div>
+              </button>
+              <ul class="submenu-category-list" data-accordion>
+                ${category.links
+                  .map(
+                    (link) => `
+                    <li class="submenu-category">
+                      <a href="${link.url}" class="submenu-title">${link.name}</a>
+                    </li>
+                  `
+                  )
+                  .join("")}
+              </ul>
+            </li>
+          `
+        )
+        .join("");
+    })
+    .catch((error) => console.error("Error fetching categories:", error));
+});
 // Call the function to update the cart count on page load
 window.onload = updateCartAndWishlistCounts;
