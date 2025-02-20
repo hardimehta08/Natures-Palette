@@ -27,7 +27,7 @@ const executeQuery = (query, res, req, next, key) => {
 // Route to get best-selling and new arrivals products
 const bs = (req, res) => {
   const query =
-    "SELECT PLANTS.P_NAME, PLANTS.P_PRICE, IMAGE.PATH1 FROM PLANTS JOIN IMAGE ON PLANTS.P_ID = IMAGE.PRODUCT_ID WHERE PLANTS.P_ID IN ('P0001', 'P0002', 'P0003', 'P0004', 'P0023', 'P0024', 'P0025', 'P0026')";
+    "SELECT PLANTS_table.P_NAME, PLANTS_table.P_PRICE, IMAGE.PATH1 FROM PLANTS_table JOIN IMAGE ON PLANTS_table.P_ID = IMAGE.PRODUCT_ID WHERE PLANTS_table.P_ID IN ('P0001', 'P0002', 'P0003', 'P0004', 'P0023', 'P0024', 'P0025', 'P0026')";
   conn.query(query, (err, result) => {
     if (err) {
       console.error("Error fetching best-selling products: " + err.message);
@@ -42,7 +42,7 @@ const bs = (req, res) => {
 };
 const fa = (req, res) => {
   const query =
-    "SELECT PLANTS.P_NAME, PLANTS.P_PRICE, IMAGE.PATH1 FROM PLANTS JOIN IMAGE ON PLANTS.P_ID = IMAGE.PRODUCT_ID WHERE PLANTS.P_ID IN ('P0001', 'P0002', 'P0003', 'P0004', 'P0023', 'P0024', 'P0025', 'P0026')";
+    "SELECT PLANTS_table.P_NAME, PLANTS_table.P_PRICE, IMAGE.PATH1 FROM PLANTS_table JOIN IMAGE ON PLANTS_table.P_ID = IMAGE.PRODUCT_ID WHERE PLANTS_table.P_ID IN ('P0001', 'P0002', 'P0003', 'P0004', 'P0023', 'P0024', 'P0025', 'P0026')";
   conn.query(query, (err, result) => {
     if (err) {
       console.error("Error fetching best-selling products: " + err.message);

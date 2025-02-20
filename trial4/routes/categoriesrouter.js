@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const indexController = require('../controllers/categoriescontroller');
+const { getCategoryData,getCategories } = require('../controllers/categoriescontroller');
 
-router.get('/fetchcategories', indexController.getCategories);
+router.get("/fetch/fetchcategories", getCategories);
+router.get("/category/:category", getCategoryData);
+router.get("/category/:category/:subcategory", getCategoryData);
 
 module.exports = router;

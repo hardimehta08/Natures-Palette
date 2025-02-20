@@ -110,12 +110,10 @@ function setupSlider(containerId, leftBtnId, rightBtnId) {
 document.addEventListener("DOMContentLoaded", (event) => {
   async function fetchCategories() {
     try {
-      const response = await fetch("/fetch/fetchcategories");
+      const response = await fetch("/fetch/fetch/fetchcategories");
       const categories = await response.json();
-      console.log(categories);
-
       const container = document.getElementById("categories-container");
-      container.innerHTML = ""; // Uncomment to clear the container before adding new content
+      container.innerHTML = ""; // Clear the container before adding new content
 
       categories.forEach((category) => {
         const categoryDiv = document.createElement("div");
@@ -127,7 +125,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
 
         const categoryImg = document.createElement("img");
         categoryImg.src = category.CY_IMAGE;
-        categoryImg.alt = "";
+        categoryImg.alt = category.CY_NAME;
         categoryImg.className = "category__img";
 
         const categoryTitle = document.createElement("h3");
