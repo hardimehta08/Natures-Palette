@@ -1,6 +1,5 @@
 const { sendMail } = require("./mailer");
 const bcrypt = require("bcrypt");
-const crypto = require("crypto");
 const mysql = require("mysql");
 // console.log(secret);
 
@@ -303,7 +302,7 @@ const forgotPassword = (req, res) => {
     }
 
     // Send the password reset email
-    const resetLink = `http://localhost:3000/user/reset-password?email=${email}`;
+    const resetLink = `http://localhost:4000/user/reset-password?email=${email}`;
     sendMail(
       email,
       "Password Reset Request",

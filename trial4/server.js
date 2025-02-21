@@ -35,7 +35,7 @@ const mimeTypes = {
 };
 
 const app = express(); // Create an Express app
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
 app.use("/index", express.static(path.join(__dirname, "index")));

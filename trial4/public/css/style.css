@@ -320,9 +320,9 @@ a {
   padding: 4px 0;
 }
 
-.panel-list-item:last-child {
+/* .panel-list-item:last-child {
   margin-top: 20px;
-}
+} */
 
 .panel-list-item img {
   width: 200px;

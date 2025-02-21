@@ -7,23 +7,6 @@ const conn = mysql.createConnection({
   database: "main_project",
 });
 
-// Helper function to execute queries
-const executeQuery = (query, res, req, next, key) => {
-  conn.query(query, (err, results) => {
-    if (err) {
-      console.error("Error executing query:", err.stack);
-      res.status(500).json({ error: "Error executing query" });
-      return;
-    }
-    results.forEach((item) => {
-      if (item.PATH1) item.PATH1 = item.PATH1.toString();
-      if (item.PATH2) item.PATH2 = item.PATH2.toString();
-    });
-    req[key] = results;
-    next();
-  });
-};
-
 // Route to get best-selling and new arrivals products
 const bs = (req, res) => {
   const query =

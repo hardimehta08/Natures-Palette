@@ -13,13 +13,13 @@ function loadCart(data) {
 
   data.forEach((item) => {
     cartitem.innerHTML += `
-      <tr data-cart-id="${item.ca_id}">
+      <tr data-cart-id="${item.CA_ID}">
         <td><img src="${item.image}" alt="${item.name}" width="50"></td>
         <td><a href="/product.html?product=${item.name}">${item.name}</a></td>
         <td>${item.price}</td>
-        <td><input type="number" value="${item.ca_qty}" id="qty_num${item.ca_id}" style="width:30px;" onchange="updatecart('${item.ca_id}', this.value)"></td>
+        <td><input type="number" value="${item.CA_QTY}" id="qty_num${item.CA_ID}" style="width:30px;" onchange="updatecart('${item.CA_ID}', this.value)"></td>
         <td>${item.total}</td>
-        <td><button onclick="removeFromCart('${item.ca_id}');updateCartAndWishlistCounts();">Remove</button></td>
+        <td><button onclick="removeFromCart('${item.CA_ID}');updateCartAndWishlistCounts();">Remove</button></td>
       </tr>
     `;
     Stotal += item.total;
@@ -42,10 +42,10 @@ fetch("/cart/user")
 
 function updatecart(id, newQty) {
   // Find the item in the data array
-  const item = fdata.find((item) => item.ca_id === id);
+  const item = fdata.find((item) => item.CA_ID === id);
   if (item) {
-    item.ca_qty = parseInt(newQty, 10);
-    item.total = item.ca_qty * item.price;
+    item.CA_QTY = parseInt(newQty, 10);
+    item.total = item.CA_QTY * item.price;
     const Stotal = fdata.reduce((sum, item) => sum + item.total, 0);
 
     // Update the database
@@ -54,7 +54,7 @@ function updatecart(id, newQty) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ca_id: id, qty: item.ca_qty }),
+      body: JSON.stringify({ CA_ID: id, qty: item.CA_QTY }),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -71,9 +71,9 @@ function updatecart(id, newQty) {
     console.error("Item not found in cart");
   }
 }
-function removeFromCart(ca_id) {
+function removeFromCart(CA_ID) {
   // Find the item index in the data array
-  const itemIndex = fdata.findIndex((item) => item.ca_id === ca_id);
+  const itemIndex = fdata.findIndex((item) => item.CA_ID === CA_ID);
   if (itemIndex !== -1) {
     // Remove the item from the data array
     fdata.splice(itemIndex, 1);
@@ -85,7 +85,7 @@ function removeFromCart(ca_id) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ cartId: ca_id }), // Ensure the correct parameter name
+      body: JSON.stringify({ cartId: CA_ID }), // Ensure the correct parameter name
     })
       .then((response) => response.json())
       .then((data) => {

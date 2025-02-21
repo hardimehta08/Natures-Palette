@@ -29,6 +29,7 @@ const generateCartId = (callback) => {
 };
 
 // Add Item to Cart
+// Add Item to Cart
 const addItemToCart = (req, res) => {
   if (!req.session.userId) {
     return res
@@ -36,50 +37,58 @@ const addItemToCart = (req, res) => {
       .json({ message: "Please login to add items to the cart." });
   }
 
-  const { productId } = req.body;
+  const productId = req.body.productId;
 
-  // Validate the product ID against all category tables
-  const checkProductSql = `
-    SELECT 'PLANTS' AS category FROM PLANTS WHERE P_ID = ?
-    UNION ALL
-    SELECT 'BOUQUET' AS category FROM BOUQUET WHERE B_ID = ?
-    UNION ALL
-    SELECT 'POTS' AS category FROM POTS WHERE PT_ID = ?
-    UNION ALL
-    SELECT 'FERTILIZERS' AS category FROM FERTILIZERS WHERE Ft_ID = ?
-    UNION ALL
-    SELECT 'TOOLS' AS category FROM TOOLS WHERE T_ID = ?
-  `;
-  const quantity = 1;
-  conn.query(
-    checkProductSql,
-    [productId, productId, productId, productId, productId],
-    (err, productResult) => {
-      if (err) throw err;
+  if (!productId) {
+    return res.status(400).json({ error: "Product ID is required." });
+  }
 
-      if (productResult.length === 0) {
-        return res.status(400).json({ error: "Invalid product ID." });
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
+
+  conn.query(viewsQuery, (err, views) => {
+    if (err) return res.status(500).json({ error: "Database error." });
+
+    const searchQueries = views
+      .map((view) => {
+        return `SELECT product_id FROM ${view.TABLE_NAME} WHERE product_id = ?`;
+      })
+      .join(" UNION ALL ");
+
+    const query = `${searchQueries}`;
+
+    conn.query(
+      query,
+      new Array(views.length).fill(productId),
+      (err, results) => {
+        if (err) return res.status(500).json({ error: "Database error." });
+
+        if (results.length === 0) {
+          return res.status(400).json({ error: "Invalid product ID." });
+        }
+
+        generateCartId((err, newCartId) => {
+          if (err)
+            return res.status(500).json({ error: "Error generating cart ID." });
+
+          const sql =
+            "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
+          conn.query(
+            sql,
+            [newCartId, req.session.userId, productId, 1],
+            (err, result) => {
+              if (err)
+                return res.status(500).json({ error: "Database error." });
+
+              res.status(200).json({ message: "Item added to cart." });
+            }
+          );
+        });
       }
-
-      generateCartId((err, newCartId) => {
-        if (err)
-          return res.status(500).json({ error: "Error generating cart ID." });
-
-        const sql =
-          "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
-        conn.query(
-          sql,
-          [newCartId, req.session.userId, productId, quantity],
-          (err, result) => {
-            if (err) throw err;
-            res.status(200).json({ message: "Item added to cart." });
-          }
-        );
-      });
-    }
-  );
+    );
+  });
 };
 
+// Add Item to Cart from Product Detail Page
 // Add Item to Cart from Product Detail Page
 const addItemToCartFromProduct = (req, res) => {
   if (!req.session.userId) {
@@ -87,51 +96,58 @@ const addItemToCartFromProduct = (req, res) => {
       .status(401)
       .json({ message: "Please login to add items to the cart." });
   }
-  // console.log(req.body);
+
   const { prodname: productName, quantity } = req.body;
 
-  // Get the product ID based on the product name
-  const getProductIDSql = `
-    SELECT P_ID AS id FROM PLANTS WHERE P_NAME = ? 
-    UNION ALL 
-    SELECT B_ID AS id FROM BOUQUET WHERE B_NAME = ? 
-    UNION ALL 
-    SELECT PT_ID AS id FROM POTS WHERE PT_NAME = ? 
-    UNION ALL 
-    SELECT Ft_ID AS id FROM FERTILIZERS WHERE Ft_NAME = ? 
-    UNION ALL 
-    SELECT T_ID AS id FROM TOOLS WHERE T_NAME = ?
-  `;
+  if (!productName) {
+    return res.status(400).json({ error: "Product name is required." });
+  }
 
-  conn.query(
-    getProductIDSql,
-    [productName, productName, productName, productName, productName],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: "Error executing query" });
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
 
-      if (result.length === 0) {
-        return res.status(404).json({ error: "Product not found" });
+  conn.query(viewsQuery, (err, views) => {
+    if (err) return res.status(500).json({ error: "Database error." });
+
+    const searchQueries = views
+      .map((view) => {
+        return `SELECT product_id FROM ${view.TABLE_NAME} WHERE name = ?`;
+      })
+      .join(" UNION ALL ");
+
+    const query = `${searchQueries}`;
+
+    conn.query(
+      query,
+      new Array(views.length).fill(productName),
+      (err, results) => {
+        if (err) return res.status(500).json({ error: "Database error." });
+
+        if (results.length === 0) {
+          return res.status(404).json({ error: "Product not found." });
+        }
+
+        const productId = results[0].product_id;
+
+        generateCartId((err, newCartId) => {
+          if (err)
+            return res.status(500).json({ error: "Error generating cart ID." });
+
+          const sql =
+            "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
+          conn.query(
+            sql,
+            [newCartId, req.session.userId, productId, quantity],
+            (err, result) => {
+              if (err)
+                return res.status(500).json({ error: "Database error." });
+
+              res.status(200).json({ message: "Item added to cart." });
+            }
+          );
+        });
       }
-
-      const productId = result[0].id;
-
-      generateCartId((err, newCartId) => {
-        if (err)
-          return res.status(500).json({ error: "Error generating cart ID." });
-
-        const sql =
-          "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
-        conn.query(
-          sql,
-          [newCartId, req.session.userId, productId, quantity],
-          (err, result) => {
-            if (err) throw err;
-            res.status(200).json({ message: "Item added to cart." });
-          }
-        );
-      });
-    }
-  );
+    );
+  });
 };
 
 // Get User Cart
@@ -139,57 +155,37 @@ const getUserCart = (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Please login to view your cart." });
   }
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
+  conn.query(viewsQuery, (err, views) => {
+    if (err) return res.status(500).json({ error: "Database error." });
 
-  const sql = `SELECT c.ca_id, c.c_id, c.product_id, c.ca_qty, p.P_NAME AS name, p.P_PRICE AS price, img.PATH1 AS image
-FROM cart c
-JOIN PLANTS p ON c.product_id = p.P_ID
-JOIN IMAGE img ON p.P_ID = img.PRODUCT_ID
-WHERE c.c_id = ?
-UNION ALL
-SELECT c.ca_id, c.c_id, c.product_id, c.ca_qty, b.B_NAME AS name, b.B_PRICE AS price, img.PATH1 AS image
-FROM cart c
-JOIN BOUQUET b ON c.product_id = b.B_ID
-JOIN IMAGE img ON b.B_ID = img.PRODUCT_ID
-WHERE c.c_id = ?
-UNION ALL
-SELECT c.ca_id, c.c_id, c.product_id, c.ca_qty, pt.PT_NAME AS name, pt.PT_PRICE AS price, img.PATH1 AS image
-FROM cart c
-JOIN POTS pt ON c.product_id = pt.PT_ID
-JOIN IMAGE img ON pt.PT_ID = img.PRODUCT_ID
-WHERE c.c_id = ?
-UNION ALL
-SELECT c.ca_id, c.c_id, c.product_id, c.ca_qty, f.Ft_NAME AS name, f.Ft_PRICE AS price, img.PATH1 AS image
-FROM cart c
-JOIN FERTILIZERS f ON c.product_id = f.Ft_ID
-JOIN IMAGE img ON f.Ft_ID = img.PRODUCT_ID
-WHERE c.c_id = ?
-UNION ALL
-SELECT c.ca_id, c.c_id, c.product_id, c.ca_qty, t.T_NAME AS name, t.T_PRICE AS price, img.PATH1 AS image
-FROM cart c
-JOIN TOOLS t ON c.product_id = t.T_ID
-JOIN IMAGE img ON t.T_ID = img.PRODUCT_ID
-WHERE c.c_id = ?
-    `;
-  conn.query(
-    sql,
-    [
-      req.session.userId,
-      req.session.userId,
-      req.session.userId,
-      req.session.userId,
-      req.session.userId,
-    ],
-    (err, result) => {
-      if (err) throw err;
-      result.forEach((result) => {
+    const userId = req.session.userId;
+    const searchQueries = views
+      .map((view) => {
+        return `
+        SELECT c.CA_ID, c.C_ID, c.PRODUCT_ID, c.CA_QTY, v.name, v.price, img.PATH1 AS image
+        FROM cart c
+        JOIN ${view.TABLE_NAME} v ON c.PRODUCT_ID = v.id
+        JOIN IMAGE img ON v.id = img.PRODUCT_ID
+        WHERE c.C_ID = ?
+        `;
+      })
+      .join(" UNION ALL ");
+
+    const query = `${searchQueries}`;
+
+    conn.query(query, new Array(views.length).fill(userId), (err, results) => {
+      if (err) return res.status(500).json({ error: "Database error." });
+
+      results.forEach((result) => {
         if (result.image) {
           result.image = result.image.toString();
         }
-        result.total = result.ca_qty * result.price;
+        result.total = result.CA_QTY * result.price;
       });
-      res.status(200).json(result);
-    }
-  );
+      res.status(200).json(results);
+    });
+  });
 };
 
 // Update Cart Item
@@ -198,7 +194,7 @@ const updateCartItem = (req, res) => {
     return res.status(401).json({ error: "Please login to update your cart." });
   }
   // console.log(req.body)
-  const cartId = req.body.ca_id;
+  const cartId = req.body.CA_ID;
   const quantity = req.body.qty;
   const sql = "UPDATE cart SET ca_qty = ? WHERE ca_id = ?";
   conn.query(sql, [quantity, cartId], (err, result) => {

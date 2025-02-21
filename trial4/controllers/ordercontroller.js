@@ -10,9 +10,10 @@ const conn = mysql.createConnection({
 const placeOrder = async (req, res) => {
   var { s_add = null, s_pc = null, s_cno = null } = req.body;
   // console.log("Received data:", req.body);
-  try {
-    const connection = await conn;
+  const connection = await conn;
+  await connection.beginTransaction(); // Start a transaction
 
+  try {
     // Get the max O_ID
     let [rows] = await connection.query(
       "SELECT MAX(O_ID) AS maxId FROM ORDER_MASTER"
@@ -34,8 +35,7 @@ const placeOrder = async (req, res) => {
       req.session.userId,
     ]);
     if (rows.length === 0) {
-      res.status(400).send({ message: "Cart is empty" });
-      return;
+      throw new Error("Cart is empty");
     }
 
     // Process each item in the cart
@@ -58,8 +58,7 @@ const placeOrder = async (req, res) => {
         [product_id, product_id, product_id, product_id, product_id]
       );
       if (priceRows.length === 0) {
-        res.status(400).send({ message: "Product not found" });
-        return;
+        throw new Error("Product not found");
       }
 
       let p_price;
@@ -100,8 +99,7 @@ const placeOrder = async (req, res) => {
       [req.session.userId]
     );
     if (rows.length === 0) {
-      res.status(400).send({ message: "Customer not found" });
-      return;
+      throw new Error("Customer not found");
     }
 
     if (!s_add && !s_cno && !s_pc) {
@@ -125,10 +123,12 @@ const placeOrder = async (req, res) => {
     ]);
     // console.log("Removed from cart!");
 
+    await connection.commit(); // Commit the transaction
     res
       .status(200)
       .send({ message: "Order placed!", status: 200, orderID: o_id });
   } catch (err) {
+    await connection.rollback(); // Rollback the transaction in case of error
     console.log(err);
     res.status(500).send({ message: "Error placing order" });
   }
