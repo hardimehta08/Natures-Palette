@@ -7,6 +7,8 @@ const querystring = require("querystring");
 const express = require("express");
 const session = require("express-session");
 
+
+
 const connection = mysql.createConnection({
   host: "localhost",
   user: "root",
@@ -51,7 +53,6 @@ app.use(
     cookie: { secure: false }, // Set 'true' if using HTTPS
   })
 );
-
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "index.html"));
 });
@@ -93,7 +94,7 @@ app.get(
     "/suitable_locations/balcony",
     "/suitable_locations/bedroom",
     "/suitable_locations/terrace",
-    "/suitable_locations/living-room",
+    "/suitable_locations/living_room",
     "/plant_types/air_plants",
     "/plant_types/bamboo",
     "/plant_types/climber",

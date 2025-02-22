@@ -4,7 +4,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql87055",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
 
@@ -84,7 +84,68 @@ const deleteFeedback = (req, res) => {
   });
 };
 
+const feedbacks = async (req, res) => {
+  try {
+    // Fetch list of all views
+    const viewsSql = `
+      SELECT *
+      FROM INFORMATION_SCHEMA.VIEWS
+      WHERE TABLE_SCHEMA = 'main_project';
+    `;
+    conn.query(viewsSql, (err, viewsResult) => {
+      if (err) throw err;
+
+      // Check if viewsResult is an array and has values
+      if (!Array.isArray(viewsResult) || viewsResult.length === 0) {
+        return res.status(500).json({ error: "No views found in the schema." });
+      }
+      const views = viewsResult.map((row) => row.TABLE_NAME);
+
+      // Define a function to fetch feedback data from each view
+      const fetchFeedbackData = (view) => {
+        return new Promise((resolve, reject) => {
+          const sql = `
+            SELECT F.F_ID, F.F_DESC, F.C_ID, F.PRODUCT_ID, C.C_USERNAME, CAT.CY_NAME
+            FROM FEEDBACK AS F
+            JOIN CUSTOMER AS C ON F.C_ID = C.C_ID
+            JOIN ${view} AS EV ON F.PRODUCT_ID = EV.id
+            JOIN CATEGORY AS CAT ON EV.category_id = CAT.CY_ID
+            ORDER BY F.F_ID DESC;
+          `;
+          conn.query(sql, (err, result) => {
+            if (err) {
+              console.error(`Error querying view ${view}:`, err);
+              return reject(err);
+            }
+            resolve(result);
+          });
+        });
+      };
+
+      // Fetch feedback data from all views and aggregate results
+      const promises = views.map((view) => fetchFeedbackData(view));
+      Promise.all(promises)
+        .then((results) => {
+          const feedbackData = results.flat();
+          res.status(200).json(feedbackData);
+        })
+        .catch((err) => {
+          console.error("Error fetching feedback data:", err);
+          res
+            .status(500)
+            .json({ error: "An error occurred while fetching feedback data." });
+        });
+    });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching feedback data." });
+  }
+};
+
 module.exports = {
+  feedbacks,
   addFeedback,
   getProductFeedback,
   deleteFeedback,

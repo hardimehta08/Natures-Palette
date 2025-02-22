@@ -119,28 +119,10 @@ trigger.forEach((btn) => {
   });
 });
 
-// let featuredImg = document.getElementById("featured-image");
-// let smallImgs = document.getElementsByClassName("small-Img");
-
-// for (let i = 0; i < smallImgs.length; i++) {
-//   smallImgs[i].addEventListener("click", () => {
-//     featuredImg.src = smallImgs[i].src;
-//     for (let j = 0; j < smallImgs.length; j++) {
-//       if (i === j) {
-//         smallImgs[j].classList.add("sm-card");
-//       } else {
-//         smallImgs[j].classList.remove("sm-card");
-//       }
-//     }
-//   });
-// }
 async function updateWishlistCount() {
   try {
     const response = await fetch("/wishlist/wishlistCount");
     const data = await response.json();
-    if (data.count == null) {
-      document.getElementById("cart_count").textContent = 0;
-    }
     document.getElementById("wishlist_count").textContent = data.count;
   } catch (error) {
     console.error("Error fetching wishlist count:", error);
@@ -151,7 +133,7 @@ async function updateCartCount() {
   try {
     const response = await fetch("/cart/cartCount");
     const data = await response.json();
-    if (data.count == null) {
+    if (data.status == 401) {
       document.getElementById("cart_count").textContent = 0;
     }
     document.getElementById("cart_count").textContent = data.count;
@@ -164,6 +146,10 @@ function updateCartAndWishlistCounts() {
   updateCartCount();
   updateWishlistCount();
 }
+// Helper function to clean titles
+function cleanTitle(title) {
+  return title.replace(/_/g, " ");
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   fetch("/header/menu/categories")
@@ -172,20 +158,19 @@ document.addEventListener("DOMContentLoaded", function () {
       const container = document
         .getElementById("dynamic-categories-container")
         .querySelector(".dropdown-panel");
-      const mobileMenu = document.getElementById("dynamic-mobile-menu");
 
       container.innerHTML = data
         .map(
           (category) => `
             <ul class="dropdown-panel-list">
               <li class="menu-title">
-                <a href="#">${category.title}</a>
+                <a href="/${category.title}">${cleanTitle(category.title)}</a>
               </li>
               ${category.links
                 .map(
                   (link) => `
                   <li class="panel-list-item">
-                    <a href="${link.url}">${link.name}</a>
+                    <a href="${link.url}">${cleanTitle(link.name)}</a>
                   </li>
                 `
                 )
@@ -200,7 +185,7 @@ document.addEventListener("DOMContentLoaded", function () {
           (category) => `
             <li class="menu-category">
               <button class="accordion-menu" data-accordion-btn>
-                <p class="menu-title">${category.title}</p>
+                <p class="menu-title">${cleanTitle(category.title)}</p>
                 <div>
                   <ion-icon name="add-outline" class="add-icon"></ion-icon>
                   <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
@@ -211,7 +196,9 @@ document.addEventListener("DOMContentLoaded", function () {
                   .map(
                     (link) => `
                     <li class="submenu-category">
-                      <a href="${link.url}" class="submenu-title">${link.name}</a>
+                      <a href="${link.url}" class="submenu-title">${cleanTitle(
+                      link.name
+                    )}</a>
                     </li>
                   `
                   )
@@ -224,5 +211,31 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     .catch((error) => console.error("Error fetching categories:", error));
 });
+
 // Call the function to update the cart count on page load
 window.onload = updateCartAndWishlistCounts;
+
+fetch("/feedback/")
+  .then((response) => response.json())
+  .then((data) => {
+    const feedback = document.getElementById("feedback");
+
+    // Limit the number of feedback items to display
+    const limitedData = data.slice(0, 3);
+
+    feedback.innerHTML = limitedData
+      .map(
+        (item) => `
+        <div class="feedback-item">
+          <div class="feedback-row">
+            <div class="feedback-category"><strong>Category:</strong> ${item.CY_NAME}</div>
+            <div class="feedback-comment"><strong>Comment:</strong> ${item.F_DESC}</div>
+            <div class="feedback-author"><strong>Author:</strong> ${item.C_USERNAME}</div>
+          </div>
+        </div>
+      `
+      )
+      .join("");
+  })
+  .catch((error) => console.error("Error fetching feedback:", error));
+

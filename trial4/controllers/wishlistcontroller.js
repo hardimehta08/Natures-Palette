@@ -195,9 +195,7 @@ const generateCartId = (callback) => {
 // Get Wishlist Count for a Specific User
 const getWishlistCount = (req, res) => {
   if (!req.session.userId) {
-    return res
-      .status(401)
-      .json({ error: "Please login to view your wishlist count." });
+    return res.json({count:"0" });
   }
 
   const sql = "SELECT COUNT(*) AS count FROM wishlist WHERE c_id = ?";

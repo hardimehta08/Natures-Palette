@@ -34,8 +34,6 @@ async function fetchProducts(endpoint, containerId) {
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
     const products = await response.json();
-    console.log(`Fetched products from ${endpoint}:`, products);
-
     const container = document.getElementById(containerId);
     container.innerHTML = "";
 

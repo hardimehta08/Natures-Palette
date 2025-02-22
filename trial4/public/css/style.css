@@ -541,7 +541,7 @@ a {
   width: 60%;
   cursor: default;
   position: absolute;
-  top: 16rem;
+  top: 10rem;
   left: 15px;
 }
 .home__title {
@@ -549,17 +549,17 @@ a {
   font-size: 3rem;
   font-weight: 600;
   line-height: 1.5;
-  /* color: white; */
   letter-spacing: 0.1rem;
   word-spacing: 0.5rem;
 }
 
 .home__description {
-  margin-block: 0.5rem 3rem;
-  font-size: 2rem;
+  text-align: justify;
+  margin-block: 2rem 4rem;
+  margin-right: 50px;
+  font-size: 0.6cm;
   line-height: 1.5;
-  letter-spacing: 0.2rem;
-  word-spacing: 0.5rem;
+  word-spacing: 0.6rem;
 }
 
 .home__btn {
@@ -1188,6 +1188,7 @@ border: 2px solid palevioletred;
     margin-bottom: 1rem;
   }
   .home__description {
+    text-align: justify;
     font-size: 1.75rem;
   }
   .about__description {
@@ -2294,4 +2295,35 @@ li.subtotal:before {
     width: 100%;
     margin-left: 1rem;
   }
+}
+#feedback {
+  display: block;
+  background-color: #eedbbfc0;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 1000px; /* Adjusted this to a reasonable max width */
+  margin: auto;
+}
+
+.feedback-item {
+  background-color: white;
+  height: max-content;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+}
+
+.feedback-category,
+.feedback-comment,
+.feedback-author {
+  font-size: small;
+  margin: 5px 0;
+}
+
+.feedback-category strong,
+.feedback-comment strong,
+.feedback-author strong {
+  margin-right: 10px;
+  text-decoration: underline;
+  font-size: 15px;
 }
