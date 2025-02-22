@@ -110,7 +110,7 @@ const updateUI = (pathSegments, data, pathname) => {
 
     const cat = document.createElement("a");
     cat.classList.add("cat");
-    cat.textContent = capitalize(sub.sub_name || sub.ss_name);
+    cat.textContent = capitalize(sub.sub_name || sub.ss_name).replace(/_/g," ");
 
     a.appendChild(img);
     a.appendChild(cat);

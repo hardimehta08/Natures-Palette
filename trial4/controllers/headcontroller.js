@@ -167,145 +167,220 @@ const getSubCategoryData = (req, res) => {
 };
 
 const getSubSubCategoryData = (req, res) => {
+  console.log("Received request params:", req.params);
   const subCategory = req.params.subcategory;
-  const subSubCategory = req.params.subsubcategory;
+  const subSubCategory = req.params.subsubcategory.replace(/_/g, " ");
+  console.log("SubCategory:", subCategory);
+  console.log("SubSubCategory:", subSubCategory);
+
   const checkSubCategoryQuery =
     "SELECT cy_id, sub_name FROM subcategory WHERE sub_name = ?";
   const checkSubSubCategoryQuery =
     "SELECT ss_name FROM subsubcategory WHERE ss_name = ?";
 
-  // Check if the subcategory is valid
+  // Always check for the subsubcategory first
   conn.query(
-    checkSubCategoryQuery,
-    [subCategory],
-    (err, subCategoryResults) => {
+    checkSubSubCategoryQuery,
+    [subSubCategory],
+    (err, subSubCategoryResults) => {
       if (err) {
-        console.error("Error executing query: " + err.message);
+        console.error("Error executing subSubCategory query:", err.message);
         res.status(500).json({ error: "Error executing query" });
         return;
       }
 
-      if (subCategoryResults.length === 0) {
-        res.status(400).json({ error: "Invalid subCategory" });
-        return;
-      }
+      console.log("SubSubCategory results:", subSubCategoryResults);
 
-      let cy_id = subCategoryResults[0].cy_id; // Assuming cy_id is in the first result
+      let categoryQuery = "SELECT CY_NAME FROM CATEGORY WHERE CY_ID = ?";
+      let dataQuery, countQuery, descQuery, categoryId, tableName, liketerm;
 
-      // Check if the sub-subcategory is valid
-      conn.query(
-        checkSubSubCategoryQuery,
-        [subSubCategory],
-        (err, subSubCategoryResults) => {
-          if (err) {
-            console.error("Error executing query: " + err.message);
-            res.status(500).json({ error: "Error executing query" });
-            return;
-          }
+      if (subSubCategoryResults.length > 0) {
+        // Subsubcategory is valid, treat subSubCategory as subCategory
+        console.log(
+          "SubSubCategory is valid, proceeding with subSubCategory as subCategory"
+        );
 
-          if (subSubCategoryResults.length === 0) {
-            res.status(400).json({ error: "Invalid subSubCategory" });
-            return;
-          }
-
-          // Query to get the category name based on cy_id
-          const categoryQuery = "SELECT CY_NAME FROM CATEGORY WHERE CY_ID = ?";
-
-          // Execute the category query to get the table name
-          conn.query(categoryQuery, [cy_id], (err, categoryResults) => {
+        conn.query(
+          checkSubCategoryQuery,
+          [subCategory],
+          (err, subCategoryResults) => {
             if (err) {
-              console.error("Error executing query: " + err.message);
+              console.error("Error executing subCategory query:", err.message);
               res.status(500).json({ error: "Error executing query" });
               return;
             }
 
-            if (categoryResults.length === 0) {
-              res
-                .status(400)
-                .json({ error: "No category found for the given cy_id" });
+            console.log("SubCategory results:", subCategoryResults);
+
+            if (subCategoryResults.length === 0) {
+              console.log("Invalid subCategory");
+              res.status(400).json({ error: "Invalid subCategory" });
               return;
             }
 
-            const tableName = categoryResults[0].CY_NAME;
-            const liketerm = `%${subSubCategory}%`;
+            categoryId = subCategoryResults[0].cy_id;
+            liketerm = `%${subSubCategory}%`;
 
-            // Construct the data query dynamically
-            const dataQuery = `
+            dataQuery = `
           SELECT p.id, p.name, p.price, i.PATH1 AS image
           FROM ?? p
           LEFT JOIN image i ON p.id = i.PRODUCT_ID
-          WHERE ?? LIKE ?`;
+          WHERE p.type LIKE ?`;
 
-            const countQuery = `
+            countQuery = `
           SELECT COUNT(*) AS count 
           FROM ?? p
-          WHERE ?? LIKE ?`;
+          WHERE p.type LIKE ?`;
 
-            const descQuery = `SELECT ss_desc AS description FROM subsubcategory WHERE ss_name = ?`;
+            descQuery = `SELECT ss_desc AS description FROM subsubcategory WHERE ss_name = ?`;
 
-            // Execute the data query
-            conn.query(
-              dataQuery,
-              [tableName, subCategory, liketerm],
-              (err, dataResults) => {
-                if (err) {
-                  console.error("Error executing query: " + err.message);
-                  res.status(500).json({ error: "Error executing query" });
-                  return;
-                }
-                // Convert image BLOB to base64 string
-                dataResults = dataResults.map((result) => {
-                  if (result.image) {
-                    result.image = result.image.toString();
-                  }
-                  return result;
-                });
-
-                // Execute the count query
-                conn.query(
-                  countQuery,
-                  [tableName, subCategory, liketerm],
-                  (err, countResults) => {
-                    if (err) {
-                      console.error("Error executing query: " + err.message);
-                      res.status(500).json({ error: "Error executing query" });
-                      return;
-                    }
-
-                    // Execute the description query
-                    conn.query(
-                      descQuery,
-                      [subSubCategory],
-                      (err, descResults) => {
-                        if (err) {
-                          console.error(
-                            "Error executing query: " + err.message
-                          );
-                          res
-                            .status(500)
-                            .json({ error: "Error executing query" });
-                          return;
-                        }
-
-                        const response = {
-                          count: countResults[0].count,
-                          items: dataResults,
-                          desc: descResults[0]
-                            ? descResults[0].description
-                            : "",
-                        };
-                        res.json(response);
-                      }
-                    );
-                  }
-                );
+            console.log("Executing category query for cy_id:", categoryId);
+            conn.query(categoryQuery, [categoryId], (err, categoryResults) => {
+              if (err) {
+                console.error("Error executing category query:", err.message);
+                res.status(500).json({ error: "Error executing query" });
+                return;
               }
-            );
-          });
-        }
-      );
+
+              console.log("Category results:", categoryResults);
+
+              if (categoryResults.length === 0) {
+                console.log("No category found for the given cy_id");
+                res
+                  .status(400)
+                  .json({ error: "No category found for the given cy_id" });
+                return;
+              }
+
+              tableName = categoryResults[0].CY_NAME;
+              console.log("Table name for category:", tableName);
+
+              executeQueries(
+                dataQuery,
+                countQuery,
+                descQuery,
+                tableName,
+                liketerm,
+                subSubCategory,
+                res
+              );
+            });
+          }
+        );
+      } else {
+        // Subsubcategory not valid or empty, use subCategory to fetch category and then treat it as subSubCategory
+        console.log(
+          "SubSubCategory is not valid or empty, proceeding with subCategory as main category and then as subSubCategory"
+        );
+
+        conn.query(
+          checkSubCategoryQuery,
+          [subSubCategory],
+          (err, subCategoryResults) => {
+            if (err) {
+              console.error("Error executing subCategory query:", err.message);
+              res.status(500).json({ error: "Error executing query" });
+              return;
+            }
+
+            if (subCategoryResults.length === 0) {
+              res.status(400).json({ error: "Invalid subCategory" });
+              return;
+            }
+            const typeLiketerm = `%${subCategoryResults[0].sub_name}%`;
+
+            dataQuery = `
+            SELECT p.id, p.name, p.price, i.PATH1 AS image
+            FROM ?? p
+            LEFT JOIN image i ON p.id = i.PRODUCT_ID
+            WHERE p.type LIKE ?`;
+
+            countQuery = `
+            SELECT COUNT(*) AS count 
+            FROM ?? p
+            WHERE p.type LIKE ?`;
+
+            descQuery = `SELECT sub_desc AS description FROM subcategory WHERE sub_name = ?`;
+            let categoryId = subCategoryResults[0].cy_id;
+            conn.query(categoryQuery, [categoryId], (err, categoryResults) => {
+              if (err) {
+                console.error("Error executing category query:", err.message);
+                res.status(500).json({ error: "Error executing query" });
+                return;
+              }
+              console.log(categoryResults);
+              if (categoryResults.length === 0) {
+                res
+                  .status(400)
+                  .json({ error: "No category found for the given cy_id" });
+                return;
+              }
+
+              tableName = categoryResults[0].CY_NAME;
+
+              executeQueries(
+                dataQuery,
+                countQuery,
+                descQuery,
+                tableName,
+                typeLiketerm,
+                subCategory,
+                res
+              );
+            });
+          }
+        );
+      }
     }
   );
+};
+
+const executeQueries = (
+  dataQuery,
+  countQuery,
+  descQuery,
+  tableName,
+  liketerm,
+  descParam,
+  res
+) => {
+  console.log(liketerm);
+  conn.query(dataQuery, [tableName, liketerm], (err, dataResults) => {
+    if (err) {
+      console.error("Error executing data query:", err.message);
+      res.status(500).json({ error: "Error executing query" });
+      return;
+    }
+
+    dataResults = dataResults.map((result) => {
+      if (result.image) {
+        result.image = result.image.toString();
+      }
+      return result;
+    });
+
+    conn.query(countQuery, [tableName, liketerm], (err, countResults) => {
+      if (err) {
+        console.error("Error executing count query:", err.message);
+        res.status(500).json({ error: "Error executing query" });
+        return;
+      }
+      conn.query(descQuery, [descParam], (err, descResults) => {
+        if (err) {
+          console.error("Error executing description query:", err.message);
+          res.status(500).json({ error: "Error executing query" });
+          return;
+        }
+
+        const response = {
+          count: countResults[0].count,
+          items: dataResults,
+          desc: descResults[0] ? descResults[0].description : "",
+        };
+        res.json(response);
+      });
+    });
+  });
 };
 
 const getCategories = (req, res) => {
