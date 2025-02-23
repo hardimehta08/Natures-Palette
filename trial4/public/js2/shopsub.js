@@ -15,10 +15,11 @@ document.addEventListener("DOMContentLoaded", (event) => {
   fetch(endpoint)
     .then((response) => response.json())
     .then((data) => {
+      console.log(data);
       updateUI(pathSegments, data);
       displayProducts(data.items);
-      document.getElementById("tp").textContent = data.count;
-      document.getElementById("info1").textContent = data.desc;
+      document.getElementById("tp").textContent = data.items.length;
+      document.getElementById("info1").textContent = data.description;
     })
     .catch((error) => {
       console.error("Error fetching data:", error);

@@ -150,64 +150,80 @@ function updateCartAndWishlistCounts() {
 function cleanTitle(title) {
   return title.replace(/_/g, " ");
 }
-
 document.addEventListener("DOMContentLoaded", function () {
   fetch("/header/menu/categories")
     .then((response) => response.json())
     .then((data) => {
-      const container = document
-        .getElementById("dynamic-categories-container")
-        .querySelector(".dropdown-panel");
-
-      container.innerHTML = data
-        .map(
-          (category) => `
-            <ul class="dropdown-panel-list">
-              <li class="menu-title">
-                <a href="/${category.title}">${cleanTitle(category.title)}</a>
-              </li>
-              ${category.links
-                .map(
-                  (link) => `
-                  <li class="panel-list-item">
-                    <a href="${link.url}">${cleanTitle(link.name)}</a>
+      const containerElement = document.getElementById(
+        "dynamic-categories-container"
+      );
+      if (containerElement) {
+        const container = containerElement.querySelector(".dropdown-panel");
+        if (container) {
+          container.innerHTML = data
+            .map((category) => {
+              return `
+                <ul class="dropdown-panel-list">
+                  <li class="menu-title">
+                    <a href="/${category.title
+                      .toLowerCase()
+                      .replace(/ /g, "_")}">${cleanTitle(category.title)}</a>
                   </li>
-                `
-                )
-                .join("")}
-            </ul>
-          `
-        )
-        .join("");
+                  ${category.links
+                    .map(
+                      (link) => `
+                      <li class="panel-list-item">
+                        <a href="${link.url}" class="dynamic-link">${cleanTitle(
+                        link.name
+                      )}</a>
+                      </li>
+                    `
+                    )
+                    .join("")}
+                </ul>
+              `;
+            })
+            .join("");
+        } else {
+          console.error("Dropdown panel not found.");
+        }
+      } else {
+        console.error("Dynamic categories container not found.");
+      }
 
-      mobileMenu.innerHTML = data
-        .map(
-          (category) => `
-            <li class="menu-category">
-              <button class="accordion-menu" data-accordion-btn>
-                <p class="menu-title">${cleanTitle(category.title)}</p>
-                <div>
-                  <ion-icon name="add-outline" class="add-icon"></ion-icon>
-                  <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-                </div>
-              </button>
-              <ul class="submenu-category-list" data-accordion>
-                ${category.links
-                  .map(
-                    (link) => `
-                    <li class="submenu-category">
-                      <a href="${link.url}" class="submenu-title">${cleanTitle(
-                      link.name
-                    )}</a>
-                    </li>
-                  `
-                  )
-                  .join("")}
-              </ul>
-            </li>
-          `
-        )
-        .join("");
+      const mobileMenu = document.getElementById("dynamic-mobile-menu");
+      if (mobileMenu) {
+        mobileMenu.innerHTML = data
+          .map((category) => {
+            return `
+              <li class="menu-category">
+                <button class="accordion-menu" data-accordion-btn>
+                  <p class="menu-title">${cleanTitle(category.title)}</p>
+                  <div>
+                    <ion-icon name="add-outline" class="add-icon"></ion-icon>
+                    <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
+                  </div>
+                </button>
+                <ul class="submenu-category-list" data-accordion>
+                  ${category.links
+                    .map(
+                      (link) => `
+                      <li class="submenu-category">
+                        <a href="${link.url}" class="dynamic-link">${cleanTitle(
+                        link.name
+                      )}</a>
+                      </li>
+                    `
+                    )
+                    .join("")}
+                </ul>
+              </li>
+            `;
+          })
+          .join("");
+      } else {
+        console.error("Mobile menu container not found.");
+      }
     })
     .catch((error) => console.error("Error fetching categories:", error));
 });
@@ -238,4 +254,3 @@ fetch("/feedback/")
       .join("");
   })
   .catch((error) => console.error("Error fetching feedback:", error));
-

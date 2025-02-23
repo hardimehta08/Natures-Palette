@@ -1,16 +1,25 @@
-const express = require("express");
-const router = express.Router();
+const express = require('express');
 const {
   getCategoryData,
+  getCategories,
+  getHeaderCategories,
   getSubCategoryData,
   getSubSubCategoryData,
-  getCategories,
-} = require("../controllers/headcontroller.js");
+} = require('../controllers/headcontroller');
 
-router.get("/menu/categories", getCategories);
-router.get("/:category", getCategoryData);
-router.get("/:category/:subCategory", getSubCategoryData);
-router.get("/sub/:subcategory/:subsubcategory", getSubSubCategoryData);
+module.exports = (app) => {
+  const router = express.Router();
 
+  // Fetch categories and dynamically create routes
+  router.get("/fetch/fetchcategories", (req, res) => getCategories(app)(req, res));
+   
+  // Header routes
+  router.get("/menu/categories", (req, res) => getHeaderCategories(app)(req, res));
+  router.get("/header/:category", (req, res) => getCategoryData(app)(req, res));
+  router.get("/:category/:subCategory", (req, res) => getSubCategoryData(app)(req, res));
+  router.get("/sub/:subcategory/:subsubcategory", getSubSubCategoryData);
+  
+  // Dynamic data fetching based on category
 
-module.exports = router;
+  return router;
+};

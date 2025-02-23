@@ -1,33 +1,3 @@
-// const categories = ["Plant", "Bouquet", "Garden Decor"];
-// function createCategoryButtons(sectionId, containerId, endpoint) {
-//   console.log(`Creating category buttons for section: ${sectionId}, container: ${containerId}, endpoint: ${endpoint}`);
-//   const buttonContainer = document.getElementById(sectionId);
-//   if (!buttonContainer) {
-//     console.error(`Button container not found: ${sectionId}`);
-//     return;
-//   }
-
-//   buttonContainer.innerHTML = "";
-
-//   categories.forEach((category, index) => {
-//     const button = document.createElement("button");
-//     button.textContent = category;
-//     button.className = "filter-button";
-//     button.dataset.category = category;
-//     button.addEventListener("click", function () {
-//       document
-//         .querySelectorAll(`#${sectionId} .filter-button`)
-//         .forEach((btn) => btn.classList.remove("active"));
-//       this.classList.add("active");
-//       displayItems(containerId, `${endpoint}?category=${category}`);
-//     });
-
-//     buttonContainer.appendChild(button);
-
-//     if (index === 0) button.classList.add("active");
-//   });
-// }
-
 async function fetchProducts(endpoint, containerId) {
   try {
     const response = await fetch(endpoint);
@@ -108,7 +78,7 @@ function setupSlider(containerId, leftBtnId, rightBtnId) {
 document.addEventListener("DOMContentLoaded", (event) => {
   async function fetchCategories() {
     try {
-      const response = await fetch("/fetch/fetch/fetchcategories");
+      const response = await fetch("/header/fetch/fetchcategories");
       const categories = await response.json();
       const container = document.getElementById("categories-container");
       container.innerHTML = ""; // Clear the container before adding new content
