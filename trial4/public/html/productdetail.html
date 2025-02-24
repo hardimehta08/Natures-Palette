@@ -20,6 +20,37 @@
     <!-- custom css link -->
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../css/style copy.css" />
+    <style>
+      #message {
+        margin-bottom: 10px;
+        font-size: large;
+        color: rgb(18, 137, 40);
+      }
+      #product-description {
+        font-family: QuickSand, sans-serif;
+        margin-bottom: 15px;
+        font-size: large;
+        text-align: justify;
+        letter-spacing: 4px;
+        word-spacing: 15px;
+        line-height: 25px;
+      }
+      .review {
+        background: linear-gradient(
+          to left,
+          rgb(186, 223, 237),
+          rgb(173, 221, 255)
+        );
+        border: 2px solid black;
+        padding: 20px;
+        margin: 10px;
+      }
+      .ul-wrapper > li:hover {
+        padding-left: 5px;
+        padding-right: 5px;
+        background-color: skyblue;
+      }
+    </style>
   </head>
   <body>
     <div id="nav"></div>
@@ -40,15 +71,12 @@
         <div class="product-info">
           <h3 id="product-title"></h3>
           <h5 id="product-price">Price :&nbsp;&nbsp;</h5>
-          <!-- <p id="product-description"></p> -->
-
-          <!-- Quantity Input -->
           <label for="quantity">Quantity:</label>
           <div class="product__quantity">
             <input type="number" id="quantity" min="1" />
           </div>
           <br /><br />
-          <div class="message"></div>
+          <div id="message"></div>
 
           <!-- Buttons -->
           <div class="cart-btn">
@@ -72,20 +100,28 @@
     </section>
     <div class="product-desc container">
       <div class="wrapper tabbed">
+        <!-- Nav Links -->
         <nav class="nav-wrap">
           <ul class="ul-wrapper">
             <li class="active">
-              <a href="#" class="tabbed-trigger" data-id="product-description"
+              <a
+                href="#product-description"
+                class="tabbed-trigger"
+                data-id="product-description"
                 ><span>Product Details</span></a
               >
             </li>
             <li>
-              <a href="#" class="tabbed-trigger" data-id="product-review"
+              <a
+                href="#product-review"
+                class="tabbed-trigger"
+                data-id="product-review"
                 ><span>Reviews</span></a
-              ><span id="review-count"></span>
+              >
             </li>
           </ul>
         </nav>
+
         <!-- Product Description -->
         <div id="product-description" class="product-about active">
           <h2 id="product-title"></h2>

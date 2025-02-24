@@ -107,7 +107,7 @@ const addItemToCartFromProduct = (req, res) => {
 
     const searchQueries = views
       .map((view) => {
-        return `SELECT product_id FROM ${view.TABLE_NAME} WHERE name = ?`;
+        return `SELECT id FROM ${view.TABLE_NAME} WHERE name = ?`;
       })
       .join(" UNION ALL ");
 
@@ -118,12 +118,11 @@ const addItemToCartFromProduct = (req, res) => {
       new Array(views.length).fill(productName),
       (err, results) => {
         if (err) return res.status(500).json({ error: "Database error." });
-
         if (results.length === 0) {
           return res.status(404).json({ error: "Product not found." });
         }
-
-        const productId = results[0].product_id;
+        
+        const productId = results[0].id;
 
         generateCartId((err, newCartId) => {
           if (err)
