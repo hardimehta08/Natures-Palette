@@ -87,9 +87,6 @@ const addItemToCart = (req, res) => {
     );
   });
 };
-
-// Add Item to Cart from Product Detail Page
-// Add Item to Cart from Product Detail Page
 const addItemToCartFromProduct = (req, res) => {
   if (!req.session.userId) {
     return res

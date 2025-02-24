@@ -86,7 +86,6 @@ const deleteFeedback = (req, res) => {
 
 const feedbacks = async (req, res) => {
   try {
-    // Fetch list of all views
     const viewsSql = `
       SELECT *
       FROM INFORMATION_SCHEMA.VIEWS

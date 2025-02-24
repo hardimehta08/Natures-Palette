@@ -19,10 +19,11 @@ function loadCart(data) {
         <td>${item.price}</td>
         <td><input type="number" value="${item.CA_QTY}" id="qty_num${item.CA_ID}" style="width:30px;" onchange="updatecart('${item.CA_ID}', this.value)"></td>
         <td>${item.total}</td>
-        <td><button onclick="removeFromCart('${item.CA_ID}');updateCartAndWishlistCounts();">Remove</button></td>
+        <td><button onclick="removeFromCart('${item.CA_ID}'); updateCartAndWishlistCounts();">Remove</button></td>
       </tr>
     `;
     Stotal += item.total;
+    fdata=data;
   });
 
   const total = document.getElementById("total");
@@ -32,8 +33,11 @@ function loadCart(data) {
 fetch("/cart/user")
   .then((response) => response.json())
   .then((data) => {
-    fdata = data;
-    loadCart(data);
+    if (data.length > 0) {
+      loadCart(data);
+    } else {
+      document.getElementById("message").innerHTML = data.error;
+    }
   })
   .catch((error) => {
     const message = document.getElementById("message");
@@ -58,8 +62,6 @@ function updatecart(id, newQty) {
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log("Database updated:", data);
-        // Reload the cart to reflect the updated quantities and totals
         loadCart(fdata);
       })
       .catch((error) => {
@@ -72,12 +74,10 @@ function updatecart(id, newQty) {
   }
 }
 function removeFromCart(CA_ID) {
-  // Find the item index in the data array
   const itemIndex = fdata.findIndex((item) => item.CA_ID === CA_ID);
   if (itemIndex !== -1) {
     // Remove the item from the data array
     fdata.splice(itemIndex, 1);
-    const Stotal = fdata.reduce((sum, item) => sum + item.total, 0);
 
     // Update the database
     fetch("/cart/remove", {
@@ -90,8 +90,7 @@ function removeFromCart(CA_ID) {
       .then((response) => response.json())
       .then((data) => {
         if (data.message) {
-          console.log(data.message);
-          // Reload the cart to reflect the updated cart items
+          document.getElementById("message").innerHTML = data.message;
           loadCart(fdata);
         } else {
           console.error("Error removing item:", data);
@@ -103,7 +102,5 @@ function removeFromCart(CA_ID) {
         message.innerHTML =
           "Error removing the item from the cart. Please try again.";
       });
-  } else {
-    console.error("Item not found in cart");
   }
 }

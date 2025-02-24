@@ -9,7 +9,6 @@ const conn = mysql.createConnection({
 
 const placeOrder = async (req, res) => {
   var { s_add = null, s_pc = null, s_cno = null } = req.body;
-  // console.log("Received data:", req.body);
   const connection = await conn;
   await connection.beginTransaction(); // Start a transaction
 
@@ -28,7 +27,6 @@ const placeOrder = async (req, res) => {
       "INSERT INTO ORDER_MASTER(O_ID,O_DATE,O_STATUS,C_ID) VALUES(?,NOW(),'Placed',?)",
       [o_id, req.session.userId]
     );
-    // console.log("Added record in order master table");
 
     // Get details from CART
     [rows] = await connection.query("SELECT * FROM CART WHERE C_ID=?", [
@@ -40,7 +38,7 @@ const placeOrder = async (req, res) => {
 
     // Process each item in the cart
     for (let row of rows) {
-      let { CA_ID: ca_id, CA_QTY: qty, PRODUCT_ID: product_id } = row;
+      let { CA_QTY: qty, PRODUCT_ID: product_id } = row;
 
       // Get the max Odetails_ID
       let [detailRows] = await connection.query(
@@ -52,36 +50,48 @@ const placeOrder = async (req, res) => {
           (parseInt(lastDetailId.slice(2)) + 1).toString().padStart(3, "0")
         : "OD001";
 
-      // Get product price
-      let [priceRows] = await connection.query(
-        "SELECT p_price FROM plants WHERE p_id = ? UNION ALL SELECT b_price FROM bouquet WHERE b_id = ? UNION ALL SELECT pt_price FROM pots WHERE pt_id = ? UNION ALL SELECT ft_price FROM fertilizers WHERE ft_id = ? UNION ALL SELECT t_price FROM tools WHERE t_id = ?",
-        [product_id, product_id, product_id, product_id, product_id]
-      );
-      if (priceRows.length === 0) {
-        throw new Error("Product not found");
+      // Dynamically fetch the views
+      const viewsQuery = `
+        SELECT table_name
+        FROM INFORMATION_SCHEMA.views
+        WHERE table_schema = 'main_project';
+      `;
+      const [viewsResult] = await connection.query(viewsQuery);
+
+      if (viewsResult.length === 0) {
+        throw new Error("No views found in the database");
       }
 
-      let p_price;
-      if (priceRows[0].p_price !== undefined) {
-        p_price = priceRows[0].p_price;
-      } else if (priceRows[0].b_price !== undefined) {
-        p_price = priceRows[0].b_price;
-      } else if (priceRows[0].pt_price !== undefined) {
-        p_price = priceRows[0].pt_price;
-      } else if (priceRows[0].ft_price !== undefined) {
-        p_price = priceRows[0].ft_price;
-      } else if (priceRows[0].t_price !== undefined) {
-        p_price = priceRows[0].t_price;
+      let productDetailsTable = null;
+
+      // Search for the product ID in each view
+      for (const view of viewsResult) {
+        const checkProductIdQuery = `
+          SELECT price
+          FROM ${view.TABLE_NAME}
+          WHERE id = ?;
+        `;
+        const [result] = await connection.query(checkProductIdQuery, [
+          product_id,
+        ]);
+        if (result.length > 0) {
+          productDetailsTable = view.TABLE_NAME;
+          var p_price = result[0].price;
+          break;
+        }
+      }
+
+      if (!productDetailsTable) {
+        throw new Error("Product ID not found in any views");
       }
 
       let odetails_price = qty * p_price;
 
       // Insert into ORDER_DETAILS
       await connection.query(
-        "INSERT INTO ORDER_DETAILS(ODETAILS_ID,O_ID,ODETAILS_QTY,ODETAILS_PRICE,CA_ID) VALUES(?,?,?,?,?)",
-        [odetails_id, o_id, qty, odetails_price, ca_id]
+        "INSERT INTO ORDER_DETAILS(ODETAILS_ID,O_ID,ODETAILS_QTY,ODETAILS_PRICE,Product_id) VALUES(?,?,?,?,?)",
+        [odetails_id, o_id, qty, odetails_price, product_id]
       );
-      // console.log("Added record in order details table for item:", product_id);
     }
 
     // Get max S_ID
@@ -115,13 +125,11 @@ const placeOrder = async (req, res) => {
       "INSERT INTO ORDER_SHIPPING_ADDRESS(S_ID, S_ADDRESS, S_PINCODE, S_CONTACTNO, O_ID) VALUES(?,?,?,?,?)",
       [s_id, s_add, s_pc, s_cno, o_id]
     );
-    // console.log("Record added in order_shipping_address!");
 
     // Delete from CART
     await connection.query("DELETE FROM CART WHERE C_ID=?", [
       req.session.userId,
     ]);
-    // console.log("Removed from cart!");
 
     await connection.commit(); // Commit the transaction
     res
@@ -145,22 +153,87 @@ const getAllOrders = async (req, res) => {
   }
 };
 
-const getOrderById = async (req, res) => {
-  const { orderId } = req.params;
+const getOrdersByCustomerId = async (req, res) => {
   try {
     const connection = await conn;
-    let [rows] = await connection.query(
-      "SELECT * FROM ORDER_MASTER WHERE O_ID = ?",
-      [orderId]
-    );
-    if (rows.length === 0) {
-      res.status(404).json({ error: "Order not found" });
-      return;
+      // Step 1: Retrieve the order details
+    const orderQuery = `
+      SELECT o.o_id, o.o_date, o.o_status, od.Product_id
+      FROM order_master AS o
+      JOIN order_details AS od ON o.o_id = od.o_id
+      WHERE o.c_id = ?;
+    `;
+    const [orderResult] = await connection.query(orderQuery, [
+      req.session.userId,
+    ]);
+
+    if (orderResult.length === 0) {
+      return res.status(404).json({ message: "Order not found" });
     }
-    res.status(200).json(rows[0]);
+
+    const productId = orderResult[0].Product_id;
+    
+    // Step 2: Dynamically fetch the views
+    const viewsQuery = `
+    SELECT table_name
+    FROM INFORMATION_SCHEMA.views
+    WHERE table_schema = 'main_project';
+    `;
+    const [viewsResult] = await connection.query(viewsQuery);
+    
+    if (viewsResult.length === 0) {
+      throw new Error("No views found in the database");
+    }
+    
+    let productDetailsTable = null;
+    
+    // Step 3: Search for the product ID in each view
+    for (const view of viewsResult) {
+      const checkProductIdQuery = `
+      SELECT COUNT(*) AS count
+      FROM ${view.TABLE_NAME}
+      WHERE id = ?;
+      `;
+      const [result] = await connection.query(checkProductIdQuery, [productId]);
+      if (result[0].count > 0) {
+        productDetailsTable = view.TABLE_NAME;
+        break;
+      }
+    }
+
+    if (!productDetailsTable) {
+      return res
+        .status(404)
+        .json({ message: "Product ID not found in any views" });
+    }
+
+    // Step 4: Fetch the product details
+    const productQuery = `
+      SELECT pd.name, pd.price, img.PATH1 as image
+      FROM ${productDetailsTable} AS pd
+      JOIN image AS img ON pd.id = img.product_id
+      WHERE pd.id = ?;
+    `;
+    const [productResult] = await connection.query(productQuery, [productId]);
+
+    if (productResult.length === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Combine order and product details in response
+    const response = {
+      o_id: orderResult[0].o_id,
+      o_date: orderResult[0].o_date,
+      o_status: orderResult[0].o_status,
+      name: productResult[0].name,
+      price: productResult[0].price,
+      image: productResult[0].image.toString(),
+    };
+    console.log(response);
+
+    res.json(response);
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Error fetching order" });
+    res.status(500).send(err.message);
   }
 };
 
@@ -193,30 +266,9 @@ const deleteOrderById = async (req, res) => {
     res.status(500).json({ error: "Error deleting order" });
   }
 };
-
-const getOrdersByCustomerId = async (req, res) => {
-  try {
-    const connection = await conn;
-    const customerId = req.session.userId; // Use the session userId to get customer-specific orders
-    let [rows] = await connection.query(
-      "SELECT * FROM ORDER_MASTER JOIN ORDER_DETAILS ON ORDER_MASTER.O_ID = ORDER_DETAILS.O_ID WHERE ORDER_MASTER.C_ID = ?",
-      [customerId]
-    );
-    if (rows.length === 0) {
-      res.status(404).json({ error: "No orders found for this customer" });
-      return;
-    }
-    res.status(200).json(rows);
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Error fetching customer orders" });
-  }
-};
-
 module.exports = {
   placeOrder,
   getAllOrders,
-  getOrderById,
   deleteOrderById,
   getOrdersByCustomerId,
 };

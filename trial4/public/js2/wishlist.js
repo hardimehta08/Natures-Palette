@@ -1,9 +1,17 @@
 // Function to fetch and load wishlist data
 function fetchWishlist() {
   fetch("/wishlist/user")
-    .then((response) => response.json())
+    .then((response) => {
+      // Check if the status is 400 or 401
+      if (response.status === 400 || response.status === 401) {
+        return response.json().then((data) => {
+          const messageElement = document.getElementById("message");
+          messageElement.innerHTML = data.message;
+        });
+      }
+      return response.json();
+    })
     .then((data) => {
-      console.log(data);
       const wishlistContainer = document.getElementById("wishlist-container");
 
       if (!wishlistContainer) {
@@ -29,7 +37,10 @@ function fetchWishlist() {
       loadWishlist();
     })
     .catch((error) => {
-      console.error("Error:", error);
+      // Only log other types of errors
+      if (error !== "Error status: 400" && error.status == "401") {
+        console.error("Error:", error);
+      }
     });
 }
 
@@ -45,13 +56,11 @@ function removeFromWishlist(wishlistId) {
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
-      return response.text();
+      return response.json();
     })
     .then((message) => {
-      console.log(message); // Log the server response
-
       const messageElement = document.getElementById("message");
-      messageElement.innerHTML = message; // Display the server response
+      messageElement.innerHTML = message.message; // Display the server response
 
       // Optionally, remove the item from the DOM
       const row = document.querySelector(
@@ -82,14 +91,12 @@ function addToCart(wishlistId, quantity) {
           throw new Error(text);
         });
       }
-      return response.text(); // Get the response text
+      return response.json(); // Get the response text
     })
-    .then((message) => {
-      console.log(message); // Log the server response
-
+    .then((data) => {
       const messageElement = document.getElementById("message");
       if (messageElement) {
-        messageElement.innerHTML = message; // Display the server response
+        messageElement.innerHTML = data.message; // Display the server response
       } else {
         console.error("Element with class 'message' not found!");
       }

@@ -65,7 +65,7 @@ const getUserWishlist = (req, res) => {
   if (!req.session.userId) {
     return res
       .status(401)
-      .json({ error: "Please login to view your wishlist." });
+      .json({ message : "Please login to view your wishlist." });
   }
 
   const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;

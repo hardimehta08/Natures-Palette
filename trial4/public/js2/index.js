@@ -15,15 +15,6 @@ async function fetchProducts(endpoint, containerId) {
               <img src="${product.PATH1}" alt="${product.P_NAME}" width="150px">
               <h3>${product.P_NAME}</h3>
               <p>Price: ₹${product.P_PRICE}</p>
-              <div class="product-icons">
-                  <a href="#" class="action__btn" aria-label="Add to Wishlist">
-                      <i class="fa-regular fa-heart"></i>
-                  </a>
-                  <a href="#" class="action__btn" aria-label="ADD TO CART">
-                      <i class="fa-solid fa-cart-shopping"></i>
-                  </a>
-                  </a>
-              </div>
           `;
       container.appendChild(productCard);
     });

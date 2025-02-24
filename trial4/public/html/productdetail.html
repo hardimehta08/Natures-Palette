@@ -72,18 +72,20 @@
     </section>
     <div class="product-desc container">
       <div class="wrapper tabbed">
-        <!-- Navigation -->
         <nav class="nav-wrap">
           <ul class="ul-wrapper">
-            <li class="tab-link active" data-id="product-description">
-              Product Details
+            <li class="active">
+              <a href="#" class="tabbed-trigger" data-id="product-description"
+                ><span>Product Details</span></a
+              >
             </li>
-            <li class="tab-link" data-id="product-review">
-              Reviews <span id="review-count"></span>
+            <li>
+              <a href="#" class="tabbed-trigger" data-id="product-review"
+                ><span>Reviews</span></a
+              ><span id="review-count"></span>
             </li>
           </ul>
         </nav>
-
         <!-- Product Description -->
         <div id="product-description" class="product-about active">
           <h2 id="product-title"></h2>
@@ -130,7 +132,7 @@
           }
           const data = await response.text();
           document.getElementById("nav").innerHTML = data;
-          // console.log("Navigation loaded successfully");
+          // ("Navigation loaded successfully");
         } catch (error) {
           // console.error("Error loading navigation:", error);
           // Optionally, you can show an error message to the user
