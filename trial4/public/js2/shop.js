@@ -234,7 +234,6 @@ const updateHeaderUI = (data) => {
     optionsContainer.appendChild(optionDiv);
   });
 };
-
 // Function to populate a select element with options
 const populateSelect = (selectElement, options, defaultText) => {
   // Add the default option
