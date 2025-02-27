@@ -21,7 +21,7 @@ const db = mysql.createConnection({
 const generateQRCode = async (paymentDetails) => {
   try {
     // Construct the UPI payment URL
-    const qrCodeData = `upi://pay?pa=${paymentDetails.recipient}&pn=${paymentDetails.customerName}&mc=&tid=${paymentDetails.orderId}&tn=${paymentDetails.purpose}&am=${paymentDetails.amount}&cu=INR`;
+    const qrCodeData = `upi://pay?pa=${paymentDetails.recipient}&pn=Nature's Palette&mc=&tid=${paymentDetails.orderId}&tn=${paymentDetails.purpose}&am=${paymentDetails.amount}&cu=INR`;
 
     const qrCodeURL = await QRCode.toDataURL(qrCodeData);
     return qrCodeURL;

@@ -91,25 +91,17 @@
 
         <!-- Cart Details -->
         <div class="cart__details">
-          <div class="checkout_title">cart total</div>
+          <div class="checkout_title">Bill Summary</div>
           <div class="cart_total">
+            <ul id="item_summary"></ul>
             <ul>
-              <li class="box2 sub-box1">
-                <div class="cart_total_title">Product Count</div>
-                <div class="cart_total_price">Total</div>
-              </li>
-              <li class="box2 sub-box2">
-                <div class="cart_total_title" id="prod_count"></div>
-                <div class="cart_total_price prod_price"></div>
-              </li>
-              <li class="total_row box2 sub-box3">
-                <div class="cart_total_title">Total</div>
-                <div class="cart_total_price prod_price"></div>
+              <li class="box2">
+                <div class="cart_total_title"><h3>Total</h3></div>
+                <div class="cart_total_price" id="total_amount"></div>
               </li>
             </ul>
             <div class="billing_button">
               <button class="cart_total_button">
-                <div id="message"></div>
                 <a href="./cart.html">View Cart</a>
               </button>
             </div>

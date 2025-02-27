@@ -103,3 +103,15 @@ document.addEventListener("DOMContentLoaded", (event) => {
 
   fetchCategories();
 });
+document.querySelectorAll(".Indexcard").forEach((card) => {
+  card.addEventListener("mouseenter", (event) => {
+    const index = event.currentTarget.getAttribute("data-index");
+    document.querySelector(
+      ".Indexcontainer"
+    ).className = `Indexcontainer bg-color-${index}`;
+  });
+
+  card.addEventListener("mouseleave", () => {
+    document.querySelector(".Indexcontainer").className = "Indexcontainer";
+  });
+});

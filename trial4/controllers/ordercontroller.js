@@ -92,6 +92,12 @@ const placeOrder = async (req, res) => {
         "INSERT INTO ORDER_DETAILS(ODETAILS_ID,O_ID,ODETAILS_QTY,ODETAILS_PRICE,Product_id) VALUES(?,?,?,?,?)",
         [odetails_id, o_id, qty, odetails_price, product_id]
       );
+
+      // **Update Inventory**: Reduce the stock by the quantity ordered in the productDetailsTable
+      await connection.query(
+        `UPDATE ${productDetailsTable} SET stock = stock - ? WHERE id = ?`,
+        [qty, product_id]
+      );
     }
 
     // Get max S_ID
@@ -156,7 +162,7 @@ const getAllOrders = async (req, res) => {
 const getOrdersByCustomerId = async (req, res) => {
   try {
     const connection = await conn;
-      // Step 1: Retrieve the order details
+    // Step 1: Retrieve the order details
     const orderQuery = `
       SELECT o.o_id, o.o_date, o.o_status, od.Product_id
       FROM order_master AS o
@@ -172,7 +178,7 @@ const getOrdersByCustomerId = async (req, res) => {
     }
 
     const productId = orderResult[0].Product_id;
-    
+
     // Step 2: Dynamically fetch the views
     const viewsQuery = `
     SELECT table_name
@@ -180,13 +186,13 @@ const getOrdersByCustomerId = async (req, res) => {
     WHERE table_schema = 'main_project';
     `;
     const [viewsResult] = await connection.query(viewsQuery);
-    
+
     if (viewsResult.length === 0) {
       throw new Error("No views found in the database");
     }
-    
+
     let productDetailsTable = null;
-    
+
     // Step 3: Search for the product ID in each view
     for (const view of viewsResult) {
       const checkProductIdQuery = `
