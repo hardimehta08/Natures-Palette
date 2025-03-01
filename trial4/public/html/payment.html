@@ -77,34 +77,6 @@
                           color: grey;
                           text-transform: uppercase;
                         "
-                        >Order Summary</span
-                      >
-                      <div id="order-summary"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="card">
-                <div class="card-header">
-                  <div class="row pt-3 pb-3">
-                    <div class="col-2 text-center">
-                      <span
-                        style="
-                          padding: 2% 8%;
-                          border: 1px solid transparent;
-                          background-color: rgb(197, 191, 191);
-                        "
-                        >3</span
-                      >
-                    </div>
-                    <div class="col-10">
-                      <span
-                        style="
-                          font-size: 15px;
-                          font-weight: 600;
-                          color: grey;
-                          text-transform: uppercase;
-                        "
                         >Payment Options</span
                       >
                       <form id="payment-form">
@@ -135,6 +107,16 @@
                           alt="QR Code for Payment"
                         />
                       </div>
+
+                      <div id="transaction-id-container" style="display: none">
+                        <label for="transaction-id"
+                          >Enter Transaction ID:</label
+                        >
+                        <input type="text" id="transaction-id" />
+                        <button type="button" id="submit-transaction-id">
+                          Submit
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -145,28 +127,17 @@
         <div class="col-xl-4 col-lg-12 col-md-12 col-sm-12 col-12 mt-3 pt-4">
           <div class="container">
             <div class="card">
-              <div class="card-header">PRICE DETAILS</div>
+              <div class="card-header">Total Amount</div>
               <div class="card-body">
                 <div class="row">
-                  <div class="col text-left">Price :</div>
-                  <div class="col text-right" id="price"></div>
-                </div>
-                <hr />
-                <div class="row">
-                  <div class="col text-left">Total Amount :</div>
-                  <div class="col text-right" id="total"></div>
+                  <div class="col text-left" id="total"></div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <button
-        class="btn order__btn"
-        id="confirm-order"
-        onclick="handleConfirmOrder()"
-        disabled
-      >
+      <button class="btn order__btn" id="confirm-order" disabled>
         Confirm Order
       </button>
     </div>

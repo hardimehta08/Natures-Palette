@@ -4,7 +4,8 @@ const paymentController = require("../controllers/paymentcontroller"); // Ensure
 
 // Define routes
 router.get("/:orderId", paymentController.getPaymentDetails);
-router.post("/", paymentController.createPayment);
-router.post('/generate-qr-code', paymentController.generateQRCodeForOrder);
+router.post("/createPayment", paymentController.createPayment);
+router.post("/generate-qr-code", paymentController.generateQRCodeForOrder);
+router.post("/update-transaction-id", paymentController.updateTransactionId);
 
 module.exports = router;

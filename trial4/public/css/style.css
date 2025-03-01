@@ -1958,42 +1958,56 @@ border: 2px solid palevioletred;
 /*********************************
 6.2 Cart
 *********************************/
-.box2 {
-  /* padding: 20px; */
-  display: flex;
-  align-items: left;
-  justify-content: flex-start;
-}
 .cart__details {
   width: 45%;
   margin-top: 48px;
   background: #f9f5f5;
-  padding-left: 54px;
-  padding-top: 45px;
-  padding-bottom: 45px;
-  padding-right: 54px;
+  padding: 45px 54px;
   margin-left: 5rem;
+  border-radius: 8px; /* Added for rounded corners */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Added for a subtle shadow */
+}
+.checkout_title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #2f2f2f;
 }
 .cart_total {
   width: 100%;
-  margin-top: 64px;
+  margin-top: 30px;
 }
-.cart_total ul {
+.cart_total table {
   width: 100%;
-  margin-top: 43px;
+  border-collapse: collapse;
+  margin-bottom: 20px;
 }
-.cart_total ul li {
-  width: 100%;
-  height: 56px;
-  padding-left: 40px;
-  padding-right: 32px;
+.cart_total th,
+.cart_total td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+.cart_total th {
+  background-color: #937c6f;
+  color: white;
+  font-size: 16px;
+}
+.cart_total td {
   font-size: 14px;
   color: #2f2f2f;
 }
+.cart_total .total_row {
+  font-weight: bold;
+  background-color: #f1f1f1;
+}
 .cart_total_price {
-  margin-left: auto;
+  text-align: right;
 }
 
+.billing_button {
+  margin-top: 20px;
+}
 .cart_total_button {
   width: 100%;
   height: 47px;
@@ -2003,15 +2017,14 @@ border: 2px solid palevioletred;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  margin-top: 13px;
   cursor: pointer;
-  margin-top: 42px;
   transition: all 200ms ease;
   margin-bottom: 3rem;
 }
 .cart_total_button a {
   font-size: 15px;
   color: #ffffff;
+  text-decoration: none; /* Ensures no underline */
 }
 .cart_total_button:hover a {
   color: #232323;
@@ -2019,6 +2032,7 @@ border: 2px solid palevioletred;
 .cart_total_button:hover {
   background: #ffffff;
 }
+
 /************
 6. 991px
 ************/

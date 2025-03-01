@@ -130,6 +130,9 @@ app.get("/footer", (req, res) => {
 app.get("/login.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "login.html"));
 });
+const billrouter = require("./routes/billrouter");
+app.use("/bill", billrouter);
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

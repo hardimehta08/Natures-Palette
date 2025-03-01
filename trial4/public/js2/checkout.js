@@ -21,45 +21,50 @@ document.addEventListener("DOMContentLoaded", async () => {
       state.value = profileData.PostOfficeName;
       pincode.value = profileData.c_pincode;
       mobile.value = profileData.c_mobile;
+
       // Fetch cart data
       const response = await fetch("cart/user"); // Replace with your API endpoint
       const cartData = await response.json();
       console.log(cartData);
 
-      const itemSummary = document.getElementById("item_summary");
+      const itemSummaryTable = document.getElementById("item_summary");
       let subtotal = 0;
 
-      cartData.forEach((item) => {
-        const li = document.createElement("li");
-        li.classList.add("box2");
+      // Create table headers
+      const tableHeader = `
+        <tr>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Price (Per Unit)</th>
+          <th>Subtotal</th>
+        </tr>
+      `;
+      itemSummaryTable.innerHTML = tableHeader;
 
-        const itemDetails = document.createElement("div");
-        itemDetails.classList.add("cart_total_title");
-        itemDetails.innerHTML = `
-          <strong style="text-decoration: underline;">Product : </strong>   ${
-            item.name
-          }<br>
-          <strong style="text-decoration: underline;">Quantity : </strong>   ${
-            item.CA_QTY
-          }<br>
-          <strong style="text-decoration: underline;">Price (Per Unit) : </strong>   ₹${
-            item.price
-          }<br>
-          <strong style="text-decoration: underline;">Subtotal : </strong>   ₹${(
-            item.price * item.CA_QTY
-          ).toFixed(2)}
+      cartData.forEach((item) => {
+        const itemRow = document.createElement("tr");
+        
+        itemRow.innerHTML = `
+          <td>${item.name}</td>
+          <td>${item.CA_QTY}</td>
+          <td>₹${item.price}</td>
+          <td>₹${(item.price * item.CA_QTY).toFixed(2)}</td>
         `;
 
-        li.appendChild(itemDetails);
-        itemSummary.appendChild(li);
+        itemSummaryTable.appendChild(itemRow);
 
         subtotal += item.price * item.CA_QTY;
       });
 
       const totalAmount = subtotal;
-      document.getElementById(
-        "total_amount"
-      ).textContent = `₹${totalAmount.toFixed(2)}`;
+      const totalRow = document.createElement("tr");
+      totalRow.innerHTML = `
+        <td colspan="3"><strong>Total Amount</strong></td>
+        <td><strong>₹${totalAmount.toFixed(2)}</strong></td>
+      `;
+      itemSummaryTable.appendChild(totalRow);
+
+      document.getElementById("total_amount").textContent = `₹${totalAmount.toFixed(2)}`;
     }
   } catch (error) {
     console.error("Error fetching data:", error);
