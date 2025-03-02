@@ -33,40 +33,19 @@ const addFeedback = (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Please login to add feedback." });
   }
-
-  const { productId, description } = req.body;
+  const { productId, description, starRating } = req.body;
   const date = new Date();
-
   generateFeedbackId((err, newFeedbackId) => {
-    if (err)
-      return res.status(500).json({ error: "Error generating feedback ID." });
-
-    const sql =
-      "INSERT INTO feedback (f_id, f_desc, f_date, c_id, product_id) VALUES (?, ?, ?, ?, ?)";
+    if (err) return res.status(500).json({ error: "Error generating feedback ID." });
+    const sql = "INSERT INTO feedback (f_id, f_desc, f_date, c_id, product_id, star_rating) VALUES (?, ?, ?, ?, ?, ?)";
     conn.query(
       sql,
-      [newFeedbackId, description, date, req.session.userId, productId],
+      [newFeedbackId, description, date, req.session.userId, productId, starRating],
       (err, result) => {
         if (err) throw err;
         res.status(200).json({ message: "Feedback added." });
       }
     );
-  });
-};
-
-// Get Product Feedback
-const getProductFeedback = (req, res) => {
-  const productId = req.params.productId;
-
-  const sql = `
-    SELECT f.*, cu.c_username AS username 
-    FROM feedback f 
-    JOIN customer cu ON f.c_id = cu.c_id 
-    WHERE f.product_id = ?
-  `;
-  conn.query(sql, [productId], (err, result) => {
-    if (err) throw err;
-    res.status(200).json(result);
   });
 };
 
@@ -146,6 +125,5 @@ const feedbacks = async (req, res) => {
 module.exports = {
   feedbacks,
   addFeedback,
-  getProductFeedback,
   deleteFeedback,
 };

@@ -125,6 +125,7 @@ const getProductDetails = (req, res) => {
         SELECT  
           f.f_desc, 
           f.f_date,
+          f.star_rating,
           cu.c_username AS username 
         FROM 
           feedback f 

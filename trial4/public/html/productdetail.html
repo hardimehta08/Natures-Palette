@@ -38,8 +38,8 @@
       .review {
         background: linear-gradient(
           to left,
-          rgb(186, 223, 237),
-          rgb(173, 221, 255)
+          rgb(205, 230, 239),
+          rgb(222, 241, 255)
         );
         border: 2px solid black;
         padding: 20px;
@@ -49,6 +49,106 @@
         padding-left: 5px;
         padding-right: 5px;
         background-color: skyblue;
+      }
+      .card {
+        width: 95%;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .card-header {
+        text-align: center;
+        padding: 24px 32px;
+      }
+
+      .card-header {
+        font-size: 1.8em;
+        font-weight: bold;
+      }
+
+      .card-body {
+        height: 300px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 32px 64px;
+      }
+
+      .stars {
+        margin-bottom: 10px;
+      }
+
+      .stars i {
+        font-size: 2.6em;
+        margin: 8px;
+        cursor: pointer;
+        color: #292f3d;
+        transition: color 0.5s;
+      }
+
+      .card.one .stars i:nth-child(-n + 1) {
+        color: #ffcf87;
+      }
+
+      .card.two .stars i:nth-child(-n + 2) {
+        color: #ffcf87;
+      }
+
+      .card.three .stars i:nth-child(-n + 3) {
+        color: #ffcf87;
+      }
+
+      .card.four .stars i:nth-child(-n + 4) {
+        color: #ffcf87;
+      }
+
+      .card.five .stars i:nth-child(-n + 5) {
+        color: #ffcf87;
+      }
+
+      textarea {
+        width: 100%;
+        background-color: azure;
+        border: 2px solid salmon;
+        border-radius: 8px;
+        padding: 16px;
+        resize: none;
+        font-size: 1.4em;
+        outline: none;
+      }
+
+      button.cta {
+        width: 80%;
+        cursor: pointer;
+        outline: none;
+        border: none;
+        border-radius: 6px;
+        padding: 16px;
+        margin-top: 32px;
+        background: #fde021ab;
+        background-size: 300% 100%;
+        font-size: 1.4em;
+        transition: background-position 0.7s;
+      }
+
+      button.cta:hover {
+        background-color: #ffdd00;
+      }
+
+      .credit a {
+        text-decoration: none;
+        color: #21d4fd;
+      }
+      #write-review {
+        background-color: #fde021;
+        color: black;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 10px;
       }
     </style>
   </head>
@@ -70,7 +170,7 @@
         <!-- Right Side - Product Info -->
         <div class="product-info">
           <h3 id="product-title"></h3>
-          <h5 id="product-price">Price :&nbsp;&nbsp;</h5>
+          <h5 id="product-price">Price :&nbsp;&nbsp;&#8377;</h5>
           <label for="quantity">Quantity:</label>
           <div class="product__quantity">
             <input type="number" id="quantity" min="1" />
@@ -131,7 +231,6 @@
         <!-- Reviews Section -->
         <div id="product-review" class="product-about">
           <div class="review-wrapper">
-            <!-- <h2>Rating & Review</h2> -->
             <div class="head-review">
               <div class="sum-rating">
                 <strong id="average-rating"></strong>
@@ -139,6 +238,7 @@
               </div>
               <button class="btn" id="write-review">Write a Review</button>
             </div>
+            <div id="feedback-container"></div>
             <div class="body-review" id="review-container"></div>
           </div>
         </div>
@@ -168,10 +268,7 @@
           }
           const data = await response.text();
           document.getElementById("nav").innerHTML = data;
-          // ("Navigation loaded successfully");
         } catch (error) {
-          // console.error("Error loading navigation:", error);
-          // Optionally, you can show an error message to the user
           document.getElementById("nav").innerHTML =
             "<p>Failed to load navigation.</p>";
         }
@@ -184,32 +281,13 @@
           }
           const data = await response.text();
           document.getElementById("footer").innerHTML = data;
-          // console.log("Footer loaded successfully");
         } catch (error) {
-          // console.error("Error loading footer:", error);
-          // Optionally, you can show an error message to the user
           document.getElementById("footer").innerHTML =
             "<p>Failed to load footer.</p>";
         }
       }
       document.addEventListener("DOMContentLoaded", loadNav);
       document.addEventListener("DOMContentLoaded", loadFooter);
-
-      document
-        .getElementById("quantity")
-        .addEventListener("keydown", function (e) {
-          // Allow arrow keys (left, up, right, down)
-          if (
-            e.key === "ArrowUp" ||
-            e.key === "ArrowDown" ||
-            e.key === "ArrowLeft" ||
-            e.key === "ArrowRight"
-          ) {
-            return;
-          }
-          // Prevent other keys
-          e.preventDefault();
-        });
     </script>
     <script src="../js2/search.js"></script>
     <script src="../js/main.js"></script>

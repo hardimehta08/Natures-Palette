@@ -107,6 +107,9 @@ app.get("/wishlist.html", (req, res) => {
 const fetchrouter = require("./routes/fetchrouter");
 app.use("/fetch", fetchrouter);
 // Feedback
+app.get("/feedback.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "html", "feedback.html"));
+});
 const feedback = require("./routes/reviewrouter");
 app.use("/feedback", feedback);
 
