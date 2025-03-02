@@ -1,6 +1,9 @@
 const confirmOrderButton = document.getElementById("confirm-order");
 let orderId;
 let currency;
+let pyId; // ✅ Declare pyId globally
+let userEmail = null;
+let userPassword = null; // ✅ Store password globally for later use
 
 document.addEventListener("DOMContentLoaded", function () {
   orderId = localStorage.getItem("orderID");
@@ -14,35 +17,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Fetch payment details
   fetch(`/payment/${orderId}`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Network response was not ok: " + response.statusText);
-      }
-      return response.json();
-    })
+    .then((response) => response.json())
     .then((data) => {
       console.log("✅ Payment details:", data);
-      document.getElementById("address").innerHTML = 
-        `${data.S_ADDRESS}<br>${data.S_PINCODE}<br>${data.S_CONTACTNO}`;
+      document.getElementById(
+        "address"
+      ).innerHTML = `${data.S_ADDRESS}<br>${data.S_PINCODE}<br>${data.S_CONTACTNO}`;
       currency = data.Total_Product_Cost;
       document.getElementById("total").innerHTML = `&#8377;${currency}`;
     })
-    .catch((error) => {
-      console.error("❌ Error fetching payment details:", error);
-    });
-
-  // Selecting DOM elements safely
-  const paymentForm = document.getElementById("payment-form");
-  const passwordContainer = document.getElementById("password-container");
-  const qrCodeContainer = document.getElementById("qr-code-container");
-  const qrCodeImage = document.getElementById("qr-code-image");
-  const qrRadioButton = document.getElementById("qr");
-  const submitPasswordButton = document.getElementById("submit-password");
-  const transactionIdContainer = document.getElementById("transaction-id-container");
-  const transactionIdInput = document.getElementById("transaction-id");
-  const submitTransactionIdButton = document.getElementById("submit-transaction-id");
-
-  let userEmail = null;
+    .catch((error) =>
+      console.error("❌ Error fetching payment details:", error)
+    );
 
   // Fetch user email
   fetch("/user/profile")
@@ -50,17 +36,31 @@ document.addEventListener("DOMContentLoaded", function () {
     .then((data) => {
       userEmail = data.c_email;
     })
-    .catch((error) => {
-      console.error("❌ Error fetching user profile:", error);
-    });
+    .catch((error) => console.error("❌ Error fetching user profile:", error));
 
-  if (!confirmOrderButton) {
-    console.error("🚨 confirmOrderButton is missing in the HTML!");
-    return;
-  }
+  const paymentForm = document.getElementById("payment-form");
+  const passwordContainer = document.getElementById("password-container");
+  const qrCodeContainer = document.getElementById("qr-code-container");
+  const qrCodeImage = document.getElementById("qr-code-image");
+  const qrRadioButton = document.getElementById("qr");
+  const submitPasswordButton = document.getElementById("submit-password");
+  const transactionIdContainer = document.getElementById(
+    "transaction-id-container"
+  );
+  const transactionIdInput = document.getElementById("transaction-id");
+  const submitTransactionIdButton = document.getElementById(
+    "submit-transaction-id"
+  );
 
-  if (!paymentForm || !qrRadioButton || !submitPasswordButton || !submitTransactionIdButton ||
-      !transactionIdContainer || !transactionIdInput) {
+  if (
+    !confirmOrderButton ||
+    !paymentForm ||
+    !qrRadioButton ||
+    !submitPasswordButton ||
+    !submitTransactionIdButton ||
+    !transactionIdContainer ||
+    !transactionIdInput
+  ) {
     console.error("🚨 Some required elements are missing in the DOM!");
     return;
   }
@@ -70,155 +70,162 @@ document.addEventListener("DOMContentLoaded", function () {
     if (event.target.value === "qr") {
       passwordContainer.style.display = "block";
       transactionIdContainer.style.display = "none";
-      confirmOrderButton.disabled = true; // Disable the Confirm Order button
+      confirmOrderButton.disabled = true;
     } else {
       passwordContainer.style.display = "none";
       transactionIdContainer.style.display = "none";
       qrCodeContainer.style.display = "none";
       confirmOrderButton.disabled = false;
-    }
-  });
-
-  // Handle password verification for QR payments
-  submitPasswordButton.addEventListener("click", function () {
-    const password = document.getElementById("password").value;
-
-    fetch("/user/verify-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: userEmail, password: password }),
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Network response was not ok: " + response.statusText);
-        return response.json();
-      })
-      .then((data) => {
-        if (data.message === "Password verified successfully") {
-          qrCodeContainer.style.display = "block";
-          passwordContainer.style.display = "none";
-          confirmOrderButton.disabled = true;
-
-          // Fetch and display the QR code
-          fetch("/payment/generate-qr-code", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId: orderId, currency: currency }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              qrCodeImage.src = data.qrCodeURL;
-              transactionIdContainer.style.display = "block"; // Show transaction ID input
-            })
-            .catch((error) => {
-              console.error("❌ Error generating QR code:", error);
-            });
-        } else {
-          alert("Incorrect password. Please try again.");
+      confirmOrderButton.addEventListener("click", function () {
+        if (document.getElementById("cod").checked) {
+          handleConfirmOrder();
         }
-      })
-      .catch((error) => {
-        console.error("❌ Error verifying password:", error);
       });
+    }
+
+    // Handle password verification for QR payments
+    submitPasswordButton.addEventListener("click", function () {
+      const password = document.getElementById("password").value;
+
+      fetch("/user/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, password: password }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.message === "Password verified successfully") {
+            qrCodeContainer.style.display = "block";
+            passwordContainer.style.display = "none";
+            confirmOrderButton.disabled = true;
+            userPassword = password; // ✅ Store password globally for later use
+
+            // Fetch and display the QR code
+            fetch("/payment/createPaymentWithQRCode", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ O_ID: orderId, PY_AMOUNT: currency }),
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                console.log(data);
+                qrCodeImage.src = data.qrCodeURL;
+                pyId = data.PY_ID; // ✅ Store PY_ID globally
+                transactionIdContainer.style.display = "block";
+              })
+              .catch((error) =>
+                console.error("❌ Error generating QR code:", error)
+              );
+          } else {
+            alert("Incorrect password. Please try again.");
+          }
+        })
+        .catch((error) => console.error("❌ Error verifying password:", error));
+    });
+
+    // Handle transaction ID submission
+
+    submitTransactionIdButton.addEventListener("click", function () {
+      const transactionId12 = transactionIdInput.value.trim();
+      const upiTransactionIdFormat = /^[a-zA-Z0-9]{12}$/;
+
+      if (!upiTransactionIdFormat.test(transactionId12)) {
+        alert("❌ Please enter a valid UPI transaction ID.");
+        return;
+      }
+
+      if (!pyId) {
+        console.error("🚨 Payment ID (PY_ID) is missing!");
+        alert("🚨 Payment ID is missing. Try generating the QR again.");
+        return;
+      }
+
+      fetch("/payment/confirm-qr-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          PY_ID: pyId,
+          transactionId: transactionId12,
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.message === "Payment confirmed.") {
+            // Call the new endpoint to generate the bill and update the order status
+            fetch("/payment/generateBillAndRedirect", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ O_ID: orderId }),
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                if (
+                  data.message ===
+                  "Payment successful, bill generated, and order updated!"
+                ) {
+                  // Redirect to the order placed page
+                  alert("Order placed successfully!");
+                  window.location.href = "/orderPlaced.html";
+                } else {
+                  alert("❌ Error generating the bill. Please try again.");
+                }
+              })
+              .catch((error) => {
+                console.error("❌ Error generating the bill:", error);
+                alert("❌ Error generating the bill. Please try again.");
+              });
+          } else {
+            alert("❌ Error updating transaction ID. Please try again.");
+          }
+        })
+        .catch((error) => {
+          console.error("❌ Error updating transaction ID:", error);
+          alert("❌ Error updating transaction ID. Please try again.");
+        });
+    });
   });
+  // Function to handle order confirmation
+  function handleConfirmOrder() {
+    console.log("✅ handleConfirmOrder() triggered");
 
-  // Handle transaction ID submission
-  submitTransactionIdButton.addEventListener("click", function () {
-    const transactionId = transactionIdInput.value.trim();
-    const upiTransactionIdFormat = /^[a-zA-Z0-9]{12}$/; // Example format: 12 alphanumeric characters
+    const paymentMethod = document.querySelector(
+      'input[name="payment"]:checked'
+    )?.value;
 
-    if (!upiTransactionIdFormat.test(transactionId)) {
-      alert("❌ Please enter a valid UPI transaction ID.");
+    if (!paymentMethod) {
+      alert("🚨 Please select a payment method.");
       return;
     }
 
-    fetch("/payment/update-transaction-id", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: orderId, transactionId: transactionId }),
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Network response was not ok: " + response.statusText);
-        return response.json();
-      })
-      .then((data) => {
-        if (data.message === "Transaction ID updated successfully") {
-          transactionIdContainer.style.display = "none";
-          confirmOrderButton.disabled = false;
-        } else {
-          alert("❌ Error updating transaction ID. Please try again.");
-        }
-      })
-      .catch((error) => {
-        console.error("❌ Error updating transaction ID:", error);
-      });
-  });
+    confirmOrderButton.disabled = true;
 
-  // Handle order confirmation
-  confirmOrderButton.addEventListener("click", function () {
-    handleConfirmOrder();
-  });
-});
-
-// Function to handle order confirmation
-function handleConfirmOrder() {
-  console.log("✅ handleConfirmOrder() triggered");
-
-  const paymentMethod = document.querySelector('input[name="payment"]:checked')?.value;
-
-  if (!paymentMethod) {
-    console.error("🚨 No payment method selected!");
-    return;
-  }
-
-  let paymentStatus = paymentMethod === "qr" ? "PAID" : "UNPAID";
-
-  fetch("/payment/createPayment", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    const paymentData = {
       PY_MODE: paymentMethod.toUpperCase(),
       PY_DATE: new Date().toISOString().split("T")[0],
-      PY_STATUS: paymentStatus,
+      PY_STATUS: paymentMethod === "qr" ? "PAID" : "UNPAID",
       PY_AMOUNT: currency,
       O_ID: orderId,
-    }),
-  })
-    .then((response) => {
-      console.log("📤 Payment request sent", response);
-      if (!response.ok) throw new Error("Network response was not ok: " + response.statusText);
-      return response.text();
-    })
-    .then((data) => {
-      console.log("✅ Payment creation response:", data);
-      generateAndSendBill();
-    })
-    .catch((error) => {
-      console.error("❌ Error in handleConfirmOrder():", error);
-    })
-    .finally(() => {
-      confirmOrderButton.disabled = false;
-    });
-}
+    };
 
-// Function to generate and send bill
-function generateAndSendBill() {
-  fetch("/bill/generateBill")
-    .then((response) => {
-      if (!response.ok) {
-        return response.text().then((text) => {
-          throw new Error(`Network response was not ok: ${response.status} - ${text}`);
-        });
-      }
-      return response.text();
+    fetch("/payment/createPaymentWithBill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(paymentData),
     })
-    .then((data) => {
-      console.log("✅ Bill generation response:", data);
-      alert("📄 Bill generated and sent successfully!");
-      window.location.href = "/orderPlaced.html";
-    })
-    .catch((error) => {
-      console.error("❌ Error generating bill:", error.message);
-      alert(`Bill generation failed: ${error.message}`);
-    });
-}
-
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("✅ Payment & Bill successful:", data);
+        alert("Order placed successfully!");
+        setTimeout(() => {
+          window.location.href = "/orderPlaced.html";
+        }, 5000);
+      })
+      .catch((error) => {
+        console.error("❌ Error in handleConfirmOrder():", error.message);
+        alert(`Error: ${error.message}`);
+      })
+      .finally(() => {
+        confirmOrderButton.disabled = false;
+      });
+  }
+});

@@ -7,6 +7,10 @@ body {
   overflow-y: auto;
   font-size: large;
 }
+#submit-transaction-id:hover {
+  cursor: pointer;
+  border: 2px solid green;
+}
 
 .show-me {
   display: none;
