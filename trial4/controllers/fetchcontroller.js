@@ -75,7 +75,7 @@ const fetchDataCat = (req, res) => {
           desc,
           products: formattedProducts,
         };
-
+        console.log(response);
         res.json(response);
       });
     });
@@ -167,14 +167,14 @@ const fetchDataSubCat = (req, res) => {
 
 const handleSubSubcategoryNotFound = (category, subcategory, res) => {
   const sql = `SELECT sub_desc FROM subcategory WHERE sub_name = ?`;
-  
+
   db.query(sql, [subcategory], (err, result) => {
     if (err) {
       console.error("Error executing first query:", err);
       res.status(500).json({ error: "Error executing first query" });
       return;
     }
-    
+
     let desc = result[0]?.sub_desc; // Safely access sub_desc
 
     if (!desc) {
@@ -236,11 +236,13 @@ const fetchFilters = async (req, res) => {
   };
 
   try {
-    const colorColumnExists = await checkColumnExistence('color');
-    const sizeColumnExists = await checkColumnExistence('size');
+    const colorColumnExists = await checkColumnExistence("color");
+    const sizeColumnExists = await checkColumnExistence("size");
 
     if (!colorColumnExists && !sizeColumnExists) {
-      res.status(400).json({ error: "Neither 'color' nor 'size' columns exist in the view." });
+      res.status(400).json({
+        error: "Neither 'color' nor 'size' columns exist in the view.",
+      });
       return;
     }
 

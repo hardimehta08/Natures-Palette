@@ -145,3 +145,78 @@ function changepass() {
       alert("Error updating password: " + error.message);
     });
 }
+fetch("/feedback/")
+  .then((response) => response.json())
+  .then((data) => {
+    console.log(data);
+    const feedbackContainer = document.getElementById("f_container");
+
+    data.forEach((item) => {
+      // Create a new div for each feedback item
+      const feedbackCard = document.createElement("div");
+      feedbackCard.style = `
+    background-color: white;
+    height: auto;
+    width: 19cm;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: left !important;
+    margin-bottom: 20px;  // Add margin to separate each card
+  `;
+
+      const cardContent = `
+    <div
+      style="
+        width: 100%;
+        padding: 1rem !important;
+        margin-left: 1cm !important;
+        margin-top: 10px !important;
+        position:relative;
+      "
+    >
+      <h5
+        style="
+          font-size: 1.5rem !important;
+          font-weight: bold !important;
+          margin-bottom: 20px !important;
+        "
+      >
+        ${item.name.replace(/_/g, " ")}
+        <button id="del_feedback" onclick="delfeedback('${
+          item.F_ID
+        }')">Delete</button>
+      </h5>
+      <div class="stars" style="margin-bottom:10px;">${"⭐".repeat(
+        item.star_rating
+      )}</div>
+      <p><strong>Date: </strong>${new Date(item.F_DATE).toLocaleDateString(
+        "en-GB"
+      )}</p>
+      <p style="width: 100% !important; margin: 10px 0">${item.F_DESC}</p>
+    </div>
+  `;
+
+      feedbackCard.innerHTML = cardContent;
+      feedbackContainer.appendChild(feedbackCard);
+    });
+  });
+
+function delfeedback(f_id) {
+  fetch("/feedback/delete", {
+    method: "DELETE",
+    body: JSON.stringify({ feedbackId: f_id }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then((data) => {
+      if (data.status == 200) {
+        alert("feedback deleted successfully!");
+        location.reload();
+      } else {
+        console.error("Error:", data.statusText);
+      }
+    })
+    .catch((error) => console.error("Error:", error));
+}

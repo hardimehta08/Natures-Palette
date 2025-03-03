@@ -181,6 +181,17 @@
           padding: 0.75rem;
         }
       }
+      #del_feedback {
+        display: inline;
+        padding: 5px;
+        position: absolute;
+        right: 10px;
+        border: 3px solid red;
+      }
+      #del_feedback:hover {
+        background-color: red;
+        color: white;
+      }
     </style>
     <title>My Account</title>
   </head>
@@ -201,6 +212,9 @@
             </p>
             <p class="account__tab" data-target="#orders">
               <i class="fi fi-rs-shopping-bag"></i> Orders
+            </p>
+            <p class="account__tab" data-target="#feedback-user">
+              <i class="fi fi-rs-user"></i> Feedback
             </p>
             <p class="account__tab" data-target="#update-profile">
               <i class="fi fi-rs-user"></i> Update Profile
@@ -266,6 +280,27 @@
                       <p id="order_status">Order Status :</p>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+            <div class="tab__content" id="feedback-user">
+              <h3 class="tab__header">Your Feedbacks</h3>
+              <div style="min-height: 100vh; width: 100%">
+                <div
+                  style="max-width: 768px; margin: 10px auto; padding: 20px"
+                  id="f_container"
+                >
+                  <div
+                    style="
+                      background-color: white;
+                      height: auto;
+                      width: 19cm;
+                      border-radius: 0.5rem;
+                      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+                      display: flex;
+                      align-items: left !important;
+                    "
+                  ></div>
                 </div>
               </div>
             </div>

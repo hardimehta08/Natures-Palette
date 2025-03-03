@@ -6,6 +6,7 @@ const session = require("express-session");
 const sendfileController = require("./controllers/filecontroller");
 const dynamicController = require("./controllers/dynamiccontroller")(app);
 const combinedRouter = require("./routes/headrouter")(app);
+const cors = require("cors");
 
 const connection = mysql.createConnection({
   host: "localhost",
@@ -37,7 +38,8 @@ app.use(
     cookie: { secure: false }, // Set 'true' if using HTTPS
   })
 );
-
+app.use(cors({ origin: "http://localhost:3000" })); // Allow admin server
+app.use("/images", express.static(path.join(__dirname, "../public/images")));
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "index.html"));
 });
@@ -118,9 +120,6 @@ app.get("/contactus.html", (req, res) => {
 });
 app.get("/privacy.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "privacy.html"));
-});
-app.get("/index/plants", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "html", "shop.html"));
 });
 
 app.get("/header", (req, res) => {

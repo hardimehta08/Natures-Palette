@@ -36,11 +36,20 @@ const addFeedback = (req, res) => {
   const { productId, description, starRating } = req.body;
   const date = new Date();
   generateFeedbackId((err, newFeedbackId) => {
-    if (err) return res.status(500).json({ error: "Error generating feedback ID." });
-    const sql = "INSERT INTO feedback (f_id, f_desc, f_date, c_id, product_id, star_rating) VALUES (?, ?, ?, ?, ?, ?)";
+    if (err)
+      return res.status(500).json({ error: "Error generating feedback ID." });
+    const sql =
+      "INSERT INTO feedback (f_id, f_desc, f_date, c_id, product_id, star_rating) VALUES (?, ?, ?, ?, ?, ?)";
     conn.query(
       sql,
-      [newFeedbackId, description, date, req.session.userId, productId, starRating],
+      [
+        newFeedbackId,
+        description,
+        date,
+        req.session.userId,
+        productId,
+        starRating,
+      ],
       (err, result) => {
         if (err) throw err;
         res.status(200).json({ message: "Feedback added." });
@@ -83,14 +92,12 @@ const feedbacks = async (req, res) => {
       const fetchFeedbackData = (view) => {
         return new Promise((resolve, reject) => {
           const sql = `
-            SELECT F.F_ID, F.F_DESC, F.C_ID, F.PRODUCT_ID, C.C_USERNAME, CAT.CY_NAME
+            SELECT F.F_ID, F.F_DESC, F.F_DATE, F.star_rating, F.C_ID, F.PRODUCT_ID, EV.name
             FROM FEEDBACK AS F
-            JOIN CUSTOMER AS C ON F.C_ID = C.C_ID
             JOIN ${view} AS EV ON F.PRODUCT_ID = EV.id
-            JOIN CATEGORY AS CAT ON EV.category_id = CAT.CY_ID
-            ORDER BY F.F_ID DESC;
+            WHERE F.C_ID = ?;
           `;
-          conn.query(sql, (err, result) => {
+          conn.query(sql, [req.session.userId], (err, result) => {
             if (err) {
               console.error(`Error querying view ${view}:`, err);
               return reject(err);
@@ -105,6 +112,9 @@ const feedbacks = async (req, res) => {
       Promise.all(promises)
         .then((results) => {
           const feedbackData = results.flat();
+          if (feedbackData.length === 0) {
+            return res.status(404).json({ error: "No feedback data found." });
+          }
           res.status(200).json(feedbackData);
         })
         .catch((err) => {
