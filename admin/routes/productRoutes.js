@@ -32,7 +32,6 @@ router.get('/subcategory/:sub_id/subsubcategories', productController.getSubSubc
 
 router.post('/add', productController.addProduct);
 router.get('/get-fields', productController.getField);
-router.get('/last-id', productController.lastId);
 router.get('/get-primary-key', productController.getPK);
 
 router.put('/update', productController.updateProduct);

@@ -6,7 +6,7 @@ const sendfileController = require("./filecontroller");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
 
@@ -180,7 +180,7 @@ const getSubSubCategoryData = (req, res) => {
       res.status(404).json({ error: "Category not found" });
       return;
     }
-    
+
     const sql = `SELECT ss_desc as description FROM subsubcategory WHERE ss_name = ?`;
     db.query(sql, [subsubcategory], (err, result) => {
       if (err) {
@@ -211,7 +211,6 @@ const getSubSubCategoryData = (req, res) => {
     });
   });
 };
-
 
 const getCategoryName = (subcategory, callback) => {
   const subcategoryQuery = `

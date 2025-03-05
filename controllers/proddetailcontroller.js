@@ -3,7 +3,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
 
@@ -28,7 +28,7 @@ const getProductDetails = (req, res) => {
       IMAGE.PATH3 AS image3, 
       PLANTS.P_DESC AS description 
     FROM 
-      PLANTS_table as plants
+      Plants as plants
     JOIN 
       IMAGE 
     ON 

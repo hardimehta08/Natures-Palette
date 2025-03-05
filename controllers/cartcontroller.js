@@ -4,7 +4,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
 
@@ -121,7 +121,7 @@ const addItemToCartFromProduct = (req, res) => {
         if (results.length === 0) {
           return res.status(404).json({ error: "Product not found." });
         }
-        
+
         const productId = results[0].id;
 
         generateCartId((err, newCartId) => {

@@ -4,7 +4,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
 
@@ -65,7 +65,7 @@ const getUserWishlist = (req, res) => {
   if (!req.session.userId) {
     return res
       .status(401)
-      .json({ message : "Please login to view your wishlist." });
+      .json({ message: "Please login to view your wishlist." });
   }
 
   const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
@@ -195,7 +195,7 @@ const generateCartId = (callback) => {
 // Get Wishlist Count for a Specific User
 const getWishlistCount = (req, res) => {
   if (!req.session.userId) {
-    return res.json({count:"0" });
+    return res.json({ count: "0" });
   }
 
   const sql = "SELECT COUNT(*) AS count FROM wishlist WHERE c_id = ?";

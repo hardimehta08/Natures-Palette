@@ -1,16 +1,16 @@
 // orderdet.js
-window.showOrderDetails = function(orderId) {
-    fetch(`/order/orderdets/details/${orderId}`)
-        .then(response => response.json())
-        .then(data => {
-            const modal = document.getElementById('order-details-modal');
-            const orderDetails = document.getElementById('order-details');
-            orderDetails.innerHTML = '';
+window.showOrderDetails = function (orderId) {
+  fetch(`/order/orderdets/details/${orderId}`)
+    .then((response) => response.json())
+    .then((data) => {
+      const modal = document.getElementById("order-details-modal");
+      const orderDetails = document.getElementById("order-details");
+      orderDetails.innerHTML = "";
 
-            let total = 0;
-            data.forEach(item => {
-                total += item.quantity * item.price;
-                orderDetails.innerHTML += `
+      let total = 0;
+      data.forEach((item) => {
+        total += item.quantity * item.price;
+        orderDetails.innerHTML += `
                     <tr>
                         <td>${item.id}</td>
                         <td>${item.name}</td>
@@ -21,11 +21,11 @@ window.showOrderDetails = function(orderId) {
                         <td>${item.category}</td>
                     </tr>
                 `;
-            });
+      });
 
-            modal.style.display = 'block';
-        })
-        .catch(error => console.error('Error fetching order details:', error));
+      modal.style.display = "block";
+    })
+    .catch((error) => console.error("Error fetching order details:", error));
 };
 // Helper function to format date
 // function formatDate(dateString) {
@@ -68,22 +68,24 @@ window.showOrderDetails = function(orderId) {
 // }
 
 // Fetch and display orders with filter
-function fetchOrders(statusFilter = '') {
-    const url = statusFilter ? `/order/orderdets?status=${statusFilter}` : '/order/orderdets';
-    
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok');
-            return response.json();
-        })
-        .then(data => {
-            console.log('Fetched Orders:', data);
-            const tableBody = document.querySelector('#orders-table tbody');
-            tableBody.innerHTML = '';
+function fetchOrders(statusFilter = "") {
+  const url = statusFilter
+    ? `/order/orderdets?status=${statusFilter}`
+    : "/order/orderdets";
 
-            data.forEach(order => {
-                const formattedDate = formatDate(order.O_date);
-                const row = `
+  fetch(url)
+    .then((response) => {
+      if (!response.ok) throw new Error("Network response was not ok");
+      return response.json();
+    })
+    .then((data) => {
+      console.log("Fetched Orders:", data);
+      const tableBody = document.querySelector("#orders-table tbody");
+      tableBody.innerHTML = "";
+
+      data.forEach((order) => {
+        const formattedDate = formatDate(order.O_date);
+        const row = `
                     <tr>
                         <td>${order.O_id}</td>
                         <td>${formattedDate}</td>
@@ -95,130 +97,135 @@ function fetchOrders(statusFilter = '') {
                         </td>
                     </tr>
                 `;
-                tableBody.innerHTML += row;
-            });
-        })
-        .catch(error => console.error('Error fetching orders:', error));
+        tableBody.innerHTML += row;
+      });
+    })
+    .catch((error) => console.error("Error fetching orders:", error));
 }
 
 // Filter orders based on status dropdown
-document.addEventListener('DOMContentLoaded', () => {
-    fetchOrders(); // Initial fetch without filter
+document.addEventListener("DOMContentLoaded", () => {
+  fetchOrders(); // Initial fetch without filter
 
-    const statusFilter = document.getElementById('status-filter');
-    statusFilter.addEventListener('change', (e) => {
-        fetchOrders(e.target.value);
-    });
+  const statusFilter = document.getElementById("status-filter");
+  statusFilter.addEventListener("change", (e) => {
+    fetchOrders(e.target.value);
+  });
 });
 
 // Helper function to format date (already provided)
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
 }
 // Open modal to update order status
 function openUpdateStatusModal(orderId, currentStatus) {
-    document.getElementById('update-order-id').value = orderId;
-    document.getElementById('update-status').value = currentStatus;
-    document.getElementById('updateStatusModal').style.display = 'block';
+  document.getElementById("update-order-id").value = orderId;
+  document.getElementById("update-status").value = currentStatus;
+  document.getElementById("updateStatusModal").style.display = "block";
 }
 
 // Close modal
 function closeUpdateStatusModal() {
-    document.getElementById('updateStatusModal').style.display = 'none';
+  document.getElementById("updateStatusModal").style.display = "none";
 }
 
 // Handle status update form submission
-document.getElementById('updateStatusForm').addEventListener('submit', async function(event) {
+document
+  .getElementById("updateStatusForm")
+  .addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    const orderId = document.getElementById('update-order-id').value;
-    const newStatus = document.getElementById('update-status').value;
+    const orderId = document.getElementById("update-order-id").value;
+    const newStatus = document.getElementById("update-status").value;
 
     try {
-        const response = await fetch(`/order/orderdets/${orderId}/status`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId, status: newStatus })
-        });
+      const response = await fetch(`/order/orderdets/${orderId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, status: newStatus }),
+      });
 
-        if (!response.ok) throw new Error('Failed to update status');
-        const result = await response.json();
+      if (!response.ok) throw new Error("Failed to update status");
+      const result = await response.json();
 
-        if (result.success) {
-            alert('Order status updated successfully!');
-            closeUpdateStatusModal();
-            fetchOrders(document.getElementById('status-filter').value); // Refresh orders
-        } else {
-            alert('Failed to update status: ' + result.error);
-        }
+      if (result.success) {
+        alert("Order status updated successfully!");
+        closeUpdateStatusModal();
+        fetchOrders(document.getElementById("status-filter").value); // Refresh orders
+      } else {
+        alert("Failed to update status: " + result.error);
+      }
     } catch (error) {
-        console.error('Error updating status:', error);
-        alert('Error updating status. Please try again.');
+      console.error("Error updating status:", error);
+      alert("Error updating status. Please try again.");
     }
-});
+  });
 // View order details
 function viewOrderDetails(orderId) {
-    const orderDetailsContainer = document.getElementById("order-details");
-    orderDetailsContainer.innerHTML = "";
+  const orderDetailsContainer = document.getElementById("order-details");
+  orderDetailsContainer.innerHTML = "";
 
-    fetch(`/order/orderdets/${orderId}/details`)
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status} - ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then((details) => {
-            console.log("Order Details:", details);
+  fetch(`/order/orderdets/${orderId}/details`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Server error: ${response.status} - ${response.statusText}`
+        );
+      }
+      return response.json();
+    })
+    .then((details) => {
+      console.log("Order Details:", details);
 
-            if (!Array.isArray(details)) {
-                orderDetailsContainer.innerHTML = `<tr><td colspan="7">${details.error || 'Unexpected response'}</td></tr>`;
-                document.getElementById('order-details-modal').style.display = 'block';
-                return;
-            }
+      if (!Array.isArray(details)) {
+        orderDetailsContainer.innerHTML = `<tr><td colspan="7">${
+          details.error || "Unexpected response"
+        }</td></tr>`;
+        document.getElementById("order-details-modal").style.display = "block";
+        return;
+      }
 
-            if (details.length === 0) {
-                orderDetailsContainer.innerHTML = `<tr><td colspan="7">No details found for this order.</td></tr>`;
-                document.getElementById('order-details-modal').style.display = 'block';
-                return;
-            }
+      if (details.length === 0) {
+        orderDetailsContainer.innerHTML = `<tr><td colspan="7">No details found for this order.</td></tr>`;
+        document.getElementById("order-details-modal").style.display = "block";
+        return;
+      }
 
-            details.forEach((detail) => {
-                const row = `
+      details.forEach((detail) => {
+        const row = `
                     <tr>
                         <td>${detail.Odetails_id}</td>
-                        <td>${detail.product_name || 'N/A'}</td>
-                        <td>${detail.description || 'N/A'}</td>
-                        <td><img src="${detail.image}" alt="${detail.product_name || 'Product'}" width="100" onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';"></td>
-                        <td>${detail.O_Qty}</td>
-                        <td>${detail.O_price}</td>
-                        <td>${detail.category_name || 'N/A'}</td>
+                        <td>${detail.product_name || "N/A"}</td>
+                        <td>${detail.description || "N/A"}</td>
+                        <td><img src="${detail.image}" alt="${
+          detail.product_name || "Product"
+        }" width="100" onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';"></td>
+                        <td>${detail.ODETAILS_Qty}</td>
+                        <td>${detail.ODETAILS_price}</td>
+                        <td>${detail.category_name || "N/A"}</td>
                     </tr>
                 `;
-                console.log(`Rendering image for product ${detail.Odetails_id}: ${detail.image}`);
-                orderDetailsContainer.innerHTML += row;
-            });
-            document.getElementById('order-details-modal').style.display = 'block';
-        })
-        .catch((error) => {
-            console.error("Error fetching order details:", error);
-            orderDetailsContainer.innerHTML = `<tr><td colspan="7">Error loading details: ${error.message}</td></tr>`;
-            document.getElementById('order-details-modal').style.display = 'block';
-        });
+        console.log(
+          `Rendering image for product ${detail.Odetails_id}: ${detail.image}`
+        );
+        orderDetailsContainer.innerHTML += row;
+      });
+      document.getElementById("order-details-modal").style.display = "block";
+    })
+    .catch((error) => {
+      console.error("Error fetching order details:", error);
+      orderDetailsContainer.innerHTML = `<tr><td colspan="7">Error loading details: ${error.message}</td></tr>`;
+      document.getElementById("order-details-modal").style.display = "block";
+    });
 }
 
 function closeModal() {
-    document.getElementById('order-details-modal').style.display = 'none';
+  document.getElementById("order-details-modal").style.display = "none";
 }
 
 // Fetch orders on page load
-document.addEventListener('DOMContentLoaded', fetchOrders);
-
-
-
-
-
+document.addEventListener("DOMContentLoaded", fetchOrders);
