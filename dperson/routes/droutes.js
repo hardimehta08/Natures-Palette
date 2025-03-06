@@ -21,6 +21,9 @@ router.post('/login', deliveryController.loginDeliveryPerson);
 
 router.get("/check-session", deliveryController.checkSession);
 
+router.post("/forgot-password", deliveryController.forgotPassword);
+router.post("/reset-password", deliveryController.resetPassword);
+
 // ✅ Route for Logout
 router.post("/logout", deliveryController.logoutUser);
 module.exports = router;

@@ -19,6 +19,8 @@ router.post("/login", authController.loginUser);
 // Route for Forgot Password
 router.post("/forgot-password", authController.forgotPassword);
 
+router.post("/reset-password", authController.resetPassword);
+
 // Route for Logout
 router.post("/logout", authController.logoutUser);
 
