@@ -11,7 +11,7 @@ const combinedRouter = require("./routes/headrouter")(app);
 const connection = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
 

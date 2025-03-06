@@ -4,10 +4,9 @@ const mysql = require("mysql");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
-
 
 // Define the base URL for the client-side images
 const CLIENT_IMAGE_BASE_URL = "http://localhost:4000/images/"; // Adjust this to your client server's URL
@@ -156,25 +155,23 @@ WHERE od.O_id = ? AND od.Product_id IN (?)
 
                 `;
 
-                db.query(
-                  query,
-                  [orderId, productIds],
-                  (err, results) => {
-                    if (err) {
-                      console.error(
-                        `Error querying ${tableName}:`,
-                        err.sqlMessage
-                      );
-                      resolve([]);
-                      return;
-                    }
-                    results.forEach(result => {
-                      if (result.image) result.image = result.image.toString();
-                    });
-                    console.log(`Results from ${tableName}:`, results);
-                    resolve(results.filter(result => result.product_name !== null));
+                db.query(query, [orderId, productIds], (err, results) => {
+                  if (err) {
+                    console.error(
+                      `Error querying ${tableName}:`,
+                      err.sqlMessage
+                    );
+                    resolve([]);
+                    return;
                   }
-                );
+                  results.forEach((result) => {
+                    if (result.image) result.image = result.image.toString();
+                  });
+                  console.log(`Results from ${tableName}:`, results);
+                  resolve(
+                    results.filter((result) => result.product_name !== null)
+                  );
+                });
               });
             });
           })

@@ -4,7 +4,7 @@ const mysql = require("mysql");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
 
@@ -240,11 +240,9 @@ const fetchFilters = async (req, res) => {
     const sizeColumnExists = await checkColumnExistence("size");
 
     if (!colorColumnExists && !sizeColumnExists) {
-      res
-        .status(400)
-        .json({
-          error: "Neither 'color' nor 'size' columns exist in the view.",
-        });
+      res.status(400).json({
+        error: "Neither 'color' nor 'size' columns exist in the view.",
+      });
       return;
     }
 

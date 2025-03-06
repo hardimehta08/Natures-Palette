@@ -39,7 +39,7 @@ function fetchProductsByCategory(page = 1) {
     categorySelect.options[categorySelect.selectedIndex]?.getAttribute(
       "data-name"
     ) || "";
-    const searchQuery = document.getElementById("product-search").value.trim();
+  const searchQuery = document.getElementById("product-search").value.trim();
 
   currentcategory_id = category_id;
   currentPage = page;
@@ -60,7 +60,7 @@ function fetchProductsByCategory(page = 1) {
     url += `&productId=${encodeURIComponent(searchQuery)}`;
   }
 
-  fetch(url, {credentials: "include"})
+  fetch(url, { credentials: "include" })
     .then((response) => {
       if (!response.ok)
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -128,7 +128,9 @@ function updatePagination(totalPages, currentPage) {
   // Previous Button (<)
   paginationControls.innerHTML += `
     <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
-      <a class="page-link" href="#" onclick="fetchProductsByCategory(${currentPage - 1}); return false;">&lt;</a>
+      <a class="page-link" href="#" onclick="fetchProductsByCategory(${
+        currentPage - 1
+      }); return false;">&lt;</a>
     </li>
   `;
 
@@ -153,7 +155,9 @@ function updatePagination(totalPages, currentPage) {
   // Next Button (>)
   paginationControls.innerHTML += `
     <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
-      <a class="page-link" href="#" onclick="fetchProductsByCategory(${currentPage + 1}); return false;">&gt;</a>
+      <a class="page-link" href="#" onclick="fetchProductsByCategory(${
+        currentPage + 1
+      }); return false;">&gt;</a>
     </li>
   `;
 }
@@ -403,34 +407,35 @@ async function generateForm(fields, categoryName, category_id) {
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
-    const formData = new FormData(form);
+    const formData = new FormData();
 
+    // Append category ID
+    formData.append("category_id", category_id);
+
+    // Collect product data (except images)
     const productData = {};
-    formData.forEach((value, key) => {
+    new FormData(form).forEach((value, key) => {
       if (!value || value === "undefined") return;
-      productData[key] = value;
+      if (!key.startsWith("prod_img")) productData[key] = value;
     });
 
-    const images = [];
+    // Convert productData object to JSON and append to FormData
+    formData.append("productData", JSON.stringify(productData));
+
+    // Append image files
     for (let i = 1; i <= 3; i++) {
-      let fileInput = formData.get(`prod_img${i}`);
-      if (fileInput && fileInput.name) {
-        images.push(fileInput.name);
+      let fileInput = form.querySelector(`[name=prod_img${i}]`);
+      if (fileInput && fileInput.files.length > 0) {
+        formData.append("images", fileInput.files[0]); // ✅ Append file
       }
     }
 
-    console.log("Final Collected Data:", { category_id, productData, images });
-
-    if (!category_id || Object.keys(productData).length === 0) {
-      alert("Error: Missing required product details.");
-      return;
-    }
+    console.log("Final Collected Data:", { category_id, productData });
 
     try {
       const response = await fetch("/product/add", {
         method: "POST",
-        body: JSON.stringify({ category_id, productData, images }),
-        headers: { "Content-Type": "application/json" },
+        body: formData, // ✅ Send as FormData, NOT JSON
         credentials: "include",
       });
 
@@ -445,6 +450,15 @@ async function generateForm(fields, categoryName, category_id) {
       console.error("Error:", error);
       alert("Failed to add product.");
     }
+  });
+}
+
+function convertToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result); // Returns Base64 string
+    reader.onerror = (error) => reject(error);
   });
 }
 

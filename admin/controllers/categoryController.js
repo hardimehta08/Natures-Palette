@@ -17,10 +17,9 @@ const upload = multer({ storage });
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
-
 
 const getCategories = (req, res) => {
   const query = `
@@ -243,11 +242,9 @@ const addSubSubCategory = (req, res) => {
   const ss_image = req.file ? `../images/${req.file.filename}` : null;
 
   if (!ss_name || !ss_desc || !sub_id) {
-    return res
-      .status(400)
-      .json({
-        error: "All fields (name, description, subcategory ID) are required",
-      });
+    return res.status(400).json({
+      error: "All fields (name, description, subcategory ID) are required",
+    });
   }
 
   const getMaxSsIdQuery = `SELECT MAX(CAST(SUBSTRING(ss_id, 3) AS UNSIGNED)) AS maxId FROM subsubcategory`;
@@ -543,11 +540,9 @@ function deleteSubCategory(req, res) {
 
             reorderSubSubcategoryIDs((err) => {
               if (err)
-                return res
-                  .status(500)
-                  .json({
-                    error: "Error while reordering sub-subcategory IDs",
-                  });
+                return res.status(500).json({
+                  error: "Error while reordering sub-subcategory IDs",
+                });
 
               conn.query("SET FOREIGN_KEY_CHECKS = 1", (err) => {
                 if (err) {

@@ -1,14 +1,14 @@
 const mysql = require("mysql");
 const fs = require("fs");
 const path = require("path");
+const formidable = require("formidable");
 // Database connection
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
-
 
 const getProductsByTable = (req, res) => {
   const viewName = req.params.tableName;
@@ -208,169 +208,154 @@ const getField = async (req, res) => {
 };
 
 const addProduct = (req, res) => {
-  console.log("Received Request:", req.body);
+  const form = new formidable.IncomingForm({ multiples: true, keepExtensions: true });
 
-  let { category_id, productData, images } = req.body;
+  form.parse(req, (err, fields, files) => {
+    if (err) {
+      console.error("🔴 Form Parsing Error:", err);
+      return res.status(400).json({ success: false, error: "Invalid form data" });
+    }
 
-  if (!category_id || !productData || Object.keys(productData).length === 0) {
-    return res
-      .status(400)
-      .json({ success: false, error: "Missing required product details." });
-  }
+    console.log("🟢 Received Fields:", fields);
+    console.log("🟢 Received Files:", files);
 
-  db.query(
-    "SELECT CY_NAME FROM category WHERE CY_ID = ?",
-    [category_id],
-    (err, rows) => {
+    let { category_id, productData } = fields;
+    if (!category_id || !productData) {
+      return res.status(400).json({ success: false, error: "Missing required product details." });
+    }
+
+    productData = JSON.parse(productData); // ✅ Convert productData JSON string back to object
+    delete productData.prod_img1;
+    delete productData.prod_img2;
+    delete productData.prod_img3;
+    delete productData.CY_ID;
+
+    db.query("SELECT CY_NAME FROM category WHERE CY_ID = ?", [category_id], (err, rows) => {
       if (err) {
-        console.error("Error fetching category:", err);
-        return res
-          .status(500)
-          .json({ success: false, error: "Database error" });
+        console.error("🔴 Database Error Fetching Category:", err);
+        return res.status(500).json({ success: false, error: "Database error" });
       }
 
       if (rows.length === 0) {
-        return res
-          .status(400)
-          .json({ success: false, error: "Invalid category ID" });
+        return res.status(400).json({ success: false, error: "Invalid category ID" });
       }
 
       const categoryName = rows[0].CY_NAME;
-      console.log("Resolved Category Name:", categoryName);
-
+      console.log("🟢 Resolved Category Name:", categoryName);
       let tableName = categoryName.toLowerCase().replace(/\s+/g, "_");
 
-      db.query(
-        `SHOW KEYS FROM ${tableName}_table WHERE Key_name = 'PRIMARY'`,
-        (err, keyResults) => {
-          if (err) {
-            console.error("Error fetching primary key:", err);
-            return res
-              .status(500)
-              .json({ success: false, error: "Database error" });
-          }
-
-          if (keyResults.length === 0) {
-            return res.status(500).json({
-              success: false,
-              error: "No primary key found for the category table",
-            });
-          }
-
-          delete productData.prod_img1;
-          delete productData.prod_img2;
-          delete productData.prod_img3;
-          delete productData.CY_ID;
-
-          const query = `INSERT INTO ${tableName} SET ?`;
-          db.query(query, productData, (err, result) => {
-            if (err) {
-              console.error("Error inserting product:", err);
-              return res
-                .status(500)
-                .json({ success: false, error: "Database error" });
-            }
-
-            console.log("Product inserted successfully:", productData);
-
-            // Insert Images as VARCHAR (file paths)
-            if (images && images.length > 0) {
-              insertImages(productData.id, images, res);
-            } else {
-              res.json({
-                success: true,
-                message: "Product added successfully (no images provided).",
-                productId: productData.id,
-              });
-            }
-          });
+      db.query(`SHOW KEYS FROM ${tableName}_table WHERE Key_name = 'PRIMARY'`, (err, keyResults) => {
+        if (err) {
+          console.error("🔴 Error Fetching Primary Key:", err);
+          return res.status(500).json({ success: false, error: "Database error" });
         }
-      );
-    }
-  );
-};
 
-// ✅ Function to Insert Images
-function insertImages(productId, images, res) {
-  // Fetch the last image ID to generate the new image ID
-  db.query(
-    `SELECT IMG_ID FROM image ORDER BY CAST(SUBSTRING(IMG_ID, 4) AS UNSIGNED) DESC LIMIT 1`,
-    (err, imgResult) => {
-      if (err) return res.status(500).json({ error: "Database error" });
+        if (keyResults.length === 0) {
+          return res.status(500).json({ success: false, error: "No primary key found for the category table" });
+        }
 
-      // Generate the new image ID
-      let newImgId =
-        imgResult.length > 0
-          ? `IMG${String(
-              parseInt(imgResult[0].IMG_ID.replace(/\D/g, ""), 10) + 1
-            ).padStart(3, "0")}`
-          : "IMG001";
-
-      // Filter out invalid or null images
-      let filteredImages = images.filter((img) => img); // Remove null or undefined values
-      if (filteredImages.length === 0)
-        return res.json({ success: true, message: "No images uploaded." });
-
-      // Save images to file system and prepare paths for database insertion
-      const imageInsertData = [];
-      let saveCount = 0; // To track completed save operations
-
-      filteredImages.forEach((image, idx) => {
-        // Extract extension (e.g., jpg, jpeg, png)
-        const extension = image.match(/^data:image\/(jpeg|jpg|png);base64,/)?.[1] || "jpg"; // Default to jpg
-        const imageFileName = `${newImgId}-${idx + 1}.${extension}`; // Unique file name with extension
-        const relativePath = `Database\\\\${imageFileName}`; // Backslash-based path
-        const targetPath = path.join(
-          __dirname,
-          "../../../trial4 (2)/Nature-s-Palette/trial4/public/Database/",
-          imageFileName
-        );
-
-        // Remove the base64 header if present
-        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-        console.log("Base64 data length:", base64Data.length);
-
-        // Save image to the file system
-        fs.writeFile(targetPath, base64Data, "base64", (err) => {
+        const query = `INSERT INTO ${tableName} SET ?`;
+        db.query(query, productData, (err, result) => {
           if (err) {
-            console.error("Error saving image:", err);
-          } else {
-            console.log(`Image saved to: ${targetPath}`);
-            imageInsertData.push(relativePath); // Add relative path with backslashes to the data
+            console.error("🔴 Error Inserting Product:", err);
+            return res.status(500).json({ success: false, error: "Database error" });
           }
 
-          saveCount++; // Increment save count
-          if (saveCount === filteredImages.length) {
-            // Once all images are saved, insert paths into the database
-            const placeholders = imageInsertData
-              .map((_, i) => `PATH${i + 1}`)
-              .join(", ");
-            const values = imageInsertData
-              .map((path) => `'${path}'`)
-              .join(", ");
+          console.log("🟢 Product Inserted Successfully:", productData);
 
-            const imageQuery = `
-              INSERT INTO image (IMG_ID, PRODUCT_ID, ${placeholders}) 
-              VALUES ('${newImgId}', '${productId}', ${values})
-            `;
-
-            db.query(imageQuery, [], (err) => {
-              if (err)
-                return res
-                  .status(500)
-                  .json({ error: "Image insertion failed" });
-
-              res.json({
-                success: true,
-                message: "Product and images added successfully",
-                insertedProductId: productId,
-              });
-            });
+          // ✅ Process Images
+          const uploadedFiles = files.images instanceof Array ? files.images : [files.images];
+          if (uploadedFiles.length > 0) {
+            insertImages(productData.id, uploadedFiles, res);
+          } else {
+            res.json({ success: true, message: "Product added successfully (no images provided).", productId: productData.id });
           }
         });
       });
+    });
+  });
+};
+
+// ✅ Function to Insert Images
+function insertImages(productId, uploadedFiles, res) {
+  console.log("🟢 Function insertImages Called");
+
+  // Ensure "Database" folder exists
+  const directoryPath = path.join(__dirname, "../../../trial4 (2)/Nature-s-Palette/trial4/public/Database/");
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath, { recursive: true });
+  }
+
+  // Get the last IMG_ID from DB
+  db.query(`SELECT IMG_ID FROM image ORDER BY CAST(SUBSTRING(IMG_ID, 4) AS UNSIGNED) DESC LIMIT 1`, (err, imgResult) => {
+    if (err) {
+      console.error("🔴 Database Error Fetching Last IMG_ID:", err);
+      return res.status(500).json({ error: "Database error" });
     }
-  );
+
+    let newImgId = imgResult.length > 0
+      ? `IMG${String(parseInt(imgResult[0].IMG_ID.replace(/\D/g, ""), 10) + 1).padStart(3, "0")}`
+      : "IMG001";
+
+    console.log("🟢 Generated New Image ID:", newImgId);
+
+    const imageInsertData = [];
+    let saveCount = 0;
+
+    uploadedFiles.forEach((file, idx) => {
+      if (!file || !file.filepath) {
+        console.error(`🔴 Image ${idx + 1} is missing or not in the expected format:`, file);
+        return;
+      }
+
+      const extension = path.extname(file.originalFilename) || ".jpg"; // Default to .jpg
+      const imageFileName = `${newImgId}-${idx + 1}${extension}`;
+      const relativePath = `Database/${imageFileName}`;
+      const targetPath = path.join(directoryPath, imageFileName);
+
+      console.log(`🟡 Saving File: ${targetPath}`);
+
+      // Move the file to the uploads directory
+      fs.rename(file.filepath, targetPath, (err) => {
+        if (err) {
+          console.error(`🔴 Error Moving Image ${file.filepath}:`, err);
+          return;
+        }
+
+        imageInsertData.push(relativePath);
+        saveCount++;
+
+        if (saveCount === uploadedFiles.length) {
+          console.log("🟢 All Images Processed, Preparing to Insert into Database");
+
+          if (imageInsertData.length === 0) {
+            return res.status(500).json({ error: "No images were saved." });
+          }
+
+          // Insert into DB
+          const columns = imageInsertData.map((_, i) => `PATH${i + 1}`).join(", ");
+          const values = imageInsertData.map((path) => `'${path}'`).join(", ");
+          const imageQuery = `INSERT INTO image (IMG_ID, PRODUCT_ID, ${columns}) VALUES ('${newImgId}', '${productId}', ${values})`;
+
+          console.log("🟢 Running SQL Query:", imageQuery);
+
+          db.query(imageQuery, [], (err) => {
+            if (err) {
+              console.error("🔴 Database Insert Error:", err);
+              return res.status(500).json({ error: "Image insertion failed" });
+            }
+
+            console.log("✅ Database Insertion Successful!");
+            res.json({
+              success: true,
+              message: "Product and images added successfully",
+              insertedProductId: productId,
+            });
+          });
+        }
+      });
+    });
+  });
 }
 
 const getPK = (req, res) => {

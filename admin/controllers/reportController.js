@@ -6,10 +6,9 @@ const PDFDocument = require("pdfkit");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "main_project",
 });
-
 
 // Dashboard Data
 exports.getDashboardData = (req, res) => {
@@ -1802,7 +1801,6 @@ exports.exportCustomerReportCSV = (req, res) => {
       res.status(500).json({ error: "Database error", details: err.message });
     });
 };
-
 
 // Export Customer Report as PDF
 exports.exportCustomerReportPDF = (req, res) => {
