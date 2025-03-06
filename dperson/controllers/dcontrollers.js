@@ -57,17 +57,80 @@ exports.updateDeliveryStatus = (req, res) => {
         return res.status(400).json({ error: "Delivery ID and status are required" });
     }
 
-    db.query(
-        "UPDATE deliveries SET status = ? WHERE id = ?",
-        [status, deliveryId],
-        (err, result) => {
-            if (err) {
-                console.error("Error updating status:", err);
-                return res.status(500).json({ error: "Database error" });
-            }
-            res.json({ success: true, message: "Status updated successfully" });
+    // Begin a transaction to ensure both updates succeed or fail together
+    db.beginTransaction((err) => {
+        if (err) {
+            console.error("Transaction error:", err);
+            return res.status(500).json({ error: "Transaction error" });
         }
-    );
+
+        // Step 1: Update the deliveries table
+        db.query(
+            "UPDATE deliveries SET status = ? WHERE id = ?",
+            [status, deliveryId],
+            (err, result) => {
+                if (err) {
+                    console.error("Error updating deliveries:", err);
+                    return db.rollback(() => {
+                        res.status(500).json({ error: "Database error updating deliveries" });
+                    });
+                }
+
+                console.log("Deliveries table updated:", result.affectedRows, "rows");
+
+                // Step 2: Find the corresponding O_Id for this delivery
+                db.query(
+                    "SELECT O_Id FROM deliveries WHERE id = ?",
+                    [deliveryId],
+                    (err, result) => {
+                        if (err) {
+                            console.error("Error fetching O_Id from deliveries:", err);
+                            return db.rollback(() => {
+                                res.status(500).json({ error: "Database error fetching order ID" });
+                            });
+                        }
+
+                        if (result.length === 0) {
+                            console.error("No delivery found with id:", deliveryId);
+                            return db.rollback(() => {
+                                res.status(404).json({ error: "Delivery not found" });
+                            });
+                        }
+
+                        const orderId = result[0].O_Id;
+                        console.log("Found O_Id:", orderId);
+
+                        // Step 3: Update the order_master table using the O_Id
+                        db.query(
+                            "UPDATE order_master SET O_status = ? WHERE O_Id = ?",
+                            [status, orderId],
+                            (err, result) => {
+                                if (err) {
+                                    console.error("Error updating order_master:", err);
+                                    return db.rollback(() => {
+                                        res.status(500).json({ error: "Database error updating order_master" });
+                                    });
+                                }
+
+                                console.log("Order_master table updated:", result.affectedRows, "rows");
+
+                                // Commit the transaction if both updates succeed
+                                db.commit((err) => {
+                                    if (err) {
+                                        console.error("Commit error:", err);
+                                        return db.rollback(() => {
+                                            res.status(500).json({ error: "Commit error" });
+                                        });
+                                    }
+                                    res.json({ success: true, message: "Status updated successfully in both tables" });
+                                });
+                            }
+                        );
+                    }
+                );
+            }
+        );
+    });
 };
 
 // Update Payment Status

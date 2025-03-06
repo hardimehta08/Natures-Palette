@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const con = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 
@@ -72,6 +72,9 @@ app.use("/admin", adminRoutes);
 
 const reportRoutes = require("./routes/reportRoutes");
 app.use("/report", reportRoutes);
+
+const paymentRoutes = require("./routes/paymentRoutes");
+app.use("/payment", paymentRoutes);
 
 // Start the server
 app.listen(PORT, () => {

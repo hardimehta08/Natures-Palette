@@ -5,17 +5,11 @@ const path = require("path");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-    return;
-  }
-  console.log("Connected to MySQL database");
-});
+
 const getProductsByTable = (req, res) => {
   const viewName = req.params.tableName;
   const page = parseInt(req.query.page) || 1;

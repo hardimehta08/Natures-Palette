@@ -4,17 +4,10 @@ const mysql = require("mysql");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-    return;
-  }
-  console.log("Connected to MySQL database");
-});
 
 // Define the base URL for the client-side images
 const CLIENT_IMAGE_BASE_URL = "http://localhost:4000/images/"; // Adjust this to your client server's URL

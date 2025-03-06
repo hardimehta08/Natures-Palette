@@ -363,19 +363,24 @@
         }
 
         async function updateStatus(deliveryId, status) {
-            try {
-                const response = await fetch("/delivery/update-status", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ deliveryId, status })
-                });
-                if (!response.ok) throw new Error("Failed to update status");
-                fetchDeliveries();
-            } catch (error) {
-                console.error("Error updating status:", error);
-                alert("Failed to update status. Please try again or contact support.");
-            }
+    try {
+        const response = await fetch("/delivery/update-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deliveryId, status })
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || "Failed to update status");
         }
+        const responseData = await response.json();
+        console.log("Update status response:", responseData); // Add this to debug
+        fetchDeliveries(); // Refresh the table after update
+    } catch (error) {
+        console.error("Error updating status:", error);
+        alert("Failed to update status. Please try again or contact support.");
+    }
+}
 
         async function updatePayment(deliveryId, paymentStatus) {
             try {

@@ -17,17 +17,10 @@ const upload = multer({ storage });
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 
-conn.connect((err) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-    return;
-  }
-  console.log("Connected to MySQL database");
-});
 
 const getCategories = (req, res) => {
   const query = `

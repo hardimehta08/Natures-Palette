@@ -29,17 +29,6 @@
                 <p class="account__tab active-tab" data-target="#dashboard" onclick="showSection('dashboard')">
                     <img src="../ad-images/icon/dashboard.png" alt="">Dashboard
                 </p>
-                <p class="account__tab" onclick="toggleDropdown('productDropdown')">
-                    <img src="../ad-images/icon/new-product.png" alt=""> Product
-                    <i class="fas fa-chevron-down ml-2"></i>
-                </p>
-                <div class="hidden" id="productDropdown">
-                    <a class="block" onclick="showSection('viewproduct')" data-target="#viewproduct">View</a>
-                    <a class="block" onclick="showSection('addproduct')" data-target="#addproduct">Add</a>
-                </div>
-                <p class="account__tab" data-target="#orders" onclick="showSection('orders')">
-                    <img src="../ad-images/icon/order.png" alt=""> Orders
-                </p>
                 <p class="account__tab" onclick="toggleDropdown('categoriesDropdown')">
                     <img src="../ad-images/icon/list.png" alt=""> Category
                     <i class="fas fa-chevron-down ml-2"></i> 
@@ -50,9 +39,14 @@
                     <a class="block" onclick="showSection('subsubcategory')" data-target="#subsubcategory">SubSub Categories</a>
                     <a class="block" onclick="showSection('createtbl')" data-target="#createtbl">Create Table</a>
                 </div>
-                <p class="account__tab" data-target="#customer" onclick="showSection('customer')">
-                    <img src="../ad-images/icon/user.png" alt="">Customer
+                <p class="account__tab" onclick="toggleDropdown('productDropdown')">
+                    <img src="../ad-images/icon/new-product.png" alt=""> Product
+                    <i class="fas fa-chevron-down ml-2"></i>
                 </p>
+                <div class="hidden" id="productDropdown">
+                    <a class="block" onclick="showSection('viewproduct')" data-target="#viewproduct">View</a>
+                    <a class="block" onclick="showSection('addproduct')" data-target="#addproduct">Add</a>
+                </div>
                 <p class="account__tab"  onclick="toggleDropdown('reportsDropdown')">
                     <img src="../ad-images/icon/report.png" alt="">Report
                     <i class="fas fa-chevron-down ml-2"></i>
@@ -63,12 +57,23 @@
                     <a class="block" onclick="showSection('report', 'customer-report')" data-target="#report">Customer Report</a>
                     <a class="block" onclick="showSection('report', 'inventory-report')" data-target="#report">Inventory Report</a>
                 </div>
-                <p class="account__tab" data-target="#review" onclick="showSection('review')">
-                    <img src="../ad-images/icon/review.png" alt="">Review
+                <p class="account__tab" data-target="#orders" onclick="showSection('orders')">
+                    <img src="../ad-images/icon/order.png" alt=""> Orders
                 </p>
                 <p class="account__tab" data-target="#delivery" onclick="showSection('delivery')">
                     <img src="../ad-images/icon/delivery-truck.png" alt=""> Delivery
                 </p>
+                <p class="account__tab" data-target="#payment" onclick="showSection('payment')">
+                    <img src="../ad-images/icon//wallet.png" alt=""> Payment
+                </p>
+                <p class="account__tab" data-target="#customer" onclick="showSection('customer')">
+                    <img src="../ad-images/icon/user.png" alt="">Customer
+                </p>
+                
+                <p class="account__tab" data-target="#review" onclick="showSection('review')">
+                    <img src="../ad-images/icon/review.png" alt="">Review
+                </p>
+                
             </div>
         </div>
       </aside>
@@ -96,22 +101,7 @@
                     </ul>
                 </div>
             </div>
-            <div class="nav-item" onclick="toggleMessagesDropdown()">
-                <i class="fas fa-envelope"></i>
-                <!-- Messages Dropdown -->
-                <div class="dropdown-menu" id="messagesDropdown" style="display: none;">
-                    <div class="dropdown-header">
-                        <h4>Messages</h4>
-                        <button onclick="clearMessages()" class="btn-clear">Clear All</button>
-                    </div>
-                    <ul id="messagesList">
-                        <!-- Messages will be dynamically added here -->
-                    </ul>
-                </div>
-            </div>
-            <div class="nav-item" onclick="showSection('setting')">
-                <i class="fas fa-cog"></i>
-            </div>
+
             <div class="nav-item profile" onclick="toggleDropdown1()">
                 <img src="" alt="Profile Picture" class="profile-photo">
             </div>
@@ -724,7 +714,55 @@
                     <tbody id="review-table-body"></tbody>
                 </table>
             </div>
-            
+            <div class="tab__content" content id="payment">
+                    <h1>Payment Management</h1>
+                    <div class="filter-container">
+                        <label for="paymentStatusFilter">Filter by Status:</label>
+                        <select id="paymentStatusFilter" onchange="fetchPayments()">
+                            <option value="">All</option>
+                            <option value="PAID">Paid</option>
+                            <option value="UNPAID">Unpaid</option>
+                            <option value="PENDING">Pending</option>
+                        </select>
+                    </div>
+                    <table id="payment-table">
+                        <thead>
+                            <tr>
+                                <th>Payment ID</th>
+                                <th>Mode</th>
+                                <th>Transaction ID</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Order ID</th>
+                                <th>OTP</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payment-table-body"></tbody>
+                    </table>
+                
+                    <!-- Edit Payment Modal -->
+                    <div id="editPaymentModal" class="modal" style="display: none;">
+                        <div class="modal-content">
+                            <span class="close" onclick="closeEditPaymentModal()">×</span>
+                            <h2>Edit Payment Details</h2>
+                            <form id="editPaymentForm">
+                                <input type="hidden" id="edit-payment-id">
+                                <div class="form-group">
+                                    <label for="edit-transaction-id">Transaction ID:</label>
+                                    <input type="text" id="edit-transaction-id" maxlength="20" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-otp">OTP:</label>
+                                    <input type="text" id="edit-otp" maxlength="6" required>
+                                </div>
+                                <button type="submit" class="btn primary">Update</button>
+                                <button type="button" class="btn-cancel" onclick="closeEditPaymentModal()">Cancel</button>
+                            </form>
+                        </div>
+                    </div>
+            </div>
             <div class="tab__content" content id="delivery">
             <h1>Delivery Management</h1>
             <table id="delivery-table">
@@ -1061,7 +1099,7 @@
     <script src="../js/report.js"></script>
     <script src="../js/delivery.js"></script>
     <script src="../js/review.js"></script>
-    <!-- <script src="../js/category2.js"></script> -->
+    <script src="../js/payment.js"></script>
 <script>
 
 
