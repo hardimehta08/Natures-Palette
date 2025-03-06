@@ -39,7 +39,10 @@ app.use(
     secret: "your_secret_key",
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false, httpOnly: true }, // Ensure cookies can be cleared
+    cookie: { 
+      secure: false, // Set to true in production with HTTPS
+      httpOnly: true // Prevents client-side access to the cookie
+  }
   })
 );
 
