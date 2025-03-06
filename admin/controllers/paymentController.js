@@ -24,7 +24,6 @@ exports.getPayments = (req, res) => {
             console.error('Error fetching payments:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        console.log('Payments fetched:', results); // Log the response
         res.status(200).json(results); // Ensure this matches frontend expectation
     });
 };
@@ -57,3 +56,5 @@ exports.updatePayment = (req, res) => {
         res.status(200).json({ message: 'Payment updated successfully' });
     });
 };
+
+

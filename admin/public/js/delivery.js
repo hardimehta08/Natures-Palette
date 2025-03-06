@@ -1,3 +1,84 @@
+document.addEventListener('DOMContentLoaded', () => {
+  fetchDeliveryPersons();
+});
+
+async function fetchDeliveryPersons() {
+  try {
+    console.log('Fetching delivery persons...');
+    const response = await fetch('/admin/deliverypersons', { credentials: 'include' });
+    console.log('Response status:', response.status);
+    if (!response.ok) throw new Error(`Failed to fetch delivery persons: ${response.statusText}`);
+    const deliveryPersons = await response.json();
+    console.log('Fetched delivery persons:', deliveryPersons);
+
+    const list = document.getElementById('delivery-persons-list');
+    list.innerHTML = '';
+    if (!deliveryPersons || deliveryPersons.length === 0) {
+      list.innerHTML = '<tr><td colspan="5">No delivery persons found</td></tr>';
+    } else {
+      deliveryPersons.forEach((person) => {
+        const status = person.d_status || 'active';
+        list.innerHTML += `
+          <tr>
+            <td>${person.d_id}</td>
+            <td>${person.d_name}</td>
+            <td>${person.d_phone || 'N/A'}</td>
+            <td>${status}</td>
+            <td>
+              <button class="btn" onclick="toggleDeliveryPersonStatus('${person.d_id}', '${status}')">
+                ${status === 'active' ? 'Block' : 'Unblock'}
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching delivery persons:', error);
+    document.getElementById('delivery-persons-list').innerHTML = '<tr><td colspan="5">Error loading delivery persons</td></tr>';
+  }
+}
+
+async function toggleDeliveryPersonStatus(personId, currentStatus) {
+  if (!personId || !currentStatus) {
+    console.error('Invalid input:', { personId, currentStatus });
+    alert('Invalid delivery person data.');
+    return;
+  }
+
+  const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  if (!confirm(`Are you sure you want to ${newStatus === 'active' ? 'activate' : 'deactivate'} this delivery person?`)) return;
+
+  try {
+    const apiUrl = `/admin/update/${personId}`; // Replace with your API URL
+    console.log('Requesting:', { url: apiUrl, personId, newStatus });
+    const response = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get('Content-Type');
+      const errorText = await response.text();
+      throw new Error(`Failed to update status: ${response.status} - ${contentType.includes('json') ? errorText : 'Endpoint not found (HTML response)'}`);
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      alert(`Delivery person ${personId} is now ${newStatus}.`);
+      fetchDeliveryPersons();
+      fetchOrders1();
+    } else {
+      alert('Error: ' + result.error);
+    }
+  } catch (error) {
+    console.error('Error toggling delivery person status:', error);
+    alert(`Failed to toggle delivery person status: ${error.message}`);
+  }
+}
+
 // Fetch orders for Delivery tab (all orders with filter, Delivered sorted to bottom)
 async function fetchOrders1(statusFilter = "") {
   try {
@@ -12,8 +93,6 @@ async function fetchOrders1(statusFilter = "") {
     if (!Array.isArray(data)) {
       throw new Error("Invalid response format: Expected an array");
     }
-
-    console.log("Fetched Delivery Orders:", data);
 
     // Filter orders based on statusFilter (if provided)
     let filteredData = data;
@@ -41,7 +120,6 @@ async function fetchOrders1(statusFilter = "") {
     } else {
       filteredData.forEach((order) => {
         const assigned = order.d_name ? order.d_name : "Not Assigned";
-        console.log(`Order ${order.O_id}: Status = ${order.status}, Assigned = ${assigned}, Delivery Person = ${order.d_name}`);
         
         // Determine action column content based on status
         let actionContent = "";
@@ -49,8 +127,8 @@ async function fetchOrders1(statusFilter = "") {
           actionContent = "No actions available"; // No buttons for Delivered orders
         } else {
           actionContent = assigned === "Not Assigned"
-            ? `<button onclick="openAssignDeliveryModal('${order.O_id}')">Assign</button>`
-            : `<button onclick="unassignDelivery('${order.O_id}')">Unassign</button>`;
+            ? `<button class="btn primary" onclick="openAssignDeliveryModal('${order.O_id}')">Assign</button>`
+            : `<button  class="btn primary" onclick="unassignDelivery('${order.O_id}')">Unassign</button>`;
         }
 
         tableBody.innerHTML += `

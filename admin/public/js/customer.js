@@ -26,14 +26,12 @@ const fetchCustomers = async () => {
                     <td>${customer.c_id}</td>
                     <td>${customer.c_username}</td>
                     <td>${customer.c_email}</td>
-                    <td>${customer.c_mobile}</td>
                     <td>${customer.c_address}</td>
                     <td>${customer.c_pincode}</td>
                     <td>${customer.Area_id}</td>
                     <td id="status-${customer.c_id}">${customer.c_status}</td>
                     <td>
                         <button class="btn" onclick="toggleEditStatus('${customer.c_id}', '${customer.c_status}')">Edit</button>
-                        <button class="btn" onclick="deleteCustomer('${customer.c_id}')">Delete</button>
                     </td>
                 </tr>
             `;

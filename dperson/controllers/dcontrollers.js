@@ -39,7 +39,8 @@ exports.getDeliveries = (req, res) => {
             FROM deliveries 
             JOIN order_master ON deliveries.O_id = order_master.O_id
             JOIN customer ON order_master.C_id = customer.C_id
-            LEFT JOIN payment p ON order_master.O_ID = p.O_ID`
+            LEFT JOIN payment p ON order_master.O_ID = p.O_ID
+            WHERE deliveries.d_id = ?`
     db.query(query, [d_id], (err, results) => {
         if (err) {
             console.error("Error fetching deliveries:", err);

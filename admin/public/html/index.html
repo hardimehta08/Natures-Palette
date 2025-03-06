@@ -87,39 +87,106 @@
             <div class="theme-toggler">
                 <span class="material-icons-sharp active">light_mode</span>
                 <span class="material-icons-sharp">dark_mode</span>
-            </div>
-            <div class="nav-item" onclick="toggleNotificationDropdown()">
-                <i class="fas fa-bell"></i>
+                    </div>
                 <!-- Notification Dropdown -->
-                <div class="dropdown-menu" id="notificationDropdown" style="display: none;">
+                <div class="nav-item" onclick="toggleNotificationDropdown()">
+                    <i class="fas fa-bell"></i>
+                    <span id="notificationCount" class="notification-badge" style="display: none;">0</span>
+                    <div class="dropdown-menu" id="notificationDropdown" style="display: none;">
                     <div class="dropdown-header">
                         <h4>Notifications</h4>
                         <button onclick="clearNotifications()" class="btn-clear">Clear All</button>
                     </div>
                     <ul id="notificationList">
-                        <!-- Notifications will be dynamically added here -->
+                        <!-- Notifications dynamically added here -->
                     </ul>
-                </div>
-            </div>
-
-            <div class="nav-item profile" onclick="toggleDropdown1()">
-                <img src="" alt="Profile Picture" class="profile-photo">
-            </div>
-            <div class="dropdown-menu" id="dropdownMenu">
-                <div class="user-info">
-                    <img src="" alt="Profile Picture" class="profile-photo">
-                    <div>
-                        <span class="user-name">John Doe</span>
-                        <span class="user-role">Admin</span>
                     </div>
                 </div>
-                <ul>
-                    <li><i class="fas fa-user"></i> My Profile</li>
+                        
+                <!-- Profile Dropdown -->
+                <div class="nav-item profile" onclick="toggleDropdown1()">
+                    <img src="" alt="Profile Picture" class="profile-photo" id="navProfilePhoto">
+                </div>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <div class="user-info">
+                    <img src="" alt="Profile Picture" class="profile-photo" id="dropdownProfilePhoto">
+                    <div>
+                        <span class="user-name" id="userName">John Doe</span>
+                        <span class="user-role" id="userRole">Admin</span>
+                    </div>
+                    </div>
+                    <ul>
+                    <li onclick="showSection('profile')"><i class="fas fa-user"></i> My Profile</li>
                     <li onclick="showSection('setting')"><i class="fas fa-cog"></i> Settings</li>
                     <li id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Log Out</li>
-                </ul>
-            </div>
-        </nav>
+                    </ul>
+                </div>
+                
+                 <!-- Profile Section -->
+                <div class="tab__content" id="profile" style="display: none;">
+                    <h2>My Profile</h2>
+                    <div class="profile-container">
+                    <div class="profile-details">
+                        <img src="" alt="Profile Picture" id="profilePhoto" class="profile-photo-large">
+                        <div class="profile-info">
+                        <label>Name: <span id="profileName">John Doe</span></label>
+                        <label>Email: <span id="profileEmail">john.doe@example.com</span></label>
+                        <label>Role: <span id="profileRole">Admin</span></label>
+                        </div>
+                    </div>
+                    <button onclick="openEditProfileModal()" class="btn">Edit Profile</button>
+                    <button onclick="openChangePasswordModal()" class="btn">Change Password</button>
+                    </div>
+                
+                    <!-- Edit Profile Modal -->
+                    <div id="editProfileModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <span class="close" onclick="closeEditProfileModal()">×</span>
+                        <h2>Edit Profile</h2>
+                        <form id="editProfileForm">
+                        <div class="form-group">
+                            <label for="editName">Name:</label>
+                            <input type="text" id="editName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editEmail">Email:</label>
+                            <input type="email" id="editEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editProfilePic">Profile Picture:</label>
+                            <input type="file" id="editProfilePic" accept="image/*">
+                        </div>
+                        <button type="submit" class="btn primary">Save Changes</button>
+                        <button type="button" class="btn-cancel" onclick="closeEditProfileModal()">Cancel</button>
+                        </form>
+                    </div>
+                    </div>
+                
+                    <!-- Change Password Modal -->
+                    <div id="changePasswordModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <span class="close" onclick="closeChangePasswordModal()">×</span>
+                        <h2>Change Password</h2>
+                        <form id="changePasswordForm">
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password:</label>
+                            <input type="password" id="currentPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">New Password:</label>
+                            <input type="password" id="newPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm New Password:</label>
+                            <input type="password" id="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn primary">Update Password</button>
+                        <button type="button" class="btn-cancel" onclick="closeChangePasswordModal()">Cancel</button>
+                        </form>
+                    </div>
+                    </div>
+                </div>
+         </nav>
         </div>
         <div class="cards">
             <div class="tab__content active-tab" content id="dashboard">
@@ -205,7 +272,6 @@
                         <th>Cust_Id</th>
                         <th>Cust_Name</th>
                         <th>Cust_Email</th>
-                        <th>Cust_Mobileno</th>
                         <th>Cust_Address</th>
                         <th>Cust_Pincode</th>
                         <th>Cust_Areaid</th>
@@ -768,6 +834,22 @@
             </div>
             <div class="tab__content" content id="delivery">
                 <h1>Delivery Management</h1>
+                <!-- Delivery Persons List -->
+                <div class="delivery-persons-section" style="margin-bottom: 20px;">
+                    <h3>Delivery Persons</h3>
+                    <table id="delivery-persons-table">
+                    <thead>
+                        <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="delivery-persons-list"></tbody>
+                    </table>
+                </div>
                 <!-- Status Filter Dropdown -->
                 <div class="filter-container" style="margin-bottom: 20px;">
                   <label for="delivery-status-filter">Filter by Status:</label>
@@ -811,7 +893,7 @@
                     </form>
                   </div>
                 </div>
-              </div>
+            </div>
             <div class="tab__content" content id="report">
                 <h3 class="tab__header">Reports</h3>
                 <div class="tab__body">
@@ -1096,7 +1178,7 @@
                     </div>
                 </div>
             </div>
-          </div>
+        </div>
         </div>
       </div>
     </section>

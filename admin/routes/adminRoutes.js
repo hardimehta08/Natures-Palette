@@ -12,4 +12,9 @@ router.get("/delivery-persons", adminController.getDeliveryPersons);
 router.post("/assign-delivery", adminController.assignDelivery);
 
 router.post('/unassign-delivery', adminController.unassignDelivery);
+
+router.get("/deliverypersons", adminController.getDeliveryPerson);
+
+router.put('/update/:personId', adminController.updateDeliveryPersonStatus);
+
 module.exports = router;

@@ -8,7 +8,46 @@ const db = mysql.createConnection({
   database: "main_project",
 });
 
+
 //Delivery
+exports.getDeliveryPerson = (req, res) => {
+  db.query("SELECT d_id, d_name,d_phone,d_status,d_email FROM delivery_persons", (err, results) => {
+    if (err) {
+      console.error("Error fetching delivery persons:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    res.json(results);
+  });
+};
+
+exports.updateDeliveryPersonStatus = (req, res) => {
+  const { personId } = req.params;
+  const { status } = req.body;
+
+  try {
+    if (!['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Use "active" or "inactive"' });
+    }
+
+    db.query('UPDATE delivery_persons SET d_status = ? WHERE d_id = ?', [status, personId], (error, result) => {
+      if (error) {
+        console.error('Error updating delivery person status:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Delivery person not found' });
+      }
+
+      res.json({ success: true, message: `Delivery person ${personId} updated to ${status}` });
+    });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+
 // ✅ Fetch Orders (With or Without Assigned Delivery Person)
 exports.getOrders = (req, res) => {
   const query = `
@@ -30,7 +69,6 @@ exports.getOrders = (req, res) => {
       console.error("Error fetching orders:", err);
       return res.status(500).json({ error: "Database error" });
     }
-    console.log("Orders fetched:", results);
     res.json(results);
   });
 };
