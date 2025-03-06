@@ -39,6 +39,7 @@ function fetchProductsByCategory(page = 1) {
     categorySelect.options[categorySelect.selectedIndex]?.getAttribute(
       "data-name"
     ) || "";
+    const searchQuery = document.getElementById("product-search").value.trim();
 
   currentcategory_id = category_id;
   currentPage = page;
@@ -46,7 +47,7 @@ function fetchProductsByCategory(page = 1) {
   if (!category_id || !categoryName) {
     const productTable = document.getElementById("product-details");
     productTable.innerHTML = `
-            <tr><td colspan="7" class="text-center">Please select a category to view products</td></tr>
+            <tr><td colspan="8" class="text-center">Please select a category to view products</td></tr>
         `;
     document.getElementById("pagination-controls").innerHTML = "";
     return;
@@ -54,9 +55,12 @@ function fetchProductsByCategory(page = 1) {
 
   currentTableName = categoryName.toLowerCase().replace(/\s+/g, "_");
 
-  fetch(`/product/table/${currentTableName}/products?page=${page}`, {
-    credentials: "include",
-  })
+  let url = `/product/table/${currentTableName}/products?page=${page}`;
+  if (searchQuery) {
+    url += `&productId=${encodeURIComponent(searchQuery)}`;
+  }
+
+  fetch(url, {credentials: "include"})
     .then((response) => {
       if (!response.ok)
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -121,39 +125,38 @@ function updatePagination(totalPages, currentPage) {
   const paginationControls = document.getElementById("pagination-controls");
   paginationControls.innerHTML = "";
 
-  // Previous Button
-  if (currentPage > 1) {
-    paginationControls.innerHTML += `
-            <li class="page-item">
-                <a class="page-link" href="#" onclick="fetchProductsByCategory(${
-                  currentPage - 1
-                }); return false;"><</a>
-            </li>`;
-  }
+  // Previous Button (<)
+  paginationControls.innerHTML += `
+    <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" onclick="fetchProductsByCategory(${currentPage - 1}); return false;">&lt;</a>
+    </li>
+  `;
 
-  // Page Numbers (Display max 3 at a time)
-  const maxPages = 3;
-  const startPage = Math.max(1, currentPage - 1);
-  const endPage = Math.min(startPage + maxPages - 1, totalPages);
+  // Page Numbers (show up to 5 pages, centered around current page if possible)
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  // Adjust startPage if endPage reaches totalPages
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
 
   for (let i = startPage; i <= endPage; i++) {
     paginationControls.innerHTML += `
-            <li class="page-item ${i === currentPage ? "active" : ""}">
-                <a class="page-link" href="#" onclick="fetchProductsByCategory(${i}); return false;">${i}</a>
-            </li>`;
+      <li class="page-item ${i === currentPage ? "active" : ""}">
+        <a class="page-link" href="#" onclick="fetchProductsByCategory(${i}); return false;">${i}</a>
+      </li>
+    `;
   }
 
-  // Next Button
-  if (currentPage < totalPages) {
-    paginationControls.innerHTML += `
-            <li class="page-item">
-                <a class="page-link" href="#" onclick="fetchProductsByCategory(${
-                  currentPage + 1
-                }); return false;">></a>
-            </li>`;
-  }
+  // Next Button (>)
+  paginationControls.innerHTML += `
+    <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" onclick="fetchProductsByCategory(${currentPage + 1}); return false;">&gt;</a>
+    </li>
+  `;
 }
-
 // Open edit modal
 function openEditModal(productId, name, description, price, stock = "N/A") {
   const modal = document.getElementById("editProductModal");
