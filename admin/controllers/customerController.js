@@ -4,12 +4,22 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 
 const getAllCustomers = (req, res) => {
-  conn.query("SELECT * FROM customer", (err, results) => {
+  const searchName = req.query.searchName || ""; // Get searchName from query parameter
+  let query = "SELECT * FROM customer";
+  let queryParams = [];
+
+  // Add WHERE clause if searchName is provided
+  if (searchName) {
+    query += " WHERE c_username LIKE ?";
+    queryParams.push(`${searchName}%`); // Match names starting with searchName
+  }
+
+  conn.query(query, queryParams, (err, results) => {
     if (err) {
       console.error("Error fetching customers:", err);
       return res.status(500).send(err);

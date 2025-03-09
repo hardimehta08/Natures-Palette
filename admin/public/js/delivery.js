@@ -22,6 +22,7 @@ async function fetchDeliveryPersons() {
           <tr>
             <td>${person.d_id}</td>
             <td>${person.d_name}</td>
+             <td>${person.d_email}</td>
             <td>${person.d_phone || 'N/A'}</td>
             <td>${status}</td>
             <td>
@@ -100,11 +101,13 @@ async function fetchOrders1(statusFilter = "") {
       filteredData = data.filter((order) => order.status === statusFilter);
     }
 
-    // Sort orders: non-Delivered first, Delivered last
     filteredData.sort((a, b) => {
-      if (a.status === "Delivered" && b.status !== "Delivered") return 1;
-      if (a.status !== "Delivered" && b.status === "Delivered") return -1;
-      return 0; // Maintain original order within same status
+      const aIsDeliveredAndPaid = a.status === "DELIVERED" && a.payment_status === "PAID";
+      const bIsDeliveredAndPaid = b.status === "DELIVERED" && b.payment_status === "PAID";
+
+      if (aIsDeliveredAndPaid && !bIsDeliveredAndPaid) return 1; // a goes to bottom
+      if (!aIsDeliveredAndPaid && bIsDeliveredAndPaid) return -1; // b goes to bottom
+      return 0; // Maintain original order if neither or both are Delivered & Paid
     });
 
     const tableBody = document.getElementById("delivery-table-body");
@@ -114,7 +117,7 @@ async function fetchOrders1(statusFilter = "") {
     if (filteredData.length === 0) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="5">No orders for this status</td>
+          <td colspan="6">No orders for this status</td>
         </tr>
       `;
     } else {
@@ -123,12 +126,12 @@ async function fetchOrders1(statusFilter = "") {
         
         // Determine action column content based on status
         let actionContent = "";
-        if (order.status === "Delivered") {
+        if (order.status === "DELIVERED" && order.payment_status === "PAID") {
           actionContent = "No actions available"; // No buttons for Delivered orders
         } else {
           actionContent = assigned === "Not Assigned"
             ? `<button class="btn primary" onclick="openAssignDeliveryModal('${order.O_id}')">Assign</button>`
-            : `<button  class="btn primary" onclick="unassignDelivery('${order.O_id}')">Unassign</button>`;
+            : `<button class="btn primary" onclick="unassignDelivery('${order.O_id}')">Unassign</button>`;
         }
 
         tableBody.innerHTML += `
@@ -136,6 +139,7 @@ async function fetchOrders1(statusFilter = "") {
             <td>${order.O_id}</td>
             <td>${order.customer_name || "Unknown"}</td>
             <td>${order.status}</td>
+            <td>${order.payment_status}</td>
             <td>${assigned}</td>
             <td>${actionContent}</td>
           </tr>

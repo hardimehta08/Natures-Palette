@@ -4,7 +4,7 @@ const mysql = require("mysql2");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 
@@ -106,7 +106,6 @@ exports.assignDelivery = (req, res) => {
         console.error("Error deleting existing delivery records:", err);
         return res.status(500).json({ error: "Database error" });
       }
-
       db.query(
         "INSERT INTO deliveries (O_id, d_id, status) VALUES (?, ?, 'Pending')",
         [orderId, deliveryPersonId],
@@ -116,21 +115,11 @@ exports.assignDelivery = (req, res) => {
             return res.status(500).json({ error: "Database error" });
           }
 
-          // Optionally update order_master status or a delivery_status field
-          db.query(
-            "UPDATE order_master SET O_status = 'Shipped' WHERE O_id = ? AND O_status IN ('Processing', 'Pending')",
-            [orderId],
-            (err, result) => {
-              if (err) {
-                console.error("Error updating order status:", err);
-                return res.status(500).json({ error: "Database error" });
-              }
-              res.json({
-                success: true,
-                message: "Delivery person assigned successfully",
-              });
-            }
-          );
+          // No update to order_master status
+          res.json({
+            success: true,
+            message: "Delivery person assigned successfully",
+          });
         }
       );
     }
@@ -140,6 +129,7 @@ exports.assignDelivery = (req, res) => {
 exports.unassignDelivery = (req, res) => {
   const { orderId } = req.body;
 
+  // Delete the delivery record
   db.query(
     "DELETE FROM deliveries WHERE O_id = ?",
     [orderId],
@@ -149,21 +139,11 @@ exports.unassignDelivery = (req, res) => {
         return res.status(500).json({ error: "Database error" });
       }
 
-      // Optionally update order_master status
-      db.query(
-        "UPDATE order_master SET O_status = 'Processing' WHERE O_id = ? AND O_status = 'Shipped'",
-        [orderId],
-        (err, result) => {
-          if (err) {
-            console.error("Error updating order status:", err);
-            return res.status(500).json({ error: "Database error" });
-          }
-          res.json({
-            success: true,
-            message: "Delivery person unassigned successfully",
-          });
-        }
-      );
+      // No update to order_master status
+      res.json({
+        success: true,
+        message: "Delivery person unassigned successfully",
+      });
     }
   );
 };

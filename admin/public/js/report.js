@@ -301,49 +301,88 @@ function fetchDashboardData() {
 
       // Recent Activity Log with Clickable Links
       const activityLog = document.getElementById("recentActivityLog");
-      console.log("Recent Activity Data:", data.recentActivity);
-      activityLog.innerHTML = "";
-      data.recentActivity.forEach((activity) => {
-        const li = document.createElement("li");
-        const link = document.createElement("a");
-        link.href = "#";
-        link.textContent = `${activity.activityType} at ${new Date(
-          activity.activityDate
-        ).toLocaleString()}`;
-        link.style.cursor = "pointer";
-        link.style.color = "#7380ec";
-        link.style.textDecoration = "none";
+console.log("Raw Recent Activity Data:", data.recentActivity);
+activityLog.innerHTML = ""; // Clear existing entries
 
-        // Add click handler based on activity type
-        if (activity.activityType === "New Order") {
-          link.onclick = () => {
-            // Navigate to Orders tab and show order details
-            showSection("orders");
-            setTimeout(() => {
-              showOrderDetails(activity.identifier); // Assumes showOrderDetails is defined in orderdet.js
-            }, 100); // Delay to ensure Orders tab is rendered
-          };
-        } else if (activity.activityType === "New Customer") {
-          link.onclick = () => {
-            // Navigate to Customer tab and highlight customer
-            showSection("customer");
-            setTimeout(() => {
-              highlightCustomer(activity.identifier); // Assumes highlightCustomer is defined in customer.js
-            }, 100);
-          };
-        } else if (activity.activityType === "Low Stock Alert") {
-          link.onclick = () => {
-            // Navigate to Inventory tab and highlight product
-            showSection("inventory");
-            setTimeout(() => {
-              highlightLowStockProduct(activity.identifier); // Define this function in inventory.js
-            }, 100);
-          };
-        }
+const allActivities = [
+  ...(data.recentActivity || []),
+  ...(window.recentActivity || [])
+].filter(activity => activity && activity.activityType);
 
-        li.appendChild(link);
-        activityLog.appendChild(li);
-      });
+const seenIdentifiers = new Set();
+const uniqueActivities = allActivities.filter(activity => {
+  const key = `${activity.activityType}-${activity.identifier}`;
+  if (seenIdentifiers.has(key)) {
+    console.warn(`Duplicate activity detected: ${key}`);
+    return false;
+  }
+  seenIdentifiers.add(key);
+  return true;
+}).sort((a, b) => new Date(b.activityDate) - new Date(a.activityDate)).slice(0, 5);
+
+console.log("Deduplicated Activities after merge:", uniqueActivities);
+activityLog.innerHTML = "";
+
+uniqueActivities.forEach((activity) => {
+  const li = document.createElement("li");
+  const link = document.createElement("a");
+  link.href = "#";
+  link.textContent = `${activity.activityType} at ${new Date(activity.activityDate).toLocaleString()}`;
+  link.style.cursor = "pointer";
+  link.style.color = "#7380ec";
+  link.style.textDecoration = "none";
+
+  // Add click handlers based on activity type
+  switch (activity.activityType) {
+    case "New Order":
+      link.onclick = () => {
+        console.log(`Navigating to Orders and highlighting orderId: ${activity.identifier}`);
+        showSection("orders");
+        setTimeout(() => {
+          if (typeof window.showOrderDetails === "function") {
+            window.showOrderDetails(activity.identifier);
+          } else {
+            console.error("showOrderDetails is not defined");
+          }
+        }, 100); // Delay to ensure Orders section is rendered
+      };
+      break;
+
+    case "New Customer":
+      link.onclick = () => {
+        console.log(`Navigating to Customers with customerId: ${activity.identifier}`);
+        showSection("customer");
+        setTimeout(() => {
+          if (typeof window.highlightCustomer === "function") {
+            window.highlightCustomer(activity.identifier);
+          } else {
+            console.error("highlightCustomer is not defined");
+          }
+        }, 100);
+      };
+      break;
+
+      case "Low Stock Alert":
+        link.onclick = () => {
+          console.log(`Navigating to Inventory with productId: ${activity.identifier}`);
+          showSection("inventory");
+          setTimeout(() => {
+            if (typeof window.highlightLowStockProduct === "function") {
+              window.highlightLowStockProduct(activity.identifier);
+            } else {
+              console.error("highlightLowStockProduct is not defined");
+            }
+          }, 100);
+        };
+        break;
+
+    default:
+      console.warn(`Unhandled activity type: ${activity.activityType}`);
+  }
+
+  li.appendChild(link);
+  activityLog.appendChild(li);
+});
     })
     .catch((error) => {
       console.error("Error fetching dashboard data:", error);
@@ -837,7 +876,8 @@ function exportCustomerReport(format) {
     });
 }
 
-// Fetch Inventory Report
+window.recentActivity = window.recentActivity || [];
+
 function fetchInventoryReport() {
   const category = document.getElementById("inventoryCategoryFilter").value;
   const queryParams = new URLSearchParams();
@@ -846,13 +886,15 @@ function fetchInventoryReport() {
   fetch(`/report/inventory-report?${queryParams.toString()}`)
     .then((response) => response.json())
     .then((data) => {
+      console.log("Fetched data.stockLevels:", data.stockLevels);
+
       // Low Stock Products
       const lowStockTbody = document.getElementById("lowStockProducts");
       lowStockTbody.innerHTML = "";
       data.stockLevels.forEach((product) => {
         const row = `
                     <tr class="${
-                      product.stock <= 2 ? "critical-stock" : "low-stock"
+                      Number(product.stock) <= 2 ? "critical-stock" : "low-stock"
                     }">
                         <td>${product.productId}</td>
                         <td>${product.productName}</td>
@@ -867,7 +909,7 @@ function fetchInventoryReport() {
       const outOfStockTbody = document.getElementById("outOfStockProducts");
       outOfStockTbody.innerHTML = "";
       data.stockLevels
-        .filter((product) => product.stock === 0)
+        .filter((product) => Number(product.stock) === 0)
         .forEach((product) => {
           const row = `
                     <tr class="out-of-stock">
@@ -880,8 +922,9 @@ function fetchInventoryReport() {
           outOfStockTbody.innerHTML += row;
         });
 
-      // Critical Stock Alert
-      criticalStockData = data.stockLevels.filter((item) => item.stock <= 2);
+      // Critical Stock Alert and Recent Activity
+      const criticalStockData = data.stockLevels.filter((item) => Number(item.stock) <= 2);
+      console.log("criticalStockData:", criticalStockData);
       const alertBanner = document.getElementById("criticalStockAlert");
       const alertMessage = document.getElementById("criticalStockMessage");
       if (criticalStockData.length > 0) {
@@ -890,8 +933,37 @@ function fetchInventoryReport() {
           .join(", ");
         alertMessage.textContent = `Critically low stock: ${criticalProducts}`;
         alertBanner.classList.remove("hidden");
+
+        // Add to recent activity
+        const currentTime = new Date().toISOString();
+        const lowStockActivities = criticalStockData.map(item => ({
+          activityType: "Low Stock Alert",
+          activityDate: currentTime,
+          identifier: item.productId
+        }));
+
+        console.log("lowStockActivities to add:", lowStockActivities);
+        window.recentActivity = window.recentActivity || [];
+        let addedActivities = false;
+        lowStockActivities.forEach(activity => {
+          const key = `${activity.activityType}-${activity.identifier}`;
+          if (!window.recentActivity.some(a => `${a.activityType}-${a.identifier}` === key)) {
+            window.recentActivity.push(activity);
+            addedActivities = true;
+          }
+        });
+        window.recentActivity.sort((a, b) => new Date(b.activityDate) - new Date(a.activityDate));
+        if (window.recentActivity.length > 5) {
+          window.recentActivity = window.recentActivity.slice(0, 5);
+        }
+
+        console.log("After adding - window.recentActivity:", window.recentActivity);
+        if (addedActivities && typeof fetchDashboardData === "function") {
+          fetchDashboardData();
+        }
       } else {
         alertBanner.classList.add("hidden");
+        console.log("No critical stock data found, skipping recent activity update");
       }
 
       // Inventory Turnover
@@ -1204,3 +1276,55 @@ document
       alert("Failed to generate report.");
     }
   });
+
+
+  window.highlightLowStockProduct = function (productId) {
+    console.log(`Highlighting low stock product with productId: ${productId}`);
+  
+    const tableBodies = [
+      document.getElementById("lowStockProducts"),
+      document.getElementById("outOfStockProducts")
+    ].find(tb => tb);
+  
+    if (!tableBodies) {
+      console.error("No low stock or out of stock table body found");
+      return;
+    }
+  
+    const rows = tableBodies.getElementsByTagName("tr");
+    if (rows.length === 0) {
+      console.warn("No rows found, fetching inventory report...");
+      fetchInventoryReport();
+      setTimeout(() => highlightLowStockProduct(productId), 200);
+      return;
+    }
+  
+    let found = false;
+    for (let row of rows) {
+      const idCell = row.cells[0]; // productId is the first column
+      if (idCell && idCell.textContent.trim() === productId) {
+        Array.from(rows).forEach(r => r.classList.remove("highlight"));
+        row.classList.add("highlight");
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+        found = true;
+        break;
+      }
+    }
+  
+    if (!found) {
+      console.warn(`Product ID ${productId} not found, fetching fresh data...`);
+      fetchInventoryReport();
+      setTimeout(() => {
+        const retryRows = tableBodies.getElementsByTagName("tr");
+        for (let row of retryRows) {
+          const idCell = row.cells[0];
+          if (idCell && idCell.textContent.trim() === productId) {
+            Array.from(retryRows).forEach(r => r.classList.remove("highlight"));
+            row.classList.add("highlight");
+            row.scrollIntoView({ behavior: "smooth", block: "center" });
+            break;
+          }
+        }
+      }, 200);
+    }
+  };

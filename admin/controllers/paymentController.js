@@ -4,7 +4,7 @@ const mysql = require("mysql2");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 
@@ -29,32 +29,59 @@ exports.getPayments = (req, res) => {
 };
 
 // Update payment details (transaction ID and OTP)
+// Update payment details (transaction ID and OTP)
 exports.updatePayment = (req, res) => {
   const { PY_ID } = req.params;
   const { PY_TRANSACTION_ID, PY_OTP } = req.body;
 
-  if (!PY_TRANSACTION_ID || !PY_OTP) {
-    return res
-      .status(400)
-      .json({ error: "Transaction ID and OTP are required" });
-  }
+  // First, fetch the payment mode to determine if it's COD
+  db.query(
+    "SELECT PY_MODE FROM payment WHERE PY_ID = ?",
+    [PY_ID],
+    (err, result) => {
+      if (err) {
+        console.error("Error fetching payment mode:", err);
+        return res.status(500).json({ error: "Database error" });
+      }
 
-  const query = `
+      if (result.length === 0) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      const paymentMode = result[0].PY_MODE;
+
+      // Validate inputs based on payment mode
+      if (paymentMode !== "COD" && !PY_TRANSACTION_ID) {
+        return res.status(400).json({ error: "Transaction ID is required for non-COD payments" });
+      }
+
+      if (!PY_OTP) {
+        return res.status(400).json({ error: "OTP is required" });
+      }
+
+      // Update query: Set PY_TRANSACTION_ID to NULL if it's COD and not provided
+      const query = `
         UPDATE payment
         SET PY_TRANSACTION_ID = ?, PY_OTP = ?
         WHERE PY_ID = ?
-    `;
-  const queryParams = [PY_TRANSACTION_ID, PY_OTP, PY_ID];
+      `;
+      const queryParams = [
+        paymentMode === "COD" && !PY_TRANSACTION_ID ? null : PY_TRANSACTION_ID,
+        PY_OTP,
+        PY_ID
+      ];
 
-  db.query(query, queryParams, (err, result) => {
-    if (err) {
-      console.error("Error updating payment:", err);
-      return res.status(500).json({ error: "Database error" });
+      db.query(query, queryParams, (err, result) => {
+        if (err) {
+          console.error("Error updating payment:", err);
+          return res.status(500).json({ error: "Database error" });
+        }
+        if (result.affectedRows === 0) {
+          return res.status(404).json({ error: "Payment not found" });
+        }
+        console.log(`Payment ${PY_ID} updated`);
+        res.status(200).json({ message: "Payment updated successfully" });
+      });
     }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Payment not found" });
-    }
-    console.log(`Payment ${PY_ID} updated`);
-    res.status(200).json({ message: "Payment updated successfully" });
-  });
+  );
 };

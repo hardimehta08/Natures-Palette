@@ -1,20 +1,51 @@
+// Function to handle date range change and show/hide custom date inputs
+function handleDateRangeChange() {
+    const dateRange = document.getElementById('reviewDateRange').value;
+    const customDateRange = document.getElementById('reviewCustomDateRange');
+    const startDateInput = document.getElementById('reviewStartDate');
+    const endDateInput = document.getElementById('reviewEndDate');
+
+    // Set yesterday's date as the max for end date
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const maxDate = yesterday.toISOString().split('T')[0];
+    endDateInput.setAttribute('max', maxDate);
+
+    if (dateRange === 'custom') {
+        customDateRange.style.display = 'block';
+        // Set default values for custom range
+        startDateInput.value = '2020-01-01'; // Default start date
+        endDateInput.value = maxDate; // Default end date (yesterday)
+    } else {
+        customDateRange.style.display = 'none';
+        // Fetch feedback immediately for non-custom ranges
+        fetchFeedback();
+    }
+}
+
 // Function to fetch feedback report
-function fetchFeedbackReport() {
+function fetchFeedback() {
     const dateRange = document.getElementById('reviewDateRange').value;
     const rating = document.getElementById('reviewRatingFilter').value;
+    const customerName = document.getElementById('reviewCustomerSearch').value;
     let startDate, endDate;
 
-    console.log(`Fetching feedback with Date Range: ${dateRange}, Rating: ${rating}`);
+    console.log(`Fetching feedback with Date Range: ${dateRange}, Rating: ${rating}, Customer: ${customerName}`);
 
     const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const maxDate = yesterday.toISOString().split('T')[0];
+
     if (dateRange === 'today') {
-        startDate = endDate = today.toISOString().split('T')[0];
+        startDate = endDate = maxDate; // Use yesterday as "today"
     } else if (dateRange === 'last7days') {
-        endDate = today.toISOString().split('T')[0];
-        startDate = new Date(today.setDate(today.getDate() - 7)).toISOString().split('T')[0];
+        endDate = maxDate;
+        startDate = new Date(yesterday.setDate(yesterday.getDate() - 7)).toISOString().split('T')[0];
     } else if (dateRange === 'last30days') {
-        endDate = today.toISOString().split('T')[0];
-        startDate = new Date(today.setDate(today.getDate() - 30)).toISOString().split('T')[0];
+        endDate = maxDate;
+        startDate = new Date(yesterday.setDate(yesterday.getDate() - 30)).toISOString().split('T')[0];
     } else if (dateRange === 'custom') {
         startDate = document.getElementById('reviewStartDate').value;
         endDate = document.getElementById('reviewEndDate').value;
@@ -23,9 +54,8 @@ function fetchFeedbackReport() {
             return;
         }
     } else if (dateRange === 'all') {
-        // Set a default date range to include older feedback (e.g., start from 2020)
         startDate = '2020-01-01';
-        endDate = today.toISOString().split('T')[0];
+        endDate = maxDate;
     }
 
     // Build query parameters
@@ -33,11 +63,12 @@ function fetchFeedbackReport() {
     if (startDate) queryParams.append('startDate', startDate);
     if (endDate) queryParams.append('endDate', endDate);
     if (rating) queryParams.append('rating', rating);
+    if (customerName) queryParams.append('customerName', customerName);
 
-    console.log(`Query URL: /report/feedback-report?${queryParams.toString()}`);
+    console.log(`Query URL: /feedback/feedback-report?${queryParams.toString()}`);
 
     // Fetch feedback data
-    fetch(`/report/feedback-report?${queryParams.toString()}`)
+    fetch(`/feedback/feedback-report?${queryParams.toString()}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -51,12 +82,11 @@ function fetchFeedbackReport() {
             tableBody.innerHTML = '';
 
             if (data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7">No feedback found for the selected filters.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6">No feedback found for the selected filters.</td></tr>';
                 return;
             }
 
             data.forEach(feedback => {
-                // Format the feedback date to show only YYYY-MM-DD
                 const formattedDate = feedback.feedback_date.split('T')[0];
 
                 const row = `
@@ -77,3 +107,16 @@ function fetchFeedbackReport() {
             alert('Failed to fetch feedback report. Please try again later.');
         });
 }
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    handleDateRangeChange(); // Set up date range on load
+    fetchFeedback();
+
+    // Set yesterday's date as the max for end date on page load
+    const endDateInput = document.getElementById('reviewEndDate');
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    endDateInput.setAttribute('max', yesterday.toISOString().split('T')[0]);
+});

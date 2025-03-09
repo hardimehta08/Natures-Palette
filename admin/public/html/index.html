@@ -84,24 +84,6 @@
             <!-- <i class="fas fa-bars"></i> -->
           </button>       
           <nav class="right-navbar">
-            <div class="theme-toggler">
-                <span class="material-icons-sharp active">light_mode</span>
-                <span class="material-icons-sharp">dark_mode</span>
-                    </div>
-                <!-- Notification Dropdown -->
-                <div class="nav-item" onclick="toggleNotificationDropdown()">
-                    <i class="fas fa-bell"></i>
-                    <span id="notificationCount" class="notification-badge" style="display: none;">0</span>
-                    <div class="dropdown-menu" id="notificationDropdown" style="display: none;">
-                    <div class="dropdown-header">
-                        <h4>Notifications</h4>
-                        <button onclick="clearNotifications()" class="btn-clear">Clear All</button>
-                    </div>
-                    <ul id="notificationList">
-                        <!-- Notifications dynamically added here -->
-                    </ul>
-                    </div>
-                </div>
                         
                 <!-- Profile Dropdown -->
                 <div class="nav-item profile" onclick="toggleDropdown1()">
@@ -193,31 +175,23 @@
                 <h3 class="tab__header">Dashboard</h3>
             
                 <!-- Key Metrics -->
-                <div class="dashboard-cards">
-                    <div class="card">
-                        <h4>Daily Sales</h4>
-                        <span id="dailySales">Rs. 0</span>
-                    </div>
-                    <div class="card">
-                        <h4>Weekly Sales</h4>
-                        <span id="weeklySales">Rs. 0</span>
-                    </div>
-                    <div class="card">
-                        <h4>Monthly Sales</h4>
-                        <span id="monthlySales">Rs. 0</span>
-                    </div>
-                    <div class="card">
-                        <h4>Total Orders</h4>
-                        <span id="totalOrders">0</span>
-                    </div>
-                    <div class="card">
-                        <h4>Total Active Customers</h4>
-                        <span id="totalActiveCustomers">0</span>
-                    </div>
-                    <div class="card">
-                        <h4>Inventory Levels</h4>
-                        <span id="totalInventory">0</span>
-                    </div>
+                <div class="dashboard-card">
+                    <div class="row">
+                        <div class="card"> <h4>Daily Sales</h4>
+                            <span id="dailySales">Rs. 0</span></div>
+                        <div class="card"> <h4>Weekly Sales</h4>
+                            <span id="weeklySales">Rs. 0</span></div>
+                        <div class="card"> <h4>Monthly Sales</h4>
+                            <span id="monthlySales">Rs. 0</span></div>
+                      </div>
+                      <div class="row">
+                        <div class="card"> <h4>Total Orders</h4>
+                            <span id="totalOrders">0</span></div>
+                        <div class="card"><h4>Total Active Customers</h4>
+                            <span id="totalActiveCustomers">0</span></div>
+                        <div class="card"> <h4>Inventory Levels</h4>
+                            <span id="totalInventory">0</span></div>
+                      </div>
                 </div>
             
                 <!-- Graphical Insights -->
@@ -252,21 +226,16 @@
                         <!-- Activities will be dynamically added here -->
                     </ul>
                 </div>
-            
-                <!-- Quick Actions -->
-                <!-- <div class="quick-actions">
-                    <h4>Quick Actions</h4>
-                    <button class="btn primary" onclick="showSection('addproduct')">Add Product</button>
-                    <button class="btn primary" onclick="showSection('orders')">View Orders</button>
-                    <button class="btn primary" onclick="showSection('report', 'sales-report')">View Sales Report</button>
-                    <button class="btn primary" onclick="showSection('inventory')">Manage Inventory</button>
-                </div> -->
             </div>
             <div class="tab__content" content id="customer">
               <div class="container1">
                 <h2>Customer Table</h2>
+                <div class="filter-container" style="margin-bottom: 20px;">
+                    <label for="customer-name-search">Search by Customer Name:</label>
+                    <input type="text" id="customer-name-search" placeholder="Enter customer name" oninput="fetchCustomers()">
+                  </div>
                 <div  id="table-container">
-                  <table>
+                  <table id="customer-table">
                     <thead>
                       <tr>
                         <th>Cust_Id</th>
@@ -274,7 +243,7 @@
                         <th>Cust_Email</th>
                         <th>Cust_Address</th>
                         <th>Cust_Pincode</th>
-                        <th>Cust_Areaid</th>
+                        <th>Cust_PhoneNo</th>
                         <th>Cust_Status</th>
                         <th>Actions</th>
                       </tr>
@@ -283,87 +252,88 @@
                       <!-- Records will be dynamically added here -->
                     </tbody>
                   </table>
-                  <!-- <div id="pagination-controls">
-                    <button id="prev-page" onclick="prevPage()">&#60; Prev</button>
-                    <span id="page-number">1</span>
-                    <button id="next-page" onclick="nextPage()">Next &#62;</button>
-                  </div> -->
                 </div>
               </div>
             </div>      
             <div class="tab__content" content id="orders">
-              <h3 class="tab__header">Orders</h3>
-              <div class="tab__body">
-                  <!-- Status Filter Dropdown -->
-                  <div class="filter-container" style="margin-bottom: 20px;">
-                      <label for="status-filter">Filter by Status:</label>
-                      <select id="status-filter">
-                          <option value="">All</option>
-                          <option value="Pending">Pending</option>
-                          <option value="Processing">Processing</option>
-                          <option value="Shipped">Shipped</option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Canceled">Canceled</option>
-                      </select>
-                  </div>
-          
-                  <table id="orders-table">
-                      <thead>
-                          <tr>
-                              <th>Order ID</th>
-                              <th>Date</th>
-                              <th>Status</th>
-                              <th>Customer ID</th>
-                              <th>Action</th>
-                          </tr>
-                      </thead>
-                      <tbody></tbody>
-                  </table>
-          
-                  <!-- Order Details Modal (already present) -->
-                  <div id="order-details-modal" class="modal">
-                      <div class="modal-content">
-                          <span class="close" onclick="closeModal()">&times;</span>
-                          <h2>Order Details</h2>
-                          <table>
-                              <thead>
-                                  <tr>
-                                      <th>ID</th>
-                                      <th>Product Name</th>
-                                      <th>Description</th>
-                                      <th>Image</th>
-                                      <th>Quantity</th>
-                                      <th>Price</th>
-                                      <th>Category</th>
-                                  </tr>
-                              </thead>
-                              <tbody id="order-details"></tbody>
-                          </table>
-                      </div>
-                  </div>
-          
-                  <!-- Update Status Modal -->
-                  <div id="updateStatusModal" class="modal" style="display: none;">
-                      <div class="modal-content">
-                          <span class="close" onclick="closeUpdateStatusModal()">&times;</span>
-                          <h2>Update Order Status</h2>
-                          <form id="updateStatusForm">
-                              <input type="hidden" id="update-order-id">
-                              <div class="form-group">
-                                  <label for="update-status">Status:</label>
-                                  <select id="update-status" required>
-                                      <option value="Pending">Pending</option>
-                                      <option value="Processing">Processing</option>
-                                      <option value="Delivered">Delivered</option>
-                                      <option value="Canceled">Canceled</option>
-                                  </select>
-                              </div>
-                              <button type="submit" class="btn primary">Update</button>
-                              <button type="button" class="btn-cancel" onclick="closeUpdateStatusModal()">Cancel</button>
-                          </form>
-                      </div>
-                  </div>
-              </div>
+                <h3 class="tab__header">Orders</h3>
+                <div class="tab__body">
+                    <!-- Status Filter Dropdown -->
+                    <div class="filter-container" style="margin-bottom: 20px;">
+                        <label for="status-filter">Filter by Status:</label>
+                        <select id="status-filter">
+                            <option value="">All</option>
+                            <option value="PLACED">PLACED</option>
+                            <option value="PROCESSING">PROCESSING</option>
+                            <option value="DELIVERED">DELIVERED</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                    </div>
+              
+                    <!-- New Search by Customer Name -->
+                    <div class="filter-container" style="margin-bottom: 20px;">
+                        <label for="customer-name-search">Search by Customer Name:</label>
+                        <input type="text" id="customer-name-search" placeholder="Enter customer name" oninput="fetchOrders(document.getElementById('status-filter').value, this.value)">
+                    </div>
+              
+                    <table id="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Customer ID</th>
+                                <th>Customer Name</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+              
+                    <!-- Order Details Modal (unchanged) -->
+                    <div id="order-details-modal" class="modal">
+                        <div class="modal-content">
+                            <span class="close" onclick="closeModal()">&times;</span>
+                            <h2>Order Details</h2>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Product Name</th>
+                                        <th>Description</th>
+                                        <th>Image</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Category</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="order-details"></tbody>
+                            </table>
+                        </div>
+                    </div>
+              
+                    <!-- Update Status Modal (unchanged) -->
+                    <div id="updateStatusModal" class="modal" style="display: none;">
+                        <div class="modal-content">
+                            <span class="close" onclick="closeUpdateStatusModal()">&times;</span>
+                            <h2>Update Order Status</h2>
+                            <form id="updateStatusForm">
+                                <input type="hidden" id="update-order-id">
+                                <div class="form-group">
+                                    <label for="update-status">Status:</label>
+                                    <select id="update-status" required>
+                                        <option value="PLACED">PLACED</option>
+                                        <option value="PROCESSING">PROCESSING</option>
+                                        <option value="DELIVERED">DELIVERED</option>
+                                        <option value="CANCELLED">CANCELLED</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn primary">Update</button>
+                                <button type="button" class="btn-cancel" onclick="closeUpdateStatusModal()">Cancel</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="tab__content" content id="createtbl">
               <div class="form-group">
@@ -744,8 +714,9 @@
             <div class="tab__content" content id="review">
                 <h1>Review</h1>
                 <div class="filter-container">
+                    <!-- Date Range Filter -->
                     <label for="reviewDateRange">Date Range:</label>
-                    <select id="reviewDateRange" onchange="fetchFeedbackReport()">
+                    <select id="reviewDateRange" onchange="handleDateRangeChange()">
                         <option value="all">All Dates</option>
                         <option value="today">Today</option>
                         <option value="last7days">Last 7 Days</option>
@@ -754,11 +725,12 @@
                     </select>
                     <div id="reviewCustomDateRange" style="display: none;">
                         <label for="reviewStartDate">Start Date:</label>
-                        <input type="date" id="reviewStartDate">
+                        <input type="date" id="reviewStartDate" min="2020-01-01">
                         <label for="reviewEndDate">End Date:</label>
                         <input type="date" id="reviewEndDate">
                         <button onclick="fetchFeedbackReport()">Apply</button>
                     </div>
+                    <!-- Rating Filter -->
                     <label for="reviewRatingFilter">Rating:</label>
                     <select id="reviewRatingFilter" onchange="fetchFeedbackReport()">
                         <option value="">All Ratings</option>
@@ -768,6 +740,10 @@
                         <option value="4">4 Stars</option>
                         <option value="5">5 Stars</option>
                     </select>
+                    
+                    <!-- Customer Search -->
+                    <label for="reviewCustomerSearch">Customer:</label>
+                    <input type="text" id="reviewCustomerSearch" placeholder="Search customer..." oninput="fetchFeedbackReport()">
                 </div>
                 <table id="review-table">
                     <thead>
@@ -789,9 +765,9 @@
                         <label for="paymentStatusFilter">Filter by Status:</label>
                         <select id="paymentStatusFilter" onchange="fetchPayments()">
                             <option value="">All</option>
-                            <option value="PAID">Paid</option>
-                            <option value="UNPAID">Unpaid</option>
-                            <option value="PENDING">Pending</option>
+                            <option value="PAID">PAID</option>
+                            <option value="UNPAID">UNPAID</option>
+                            <option value="PENDING">PENDING</option>
                         </select>
                     </div>
                     <table id="payment-table">
@@ -810,17 +786,22 @@
                         </thead>
                         <tbody id="payment-table-body"></tbody>
                     </table>
-                
-                    <!-- Edit Payment Modal -->
+
+                   <!-- Edit Payment Modal -->
                     <div id="editPaymentModal" class="modal" style="display: none;">
                         <div class="modal-content">
                             <span class="close" onclick="closeEditPaymentModal()">×</span>
                             <h2>Edit Payment Details</h2>
                             <form id="editPaymentForm">
                                 <input type="hidden" id="edit-payment-id">
+                                <input type="hidden" id="edit-payment-mode"> <!-- Hidden field to store payment mode -->
                                 <div class="form-group">
+                                    <label>Payment Mode:</label>
+                                    <span id="edit-payment-mode-display"></span> <!-- Display payment mode -->
+                                </div>
+                                <div class="form-group" id="transaction-id-group">
                                     <label for="edit-transaction-id">Transaction ID:</label>
-                                    <input type="text" id="edit-transaction-id" maxlength="20" required>
+                                    <input type="text" id="edit-transaction-id" maxlength="20">
                                 </div>
                                 <div class="form-group">
                                     <label for="edit-otp">OTP:</label>
@@ -842,6 +823,7 @@
                         <tr>
                         <th>ID</th>
                         <th>Name</th>
+                        <th>Email</th>
                         <th>Phone</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -855,10 +837,11 @@
                   <label for="delivery-status-filter">Filter by Status:</label>
                   <select id="delivery-status-filter">
                     <option value="">All</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Processing">Processing</option>
-                    <option value="Delivered">Delivered</option>
-                    <option value="Canceled">Canceled</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="PLACED">PLACED</option>
+                    <option value="PROCESSING">PROCESSING</option>
+                    <option value="DELIVERED">DELIVERED</option>
+                    <option value="CANCELLED">CANCELLED</option>
                   </select>
                 </div>
               
@@ -867,7 +850,8 @@
                     <tr>
                       <th>Order ID</th>
                       <th>Customer</th>
-                      <th>Status</th>
+                      <th>Order Status</th>
+                      <th>Payment Status</th>
                       <th>Delivery Person</th>
                       <th>Actions</th>
                     </tr>
@@ -1197,51 +1181,121 @@
     <script src="../js/delivery.js"></script>
     <script src="../js/review.js"></script>
     <script src="../js/payment.js"></script>
+
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    showSection('dashboard'); // Show dashboard by default
+    setupSidebarToggle();     // Initialize sidebar toggle
+});
 
-
-  function showSection(sectionId) {
+// Unified showSection function
+function showSection(sectionId, reportType = null) {
+    console.log(`showSection called with sectionId: ${sectionId}, reportType: ${reportType}`);
     const section = document.getElementById(sectionId);
-    
+
     if (!section) {
         console.error(`❌ Error: Section with ID "${sectionId}" not found.`);
         return;
     }
 
-    // Hide all sections
+    // Hide all sections and remove active class from tabs
     document.querySelectorAll(".tab__content").forEach(sec => sec.classList.add("hidden"));
+    document.querySelectorAll(".account__tab").forEach(tab => tab.classList.remove("active-tab"));
 
-    // Show the selected section
+    // Show the selected section and add active class to corresponding tab
     section.classList.remove("hidden");
+    console.log('Section classList after toggle:', section.classList);
+
+    document.querySelectorAll(".tab__content").forEach(sec => sec.style.display = "none");
+    section.style.display = "block";
+    
+    const activeTab = document.querySelector(`.account__tab[data-target="#${sectionId}"]`);
+    if (activeTab) activeTab.classList.add("active-tab");
+
+    // Handle report subsections
+    if (sectionId === 'report') {
+        const currentReportType = reportType || 'order-report';
+        document.querySelectorAll('.report-subsection').forEach(subsection => {
+            subsection.classList.add('hidden');
+        });
+        const subsection = document.getElementById(currentReportType);
+        if (subsection) subsection.classList.remove('hidden');
+
+        switch (currentReportType) {
+            case 'sales-report': fetchSalesReport(); break;
+            case 'customer-report': fetchCustomerReport(); break;
+            case 'inventory-report': fetchInventoryReport(); break;
+            case 'order-report': fetchOrderReport(); break;
+            default: console.warn(`Unknown report type: ${currentReportType}`);
+        }
+    }
+
+    // Fetch feedback for review section
+    if (sectionId === 'review') {
+        fetchFeedback();
+    }
 }
 
-        function toggleDropdown(dropdownId) {
-            const dropdown = document.getElementById(dropdownId);
-            dropdown.classList.toggle('hidden');
-        }
-       
-  fetch("/auth/check-session")
+// Toggle dropdowns
+function toggleDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    dropdown.classList.toggle('hidden');
+}
+
+// Sidebar toggle setup
+function setupSidebarToggle() {
+    const sideMenu = document.querySelector("aside");
+    const menuBtn = document.querySelector("#menu-btn");
+    const closeBtn = document.querySelector("#close-btn");
+
+    menuBtn.addEventListener("click", () => {
+        sideMenu.style.display = "block";
+    });
+
+    closeBtn.addEventListener("click", () => {
+        sideMenu.style.display = "none";
+    });
+}
+
+// Scroll-to-top button logic
+const btnScrollToTop = document.querySelector("#btnScrollToTop");
+const icon = btnScrollToTop.querySelector("i");
+
+btnScrollToTop.addEventListener("click", () => {
+    if (window.scrollY === 0) {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+        icon.classList.replace("fa-arrow-up", "fa-arrow-down");
+    } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        icon.classList.replace("fa-arrow-down", "fa-arrow-up");
+    }
+});
+
+window.addEventListener("scroll", () => {
+    if (window.scrollY === 0) {
+        icon.classList.replace("fa-arrow-up", "fa-arrow-down");
+    } else {
+        icon.classList.replace("fa-arrow-down", "fa-arrow-up");
+    }
+});
+
+// Session check and logout
+fetch("/auth/check-session")
     .then(response => response.json())
     .then(data => {
         if (!data.loggedIn) {
-            window.location.href = "html/login.html"; // Redirect to login if not authenticated
+            window.location.href = "html/login.html";
         }
     })
     .catch(error => console.error("Error checking session:", error));
 
-    document.getElementById("logoutBtn").addEventListener("click", async function() {
+document.getElementById("logoutBtn").addEventListener("click", async () => {
     try {
         const response = await fetch("/auth/logout", { method: "POST" });
-
-        if (!response.ok) {
-            throw new Error(`Logout failed: ${response.statusText}`);
-        }
-
+        if (!response.ok) throw new Error(`Logout failed: ${response.statusText}`);
         const result = await response.json();
-        console.log(result.message); // Debugging log
-
         if (result.success) {
-            window.location.href = "html/login.html"; // Redirect only on success
+            window.location.href = "html/login.html";
         } else {
             alert("Logout failed. Please try again.");
         }
@@ -1250,97 +1304,8 @@
         alert("Error logging out. Please try again.");
     }
 });
-
-
-  </script>
-<script>
-const btnScrollToTop = document.querySelector("#btnScrollToTop");
-const icon = btnScrollToTop.querySelector("i");
-
-btnScrollToTop.addEventListener("click", function () {
-    if (window.scrollY === 0) {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-        icon.classList.add("fa-arrow-up");
-        icon.classList.remove("fa-arrow-down");
-    } else {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        icon.classList.add("fa-arrow-down");
-        icon.classList.remove("fa-arrow-up");
-    }
-});
-
-window.addEventListener("scroll", function () {
-    if (window.scrollY === 0) {
-        icon.classList.add("fa-arrow-down");
-        icon.classList.remove("fa-arrow-up");
-    } else {
-        icon.classList.add("fa-arrow-up");
-        icon.classList.remove("fa-arrow-down");
-    }
-});
-
-let currentReportType = 'order-report'; // Default report type (declared here)
-
-document.addEventListener('DOMContentLoaded', () => {
-    showSection('dashboard');
-});
-
-function showSection(sectionId, reportType) {
-    console.log(`showSection called with sectionId: ${sectionId}, reportType: ${reportType}`);
-    const section = document.getElementById(sectionId);
-    
-    if (!section) {
-        console.error(`❌ Error: Section with ID "${sectionId}" not found.`);
-        return;
-    }
-
-    // Hide all sections and remove active class from tabs
-    document.querySelectorAll(".tab__content").forEach(sec => sec.classList.add("hidden"));
-    document.querySelectorAll(".account__tab").forEach(tab => tab.classList.remove("active"));
-
-    // Show the selected section and highlight the tab
-    section.classList.remove("hidden");
-    const activeTab = document.querySelector(`.account__tab[data-target="#${sectionId}"]`);
-    if (activeTab) activeTab.classList.add("active");
-
-    // Handle report subsections
-    if (sectionId === 'report') {
-        if (!reportType) reportType = 'order-report';
-        currentReportType = reportType;
-        document.querySelectorAll('.report-subsection').forEach(subsection => {
-            subsection.classList.add('hidden');
-        });
-        const subsection = document.getElementById(reportType);
-        if (subsection) subsection.classList.remove('hidden');
-
-        switch (reportType) {
-            case 'sales-report':
-                fetchSalesReport();
-                break;
-            case 'customer-report':
-                fetchCustomerReport();
-                break;
-            case 'inventory-report':
-                fetchInventoryReport();
-                break;
-            case 'order-report':
-                fetchOrderReport();
-                break;
-            default:
-                console.warn(`Unknown report type: ${reportType}`);
-        }
-    }
-
-    // Fetch feedback when the Review section is shown
-    if (sectionId === 'review') {
-        fetchFeedbackReport();
-    }
-}
-function toggleDropdown(dropdownId) {
-    const dropdown = document.getElementById(dropdownId);
-    dropdown.classList.toggle('hidden');
-}
 </script>
+
   </body>
 </html>
 

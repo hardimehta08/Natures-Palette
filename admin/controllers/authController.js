@@ -6,7 +6,7 @@ const { sendMail } = require("./mailer");
 const con = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 

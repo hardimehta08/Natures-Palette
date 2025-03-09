@@ -4,8 +4,7 @@ const reportController = require('../controllers/reportController');
 
 router.get('/dashboard', reportController.getDashboardData);
 router.get('/inventory-categories1', reportController.getInventoryCategories);
-// Report Routes
-router.get('/feedback-report', reportController.getFeedbackReport);
+
 
 // Inventory Routes
 router.get('/inventory-status', reportController.getInventoryStatus);

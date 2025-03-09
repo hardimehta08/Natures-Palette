@@ -4,7 +4,7 @@ const mysql = require("mysql");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "main_project",
 });
 
@@ -14,22 +14,31 @@ const CLIENT_IMAGE_BASE_URL = "http://localhost:4000/images/"; // Adjust this to
 // Fetch all orders with optional status filter
 exports.getAllOrders = (req, res) => {
   const status = req.query.status; // Get status from query parameter
+  const searchName = req.query.searchName; // New search parameter for customer name
   let query = `
         SELECT 
-            O_id, 
-            O_date, 
-            O_status, 
-            C_id
-        FROM order_master
+            om.O_id,
+            om.O_date,
+            om.O_status,
+            om.C_id,
+            c.c_username AS customer_name
+        FROM order_master om
+        LEFT JOIN customer c ON om.C_id = c.c_id
     `;
 
   const queryParams = [];
   if (
     status &&
-    ["Processing", "Shipped", "Delivered", "Cancelled"].includes(status)
+    ["PENDING","PLACED", "PROCESSING", "SHIPPING", "DELIVERED", "CANCELLED"].includes(status)
   ) {
-    query += ` WHERE O_status = ?`;
+    query += ` WHERE om.O_status = ?`;
     queryParams.push(status);
+  }
+
+  // Add search by customer name if provided
+  if (searchName) {
+    query += (query.includes("WHERE") ? " AND" : " WHERE") + ` c.c_username LIKE ?`;
+    queryParams.push(`%${searchName}%`);
   }
 
   db.query(query, queryParams, (err, results) => {
@@ -220,7 +229,7 @@ exports.updateOrderStatus = (req, res) => {
 
   if (
     !orderId ||
-    !["Pending", "Processing", "Shipped", "Delivered", "Canceled"].includes(
+    ![ "PROCESSING", "PLACED", "DELIVERED", "CANCELLED"].includes(
       status
     )
   ) {

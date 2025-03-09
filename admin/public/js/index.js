@@ -1,47 +1,5 @@
 // Document operation functions
-const sideMenu = document.querySelector("aside");
-const menuBtn = document.querySelector("#menu-btn");
-const closeBtn = document.querySelector("#close-btn");
-const themeToggler = document.querySelector(".theme-toggler");
 
-// Show Sidebar
-menuBtn.addEventListener("click", () => {
-    sideMenu.style.display = "block";
-});
-
-// Hide Sidebar
-closeBtn.addEventListener("click", () => {
-    sideMenu.style.display = "none";
-});
-
-// Change Theme
-themeToggler.addEventListener("click", () => {
-    document.body.classList.toggle("dark-theme-variables");
-
-    themeToggler.querySelector("span:nth-child(1)").classList.toggle("active");
-    themeToggler.querySelector("span:nth-child(2)").classList.toggle("active");
-});
-
-const tabs = document.querySelectorAll("[data-target]"),
-  tabsContents = document.querySelectorAll("[content]");
-
-tabs.forEach((tab) => {
-  tab.addEventListener("click", () => {
-    const target = document.querySelector(tab.dataset.target);
-
-    tabsContents.forEach((tabsContent) => {
-      tabsContent.classList.remove("active-tab");
-    });
-
-    target.classList.add("active-tab");
-
-    tabs.forEach((tab) => {
-      tab.classList.remove("active-tab");
-    });
-
-    tab.classList.add("active-tab");
-  });
-});
 
 const trigger=document.querySelectorAll('.tabbed-trigger');
     content=document.querySelectorAll('.tabbed>div');
@@ -57,22 +15,6 @@ const trigger=document.querySelectorAll('.tabbed-trigger');
         });
     });
 
-
-// document.addEventListener("DOMContentLoaded", function() {
-//   const toggle = document.querySelector(".dropdown-toggle");
-//   const dropdown = document.querySelector(".dropdown-menu");
-
-//   toggle.addEventListener("click", function(event) {
-//       event.preventDefault();
-//       dropdown.classList.toggle("open");
-//   });
-
-//   document.addEventListener("click", function(event) {
-//       if (!event.target.closest(".info")) {
-//           dropdown.classList.remove("open");
-//       }
-//   });
-// })
 
 const accordionBtn = document.querySelectorAll('[data-accordion-btn]');
 const accordion = document.querySelectorAll('[data-accordion]');

@@ -32,7 +32,7 @@ function fetchPayments() {
                     <td>${payment.O_ID}</td>
                     <td>${payment.PY_OTP || 'N/A'}</td>
                     <td>
-                        <button class="btn primary" onclick="openEditPaymentModal('${payment.PY_ID}', '${payment.PY_TRANSACTION_ID || ''}', '${payment.PY_OTP || ''}')">Edit</button>
+                        <button class="btn primary" onclick="openEditPaymentModal('${payment.PY_ID}', '${payment.PY_MODE}', '${payment.PY_TRANSACTION_ID || ''}', '${payment.PY_OTP || ''}')">Edit</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -46,10 +46,24 @@ function fetchPayments() {
 }
 
 // Open Edit Payment Modal
-function openEditPaymentModal(pyId, transactionId, otp) {
+function openEditPaymentModal(pyId, paymentMode, transactionId, otp) {
     document.getElementById('edit-payment-id').value = pyId;
+    document.getElementById('edit-payment-mode').value = paymentMode; // Store payment mode
+    document.getElementById('edit-payment-mode-display').textContent = paymentMode; // Display payment mode
     document.getElementById('edit-transaction-id').value = transactionId;
     document.getElementById('edit-otp').value = otp;
+
+    // Show/hide transaction ID field based on payment mode
+    const transactionIdGroup = document.getElementById('transaction-id-group');
+    const transactionIdInput = document.getElementById('edit-transaction-id');
+    if (paymentMode === 'COD') {
+        transactionIdGroup.style.display = 'none'; // Hide the field for COD
+        transactionIdInput.removeAttribute('required'); // Remove required attribute
+    } else {
+        transactionIdGroup.style.display = 'block'; // Show the field for QR/other modes
+        transactionIdInput.setAttribute('required', 'required'); // Add required attribute
+    }
+
     document.getElementById('editPaymentModal').style.display = 'block';
 }
 
