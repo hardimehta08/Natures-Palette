@@ -145,7 +145,7 @@ function changepass() {
       alert("Error updating password: " + error.message);
     });
 }
-fetch("/feedback/")
+fetch("/feedback/customer")
   .then((response) => response.json())
   .then((data) => {
     console.log(data);

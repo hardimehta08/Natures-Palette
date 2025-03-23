@@ -72,7 +72,7 @@ const deleteFeedback = (req, res) => {
   });
 };
 
-const feedbacks = async (req, res) => {
+const userfeedback = async (req, res) => {
   try {
     const viewsSql = `
       SELECT *
@@ -102,6 +102,84 @@ const feedbacks = async (req, res) => {
               console.error(`Error querying view ${view}:`, err);
               return reject(err);
             }
+            console.log(result);
+            resolve(result);
+          });
+        });
+      };
+
+      // Fetch feedback data from all views and aggregate results
+      const promises = views.map((view) => fetchFeedbackData(view));
+      Promise.all(promises)
+        .then((results) => {
+          const feedbackData = results.flat();
+          if (feedbackData.length === 0) {
+            return res.status(404).json({ error: "No feedback data found." });
+          }
+          res.status(200).json(feedbackData);
+        })
+        .catch((err) => {
+          console.error("Error fetching feedback data:", err);
+          res
+            .status(500)
+            .json({ error: "An error occurred while fetching feedback data." });
+        });
+    });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching feedback data." });
+  }
+};
+
+const feedbacks = async (req, res) => {
+  try {
+    const viewsSql = `
+      SELECT *
+      FROM INFORMATION_SCHEMA.VIEWS
+      WHERE TABLE_SCHEMA = 'main_project';
+    `;
+    conn.query(viewsSql, (err, viewsResult) => {
+      if (err) throw err;
+
+      // Check if viewsResult is an array and has values
+      if (!Array.isArray(viewsResult) || viewsResult.length === 0) {
+        return res.status(500).json({ error: "No views found in the schema." });
+      }
+      const views = viewsResult.map((row) => row.TABLE_NAME);
+
+      // Define a function to fetch feedback data from each view
+      const fetchFeedbackData = (view) => {
+        return new Promise((resolve, reject) => {
+          const sql = `
+            SELECT 
+    F.F_ID, 
+    F.F_DESC, 
+    F.F_DATE, 
+    F.star_rating, 
+    F.C_ID, 
+    F.PRODUCT_ID, 
+    C.CY_NAME, 
+    CUST.C_USERNAME
+FROM 
+    FEEDBACK AS F
+JOIN 
+    ${view} AS EV 
+    ON F.PRODUCT_ID = EV.id
+JOIN 
+    CATEGORY AS C 
+    ON EV.category_id = C.CY_ID -- Joining based on category_id from the view
+JOIN 
+    CUSTOMER AS CUST 
+    ON F.C_ID = CUST.C_ID; -- Joining to get customer username
+          `;
+          conn.query(sql, [req.session.userId], (err, result) => {
+            if (err) {
+              console.error(`Error querying view ${view}:`, err);
+              return reject(err);
+            }
+            console.log(result);
             resolve(result);
           });
         });
@@ -136,4 +214,5 @@ module.exports = {
   feedbacks,
   addFeedback,
   deleteFeedback,
+  userfeedback
 };

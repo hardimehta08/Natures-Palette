@@ -70,7 +70,7 @@ const getCategoryData = (app) => {
 
 const getCategories = (app) => {
   return (req, res) => {
-    db.query("SELECT * FROM category", (err, results) => {
+    db.query("SELECT * FROM category where is_deleted='0'", (err, results) => {
       if (err) {
         console.error("Error fetching categories:", err);
         res.status(500).send("Error fetching categories");
@@ -96,6 +96,7 @@ const getHeaderCategories = (app) => {
       SELECT c.CY_ID, c.CY_NAME, s.sub_id, s.sub_name 
       FROM category c
       LEFT JOIN subcategory s ON c.CY_ID = s.cy_id
+      where c.is_deleted='0'
     `;
 
     db.query(categoriesQuery, (err, results) => {
@@ -180,7 +181,7 @@ const getSubSubCategoryData = (req, res) => {
       res.status(404).json({ error: "Category not found" });
       return;
     }
-    
+
     const sql = `SELECT ss_desc as description FROM subsubcategory WHERE ss_name = ?`;
     db.query(sql, [subsubcategory], (err, result) => {
       if (err) {
@@ -211,7 +212,6 @@ const getSubSubCategoryData = (req, res) => {
     });
   });
 };
-
 
 const getCategoryName = (subcategory, callback) => {
   const subcategoryQuery = `

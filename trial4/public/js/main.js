@@ -234,6 +234,7 @@ window.onload = updateCartAndWishlistCounts;
 fetch("/feedback/")
   .then((response) => response.json())
   .then((data) => {
+    console.log(data);
     const feedback = document.getElementById("feedback");
 
     // Limit the number of feedback items to display
