@@ -1512,58 +1512,6 @@ table {
   z-index: 1000;
 }
 
-#notificationDropdown, #messagesDropdown {
-  width: 300px;
-}
-
-.dropdown-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-}
-
-.dropdown-header h4 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.btn-clear {
-  background: none;
-  border: none;
-  color: #ff6384;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.btn-clear:hover {
-  text-decoration: underline;
-}
-
-#notificationList, #messagesList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-#notificationList li, #messagesList li {
-  padding: 10px;
-  border-bottom: 1px solid #eee;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-#notificationList li:hover, #messagesList li:hover {
-  background-color: #f0f4ff;
-}
-
-#notificationList li:last-child, #messagesList li:last-child {
-  border-bottom: none;
-}
 
 .filter-container {
   margin-bottom: 20px;
@@ -1599,8 +1547,8 @@ table {
 
 .stats {
   display: flex;
-  justify-content: space-between;
-  gap: 20px;
+  flex-wrap: wrap; /* Allow cards to wrap to the next line */
+  gap: 20px; /* Space between cards */
   margin: 20px 0;
 }
 
@@ -1609,11 +1557,13 @@ table {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 15px;
-  width: 100%;
+  flex: 1 1 calc(25% - 20px); /* Each card takes 25% of the row minus the gap */
+  box-sizing: border-box; /* Ensure padding and border are included in width */
   text-align: center;
   font-size: 16px;
   font-weight: 500;
   color: #333;
+  min-width: 200px; /* Ensure cards don’t shrink too much on smaller screens */
 }
 
 .stat-card span {
@@ -1707,3 +1657,96 @@ table {
   /* Ensure rows are selectable */
   transition: background-color 0.3s ease;
 }
+.notification-drawer {
+  position: fixed;
+  top: 0;
+  right: -300px; /* Hidden by default */
+  width: 300px;
+  height: 100%;
+  background-color: #fff;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+  transition: right 0.3s ease;
+  z-index: 1000;
+}
+
+.notification-drawer.open {
+  right: 0; /* Slide in when open */
+}
+
+.notification-drawer.hidden {
+  display: none;
+}
+#drawerNotificationCount.hidden {
+  display: none;
+}
+.notification-drawer:not(.open) {
+  right: -300px !important;
+}
+
+.notification-item {
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #ffcccc;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.notification-item:hover {
+  background-color: #ffaaaa;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.clear-btn {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 10px;
+  padding: 8px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.clear-btn:hover {
+  background-color: #c82333;
+}
+
+.notification-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+}
+.notification-list{
+  height: 85%;
+}
+.highlight {
+  background-color: #ffff99 !important;
+  transition: background-color 0.3s ease;
+}
+#lowStockProducts tr, #outOfStockProducts tr {
+  transition: background-color 0.3s ease;
+}
+.critical-stock { background-color: #ffcccc; }
+.low-stock { background-color: #fff3cd; }
+.out-of-stock { background-color: #ffebee; }

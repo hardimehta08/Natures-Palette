@@ -883,57 +883,53 @@
                 <div class="tab__body">
                     <div id="sales-report" class="report-subsection hidden">
                         <div class="report-section">
-                            <h4>Sales Report</h4>
-                            <div class="filter-container">
-                                <label for="salesDateRange">Date Range:</label>
-                                <select id="salesDateRange" onchange="fetchSalesReport()">
-                                    <option value="today">Today</option>
-                                    <option value="last7days">Last 7 Days</option>
-                                    <option value="last30days">Last 30 Days</option>
-                                    <option value="custom">Custom Range</option>
-                                </select>
-                                <div id="salesCustomDateRange" style="display: none;">
-                                    <label for="salesStartDate">Start Date:</label>
-                                    <input type="date" id="salesStartDate">
-                                    <label for="salesEndDate">End Date:</label>
-                                    <input type="date" id="salesEndDate">
-                                    <button onclick="fetchSalesReport()">Apply</button>
-                                </div>
-                                <label for="salesGroupBy">Group By:</label>
-                                <select id="salesGroupBy" onchange="fetchSalesReport()">
-                                    <option value="monthly">Monthly</option>
-                                    <option value="weekly">Weekly</option>
-                                    <option value="daily">Daily</option>
-                                </select>
+                          <h4>Sales Report</h4>
+                          <div class="filter-container">
+                            <label for="salesDateRange">Date Range:</label>
+                            <select id="salesDateRange" onchange="handleDateRangeChangeSales()">
+                              <option value="all">All Dates</option>
+                              <option value="today">Today</option>
+                              <option value="last7days">Last 7 Days</option>
+                              <option value="last30days">Last 30 Days</option>
+                              <option value="custom">Custom Range</option>
+                            </select>
+                            <div id="salesCustomDateRange" style="display: none;">
+                              <label for="salesStartDate">Start Date:</label>
+                              <input type="date" id="salesStartDate" min="2020-01-01">
+                              <label for="salesEndDate">End Date:</label>
+                              <input type="date" id="salesEndDate" min="2020-01-01">
+                              <button onclick="fetchSalesReport()">Apply</button>
                             </div>
-                            <div class="export-buttons">
-                                <button class="btn primary" onclick="exportSalesReport('csv')">Export as CSV</button>
-                                <button class="btn primary" onclick="exportSalesReport('pdf')">Export as PDF</button>
+                          </div>
+                          <div class="export-buttons">
+                            <button class="btn primary" onclick="exportSalesReport('csv')">Export as CSV</button>
+                            <button class="btn primary" onclick="exportSalesReport('pdf')">Export as PDF</button>
+                          </div>
+                          <div class="stats">
+                            <div class="stat-card">Total Sales: <span id="totalSales">$0</span></div>
+                          </div>
+                          <div class="charts-container">
+                            <div class="chart-wrapper">
+                              <canvas id="salesByPeriodChart" width="400" height="200"></canvas>
                             </div>
-                            <div class="stats">
-                                <div class="stat-card">Total Sales: <span id="totalSales">$0</span></div>
+                            <div class="chart-wrapper">
+                              <canvas id="salesByProductChart" width="400" height="200"></canvas>
                             </div>
-                            <div class="charts-container">
-                                <div class="chart-wrapper">
-                                    <canvas id="salesByPeriodChart" width="400" height="200"></canvas>
-                                </div>
-                                <div class="chart-wrapper">
-                                    <canvas id="salesByProductChart" width="400" height="200"></canvas>
-                                </div>
-                                <div class="chart-wrapper">
-                                    <canvas id="salesByCategoryChart" width="400" height="200"></canvas>
-                                </div>
+                            <div class="chart-wrapper">
+                              <canvas id="salesByCategoryChart" width="400" height="200"></canvas>
                             </div>
+                          </div>
                         </div>
-                    </div>
+                      </div>
             
             
-                    <div id="customer-report" class="report-subsection hidden">
+                      <div id="customer-report" class="report-subsection hidden">
                         <div class="report-section">
                             <h4>Customer Report</h4>
                             <div class="filter-container">
                                 <label for="customerDateRange">Date Range:</label>
-                                <select id="customerDateRange" onchange="fetchCustomerReport()">
+                                <select id="customerDateRange" onchange="handleDateRangeChangeCustomer()">
+                                    <option value="all">All Dates</option>
                                     <option value="today">Today</option>
                                     <option value="last7days">Last 7 Days</option>
                                     <option value="last30days">Last 30 Days</option>
@@ -941,9 +937,9 @@
                                 </select>
                                 <div id="customerCustomDateRange" style="display: none;">
                                     <label for="customerStartDate">Start Date:</label>
-                                    <input type="date" id="customerStartDate">
+                                    <input type="date" id="customerStartDate" min="2020-01-01">
                                     <label for="customerEndDate">End Date:</label>
-                                    <input type="date" id="customerEndDate">
+                                    <input type="date" id="customerEndDate" min="2020-01-01">
                                     <button onclick="fetchCustomerReport()">Apply</button>
                                 </div>
                             </div>
@@ -960,10 +956,7 @@
                                     <h5>Top Customers by Purchase History</h5>
                                     <canvas id="customerPurchaseHistoryChart" width="400" height="200"></canvas>
                                 </div>
-                                <div class="chart-wrapper">
-                                    <h5>Top Customers by Lifetime Value</h5>
-                                    <canvas id="customerLifetimeValueChart" width="400" height="200"></canvas>
-                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -1043,10 +1036,25 @@
             
                     <div id="order-report" class="report-subsection hidden">
                         <div class="report-section">
+                            <h1>Order Report</h4>
+                            
                             <h4>Order Summary</h4>
-                            <div class="filter-container">
+                            <div class="stats">
+                                <!-- Order Summary Report Metrics -->
+                                <div class="stat-card">Order Count: <span id="totalOrderCount">0</span></div>
+                                <div class="stat-card">Total Revenue: <span id="totalRevenue">0</span></div>
+                                <div class="stat-card">Average Order Value: <span id="avgOrderValue">0</span></div>
+                                <div class="stat-card">Refunds: <span id="refundCount">0</span></div>
+                                <!-- Order Summary Metrics -->
+                                <div class="stat-card">Placed Orders: <span id="placedOrders">0</span></div>
+                                <div class="stat-card">Processing Orders: <span id="pendingOrders">0</span></div>
+                                <div class="stat-card">Delivered Orders: <span id="deliveredOrders">0</span></div>
+                                <div class="stat-card">Canceled Orders: <span id="canceledOrders">0</span></div>
+                            </div>
+                              <div class="filter-container">
                                 <label for="orderDateRange">Date Range:</label>
-                                <select id="orderDateRange" onchange="fetchOrderReport()">
+                                <select id="orderDateRange" onchange="handleDateRangeChangeOrder()">
+                                    <option value="all">All Dates</option>
                                     <option value="today">Today</option>
                                     <option value="last7days">Last 7 Days</option>
                                     <option value="last30days">Last 30 Days</option>
@@ -1054,37 +1062,23 @@
                                 </select>
                                 <div id="customDateRange" style="display: none;">
                                     <label for="orderStartDate">Start Date:</label>
-                                    <input type="date" id="orderStartDate">
+                                    <input type="date" id="orderStartDate" min="2020-01-01">
                                     <label for="orderEndDate">End Date:</label>
-                                    <input type="date" id="orderEndDate">
+                                    <input type="date" id="orderEndDate" min="2020-01-01">
                                     <button onclick="fetchOrderReport()">Apply</button>
                                 </div>
-                                <label for="orderStatusFilter">Status:</label>
-                                <select id="orderStatusFilter" onchange="fetchOrderReport()">
-                                    <option value="">All</option>
-                                    <option value="Pending">Pending</option>
-                                    <option value="Processing">Processing</option>
-                                    <option value="Shipped">Shipped</option>
-                                    <option value="Delivered">Delivered</option>
-                                    <option value="Canceled">Canceled</option>
-                                </select>
                             </div>
                             <div class="export-buttons">
                                 <button class="btn primary" onclick="exportOrderReport('csv')">Export as CSV</button>
                                 <button class="btn primary" onclick="exportOrderReport('pdf')">Export as PDF</button>
                             </div>
-                            <div class="stats">
-                                <div class="stat-card">Processing Orders: <span id="pendingOrders">0</span></div>
-                                <div class="stat-card">Delivered Orders: <span id="deliveredOrders">0</span></div>
-                                <div class="stat-card">Canceled Orders: <span id="canceledOrders">0</span></div>
-                            </div>
                             <div class="charts-container">
                                 <div class="chart-wrapper">
                                     <h5>Order Status Summary</h5>
-                                    <canvas id="orderSummaryPieChart" width="400" height="100"></canvas>
+                                    <canvas id="orderSummaryPieChart" width="300" height="300" style="box-sizing: border-box; display: block; height: 300px; width: 300px;"></canvas>
                                 </div>
                             </div>
-                            <h5>Shipping Details</h5>
+                            <h5>Order Shipping Details</h5>
                             <table id="shippingDetailsTable">
                                 <thead>
                                     <tr>
@@ -1098,6 +1092,7 @@
                                 <tbody id="shippingDetails"></tbody>
                             </table>
                         </div>
+                        
                     </div>
                 </div>
             </div> 
@@ -1161,6 +1156,20 @@
                         <!-- /Account -->
                     </div>
                 </div>
+            </div>
+            <!-- Add this to your main HTML (e.g., index.html) -->
+            <!-- Updated notification toggle without count -->
+            <button id="notificationToggle" class="notification-toggle">
+                <i id="notificationBell" class="fas fa-bell" style="font-size: 24px;"></i>
+            </button>
+            
+            <div id="notificationDrawer" class="notification-drawer hidden">
+                <div class="notification-header">
+                <h3>Notifications</h3>
+                <button id="closeNotificationDrawer" class="close-btn">×</button>
+                </div>
+                <div id="notificationList" class="notification-list"></div>
+                <button id="clearNotificationsBtn" class="clear-btn">Clear Notifications</button>
             </div>
         </div>
         </div>

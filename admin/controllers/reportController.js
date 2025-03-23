@@ -476,246 +476,203 @@ exports.getInventoryCategories = (req, res) => {
 };
 
 // Sales Report Data
-// reportController.js (relevant part)
+
 exports.getSalesReport = (req, res) => {
-  const { startDate, endDate, groupBy } = req.query;
+  const { startDate, endDate } = req.query;
 
-  let salesQuery = `
-        SELECT 
-            SUM(od.Odetails_price * od.Odetails_Qty) as totalSales,
-            DATE_FORMAT(om.O_date, '%Y-%m') as period
-        FROM order_details od
-        JOIN order_master om ON od.O_id = om.O_id
-        WHERE om.O_status = 'Delivered'
-    `;
-  let salesByProductQuery = `
-        SELECT 
-            od.Product_id,
-            SUM(od.Odetails_Qty) as totalUnitsSold,
-            SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue,
-            c.CY_NAME as categoryName
-        FROM order_details od
-        JOIN order_master om ON od.O_id = om.O_id
-        JOIN plants p ON od.Product_id = p.ID
-        JOIN category c ON p.category_id = c.CY_ID
-        WHERE om.O_status = 'Delivered'
-    `;
-  let salesByCategoryQuery = `
-        SELECT 
-            c.CY_NAME as categoryName,
-            SUM(od.Odetails_Qty) as totalUnitsSold,
-            SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue
-        FROM order_details od
-        JOIN order_master om ON od.O_id = om.O_id
-        JOIN plants p ON od.Product_id = p.ID
-        JOIN category c ON p.category_id = c.CY_ID
-        WHERE om.O_status = 'Delivered'
-    `;
-  const queryParams = [];
+  // Default date range if not provided
+  const defaultStartDate = "2020-01-01";
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
 
-  if (startDate) {
-    salesQuery += ` AND om.O_date >= ?`;
-    salesByProductQuery += ` AND om.O_date >= ?`;
-    salesByCategoryQuery += ` AND om.O_date >= ?`;
-    queryParams.push(startDate);
-  }
-  if (endDate) {
-    salesQuery += ` AND om.O_date <= ?`;
-    salesByProductQuery += ` AND om.O_date <= ?`;
-    salesByCategoryQuery += ` AND om.O_date <= ?`;
-    queryParams.push(endDate);
-  }
+  const effectiveStartDate = startDate || defaultStartDate;
+  const effectiveEndDate = endDate || defaultEndDate;
 
-  if (groupBy === "daily") {
-    salesQuery = salesQuery.replace("%Y-%m", "%Y-%m-%d");
-    salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d')`;
-  } else if (groupBy === "weekly") {
-    salesQuery = salesQuery.replace(
-      "DATE_FORMAT(om.O_date, '%Y-%m')",
-      "YEARWEEK(om.O_date)"
-    );
-    salesQuery += ` GROUP BY YEARWEEK(om.O_date)`;
+  console.log("Effective startDate:", effectiveStartDate); // Debug: Log the startDate
+  console.log("Effective endDate:", effectiveEndDate); // Debug: Log the endDate
+
+  // Calculate the number of days between startDate and endDate
+  const start = new Date(effectiveStartDate);
+  const end = new Date(effectiveEndDate);
+  const timeDiff = Math.abs(end - start);
+  const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
+
+  // Determine the grouping based on the date range
+  let groupByFormat, dateFormat;
+  if (daysDiff === 0 || daysDiff === 1) {
+    groupByFormat = "hourly";
+    dateFormat = "%Y-%m-%d %H:00"; // e.g., "2025-03-22 14:00"
+  } else if (daysDiff <= 7) {
+    groupByFormat = "daily";
+    dateFormat = "%Y-%m-%d"; // e.g., "2025-03-22"
+  } else if (daysDiff <= 90) {
+    groupByFormat = "weekly";
+    dateFormat = "%Y-%u"; // e.g., "2025-12" (year-week)
   } else {
-    salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m')`;
+    groupByFormat = "monthly";
+    dateFormat = "%Y-%m"; // e.g., "2025-03"
   }
 
-  salesByProductQuery += ` GROUP BY od.Product_id, c.CY_NAME ORDER BY totalRevenue DESC LIMIT 10`;
-  salesByCategoryQuery += ` GROUP BY c.CY_NAME ORDER BY totalRevenue DESC`;
+  db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
+    if (err) {
+      console.error("Error fetching categories:", err);
+      return res.status(500).json({ error: "Database error", details: err.sqlMessage });
+    }
 
-  Promise.all([
-    new Promise((resolve, reject) =>
-      db.query(salesQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(salesByProductQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(salesByCategoryQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-  ])
-    .then(([totalSales, salesByProductRaw, salesByCategory]) => {
-      console.log("salesByProductRaw:", salesByProductRaw);
-      db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
-        if (err) {
-          console.error("Error fetching categories:", err);
-          return res
-            .status(500)
-            .json({ error: "Database error", details: err.sqlMessage });
-        }
+    // Map CY_NAME to table name (lowercase, replace spaces with underscores)
+    const tablePromises = categories.map(category => {
+      const tableName = category.CY_NAME.trim().toLowerCase().replace(/\s+/g, "_");
+      return new Promise((resolve) => {
+        // Check if the table exists
+        db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
+          if (err || result.length === 0) {
+            console.warn(`Table ${tableName} does not exist for category ${category.CY_NAME}`);
+            resolve(null); // Skip this table
+          } else {
+            resolve({ tableName, categoryId: category.CY_ID, categoryName: category.CY_NAME });
+          }
+        });
+      });
+    });
 
-        const categoryTableMap = new Map(
-          categories.map((c) => [
-            c.CY_NAME.trim().toLowerCase(),
-            c.CY_NAME.trim().toLowerCase().replace(/\s+/g, "_"),
-          ])
+    Promise.all(tablePromises).then(tableResults => {
+      // Filter out null results (tables that don't exist)
+      const validTables = tableResults.filter(table => table !== null);
+
+      if (validTables.length === 0) {
+        return res.status(500).json({ error: "No valid category tables found" });
+      }
+
+      // Build the UNION query for the product tables
+      const unionQuery = validTables
+        .map(table => `SELECT id, name, category_id FROM \`${table.tableName}\``)
+        .join(" UNION ");
+
+      // Base queries
+      let salesQuery = `
+        SELECT 
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalSales,
+          DATE_FORMAT(om.O_date, ?) as period
+        FROM order_details od
+        JOIN order_master om ON od.O_Id = om.O_Id
+        WHERE om.O_status = 'Delivered'
+      `;
+      let salesByProductQuery = `
+        SELECT 
+          od.Product_id,
+          p.name as productName,
+          SUM(od.Odetails_Qty) as totalUnitsSold,
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue,
+          c.CY_NAME as categoryName
+        FROM order_details od
+        JOIN order_master om ON od.O_Id = om.O_Id
+        JOIN (
+          ${unionQuery}
+        ) p ON od.Product_id = p.id
+        JOIN category c ON p.category_id = c.CY_ID
+        WHERE om.O_status = 'Delivered'
+      `;
+      let salesByCategoryQuery = `
+        SELECT 
+          c.CY_NAME as categoryName,
+          SUM(od.Odetails_Qty) as totalUnitsSold,
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue
+        FROM order_details od
+        JOIN order_master om ON od.O_Id = om.O_Id
+        JOIN (
+          ${unionQuery}
+        ) p ON od.Product_id = p.id
+        JOIN category c ON p.category_id = c.CY_ID
+        WHERE om.O_status = 'Delivered'
+      `;
+
+      const queryParams = [dateFormat]; // First parameter for DATE_FORMAT
+
+      // Add date filters
+      if (startDate) {
+        salesQuery += ` AND om.O_date >= ?`;
+        salesByProductQuery += ` AND om.O_date >= ?`;
+        salesByCategoryQuery += ` AND om.O_date >= ?`;
+        queryParams.push(startDate);
+      }
+      if (endDate) {
+        salesQuery += ` AND om.O_date <= ?`;
+        salesByProductQuery += ` AND om.O_date <= ?`;
+        salesByCategoryQuery += ` AND om.O_date <= ?`;
+        queryParams.push(endDate);
+      }
+
+      // Add GROUP BY and ORDER BY to salesQuery
+      if (groupByFormat === "hourly") {
+        salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d %H:00')`;
+      } else if (groupByFormat === "daily") {
+        salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d')`;
+      } else if (groupByFormat === "weekly") {
+        salesQuery = salesQuery.replace(
+          "DATE_FORMAT(om.O_date, ?)",
+          "DATE_FORMAT(om.O_date, '%Y-%u') as period"
         );
+        queryParams[0] = "%Y-%u"; // Update the dateFormat parameter
+        salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%u')`;
+      } else {
+        salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m')`;
+      }
+      salesQuery += ` ORDER BY period`;
 
-        console.log(
-          "Category Table Map:",
-          Array.from(categoryTableMap.entries())
-        );
+      salesByProductQuery += ` GROUP BY od.Product_id, p.name, c.CY_NAME ORDER BY totalRevenue DESC LIMIT 5`;
+      salesByCategoryQuery += ` GROUP BY c.CY_NAME ORDER BY totalRevenue DESC`;
 
-        const namePromises = salesByProductRaw.map((item) => {
-          return new Promise((resolve) => {
-            const productId = item.Product_id;
-            const categoryName = item.categoryName.trim().toLowerCase();
-            const tableName = categoryTableMap.get(categoryName);
+      console.log("Sales query:", salesQuery); // Debug: Log the query
+      console.log("Sales by Product query:", salesByProductQuery); // Debug: Log the query
+      console.log("Sales by Category query:", salesByCategoryQuery); // Debug: Log the query
+      console.log("Query parameters:", queryParams); // Debug: Log the parameters
 
-            console.log(
-              `Processing Product_id: ${productId}, Category: ${categoryName}, Table: ${tableName}`
-            );
+      Promise.all([
+        new Promise((resolve, reject) =>
+          db.query(salesQuery, queryParams, (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+        new Promise((resolve, reject) =>
+          db.query(salesByProductQuery, queryParams.slice(1), (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+        new Promise((resolve, reject) =>
+          db.query(salesByCategoryQuery, queryParams.slice(1), (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+      ])
+        .then(([totalSales, salesByProduct, salesByCategory]) => {
+          console.log("Total Sales:", totalSales);
+          console.log("Sales by Product:", salesByProduct);
+          console.log("Sales by Category:", salesByCategory);
 
-            if (!tableName) {
-              console.warn(`No table found for category ${categoryName}`);
-              resolve({
-                Product_id: item.Product_id,
-                productName: `Unknown Product (Category: ${item.categoryName})`,
-                totalUnitsSold: item.totalUnitsSold,
-                totalRevenue: item.totalRevenue,
-              });
-              return;
-            }
-
-            db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
-              if (err || result.length === 0) {
-                console.warn(
-                  `Table ${tableName} does not exist for category ${categoryName}`
-                );
-                resolve({
-                  Product_id: item.Product_id,
-                  productName: `Unknown Product (Category: ${item.categoryName})`,
-                  totalUnitsSold: item.totalUnitsSold,
-                  totalRevenue: item.totalRevenue,
-                });
-                return;
-              }
-
-              // Try multiple column name patterns for the product name
-              db.query(
-                `SHOW COLUMNS FROM \`${tableName}\` WHERE Field LIKE '%name%' OR Field IN ('title', 'description', 'product_name', 'p_name')`,
-                (err, columns) => {
-                  if (err || columns.length === 0) {
-                    console.warn(
-                      `Table ${tableName} has no name column for category ${categoryName}`
-                    );
-                    resolve({
-                      Product_id: item.Product_id,
-                      productName: `Unknown Product (Category: ${item.categoryName})`,
-                      totalUnitsSold: item.totalUnitsSold,
-                      totalRevenue: item.totalRevenue,
-                    });
-                    return;
-                  }
-
-                  const nameColumn = columns[0].Field;
-                  const idColumn =
-                    columns.find(
-                      (col) =>
-                        col.Field.toLowerCase().includes("id") &&
-                        !col.Field.includes("cy_id")
-                    )?.Field || "ID";
-                  console.log(
-                    `Using nameColumn: ${nameColumn}, idColumn: ${idColumn}`
-                  );
-
-                  if (!idColumn) {
-                    console.warn(
-                      `Table ${tableName} has no ID column for category ${categoryName}`
-                    );
-                    resolve({
-                      Product_id: item.Product_id,
-                      productName: `Unknown Product (Category: ${item.categoryName})`,
-                      totalUnitsSold: item.totalUnitsSold,
-                      totalRevenue: item.totalRevenue,
-                    });
-                    return;
-                  }
-
-                  const query = `
-                                SELECT \`${nameColumn}\` as productName
-                                FROM \`${tableName}\`
-                                WHERE \`${idColumn}\` = ?
-                            `;
-                  db.query(query, [productId], (err, result) => {
-                    if (err || result.length === 0) {
-                      console.warn(
-                        `Product_id ${productId} not found in table ${tableName}. Query: ${query}`
-                      );
-                      resolve({
-                        Product_id: item.Product_id,
-                        productName: `Unknown Product (Category: ${item.categoryName})`,
-                        totalUnitsSold: item.totalUnitsSold,
-                        totalRevenue: item.totalRevenue,
-                      });
-                      return;
-                    }
-                    console.log(
-                      `Found product name for Product_id ${productId}: ${result[0].productName}`
-                    );
-                    resolve({
-                      Product_id: item.Product_id,
-                      productName: result[0].productName,
-                      totalUnitsSold: item.totalUnitsSold,
-                      totalRevenue: item.totalRevenue,
-                    });
-                  });
-                }
-              );
-            });
+          res.json({
+            totalSales: totalSales || [],
+            salesByProduct: salesByProduct || [],
+            salesByCategory: salesByCategory || [],
+          });
+        })
+        .catch((err) => {
+          console.error("Error fetching sales report:", err);
+          res.status(500).json({
+            error: "Database error",
+            details: err.sqlMessage || err.message,
           });
         });
-
-        Promise.all(namePromises)
-          .then((salesByProduct) => {
-            console.log("Final Sales by Product with Names:", salesByProduct);
-            res.json({
-              totalSales: totalSales || [],
-              salesByProduct: salesByProduct || [],
-              salesByCategory: salesByCategory || [],
-            });
-          })
-          .catch((err) => {
-            console.error("Error fetching product names:", err);
-            res.status(500).json({
-              error: "Database error",
-              details: err.sqlMessage || err.message,
-            });
-          });
-      });
     })
     .catch((err) => {
-      console.error("Error fetching sales report:", err);
+      console.error("Error fetching categories:", err);
       res.status(500).json({
         error: "Database error",
         details: err.sqlMessage || err.message,
       });
     });
+  });
 };
 // Customer Report Data
 exports.getCustomerReport = (req, res) => {
@@ -734,23 +691,14 @@ exports.getCustomerReport = (req, res) => {
   let purchaseHistoryQuery = `
     SELECT 
         om.C_ID,
+        c.c_username as customername,
         COUNT(om.O_id) AS totalOrders,
         SUM(od.Odetails_price * od.Odetails_Qty) AS totalSpent
     FROM order_master om
-    JOIN order_details od ON om.O_id = od.O_id
+    JOIN customer c ON om.C_ID = c.C_ID
+    JOIN order_details od ON om.O_id = od.O_Id
     WHERE om.O_status = 'Delivered'
   `;
-
-  // Lifetime value query
-  let lifetimeValueQuery = `
-    SELECT 
-        om.C_id,
-        SUM(od.Odetails_price * od.Odetails_Qty) as lifetimeValue
-    FROM order_master om
-    JOIN order_details od ON om.O_id = od.O_id
-    WHERE om.O_status = 'Delivered'
-  `;
-
   // Query parameters
   const queryParams = [];
 
@@ -767,7 +715,6 @@ exports.getCustomerReport = (req, res) => {
   if (whereClauses.length > 0) {
     const whereClause = ` AND ${whereClauses.join(" AND ")}`;
     purchaseHistoryQuery += whereClause;
-    lifetimeValueQuery += whereClause;
   }
 
   // Finalize queries
@@ -776,16 +723,10 @@ exports.getCustomerReport = (req, res) => {
     ORDER BY totalSpent DESC
     LIMIT 10
   `;
-  lifetimeValueQuery += `
-    GROUP BY om.C_ID
-    ORDER BY lifetimeValue DESC
-    LIMIT 10
-  `;
 
   // Logging for debugging
-  // console.log("demographicsQuery:", demographicsQuery);
-  // console.log("purchaseHistoryQuery:", purchaseHistoryQuery, queryParams);
-  // console.log("lifetimeValueQuery:", lifetimeValueQuery, queryParams);
+  console.log("demographicsQuery:", demographicsQuery);
+  console.log("purchaseHistoryQuery:", purchaseHistoryQuery, queryParams);
 
   // Execute queries in parallel
   Promise.all([
@@ -799,20 +740,13 @@ exports.getCustomerReport = (req, res) => {
         err ? reject(err) : resolve(result)
       )
     ),
-    new Promise((resolve, reject) =>
-      db.query(lifetimeValueQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
   ])
-    .then(([demographics, purchaseHistory, lifetimeValue]) => {
-      // console.log("Demographics Data:", demographics);
-      // console.log("Purchase History Data:", purchaseHistory);
-      // console.log("Lifetime Value Data:", lifetimeValue);
+    .then(([demographics, purchaseHistory]) => {
+      console.log("Demographics Data:", demographics);
+      console.log("Purchase History Data:", purchaseHistory);
       res.json({
         demographics: demographics || [],
         purchaseHistory: purchaseHistory || [],
-        lifetimeValue: lifetimeValue || [],
       });
     })
     .catch((err) => {
@@ -945,27 +879,47 @@ exports.getInventoryReport = (req, res) => {
 exports.getOrderReport = (req, res) => {
   const { startDate, endDate, status } = req.query;
 
+  // Query for status summary (already exists)
   let statusQuery = `
-        SELECT 
-            O_status as status,
-            COUNT(*) as count
-        FROM order_master om
-    `;
-  let shippingDetailsQuery = `
-        SELECT 
-            om.O_id,
-            om.C_id,
-            c.C_address as customerAddress,
-            c.C_pincode as customerPincode,
-            dp.D_NAME as deliveryPerson
-        FROM order_master om
-        JOIN customer c ON om.C_id = c.C_id
-        LEFT JOIN deliveries d ON om.O_id = d.O_id
-        LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
-    `;
-  const queryParams = [];
+    SELECT 
+      O_status as status,
+      COUNT(*) as count
+    FROM order_master om
+  `;
 
+  // Query for shipping details (already exists)
+  let shippingDetailsQuery = `
+    SELECT 
+      om.O_id,
+      om.C_id,
+      c.C_address as customerAddress,
+      c.C_pincode as customerPincode,
+      dp.D_NAME as deliveryPerson
+    FROM order_master om
+    JOIN customer c ON om.C_id = c.C_id
+    LEFT JOIN deliveries d ON om.O_id = d.O_id
+    LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
+  `;
+
+  // New query for order count
+  let orderCountQuery = `
+    SELECT 
+      COUNT(DISTINCT om.O_id) as orderCount
+    FROM order_master om
+  `;
+
+  // New query for total revenue
+  let totalRevenueQuery = `
+    SELECT 
+      SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
+    FROM order_master om
+    JOIN order_details od ON om.O_id = od.O_id
+  `;
+
+  const queryParams = [];
   let whereClauses = [];
+
+  // Build WHERE clauses for all queries
   if (startDate) {
     whereClauses.push("om.O_date >= ?");
     queryParams.push(startDate);
@@ -976,20 +930,31 @@ exports.getOrderReport = (req, res) => {
   }
   if (
     status &&
-    ["Pending", "Processing", "Shipped", "Delivered", "Canceled"].includes(
-      status
-    )
+    ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)
   ) {
     whereClauses.push("om.O_status = ?");
     queryParams.push(status);
   }
 
+  // Append WHERE clauses to all queries
+  if (whereClauses.length > 0) {
+    const whereClause = " WHERE " + whereClauses.join(" AND ");
+    statusQuery += whereClause;
+    shippingDetailsQuery += whereClause;
+    orderCountQuery += whereClause;
+    totalRevenueQuery += whereClause;
+  }
+
+  // Finalize queries
   statusQuery += ` GROUP BY O_status`;
   shippingDetailsQuery += ` LIMIT 10`;
 
   console.log("statusQuery:", statusQuery, queryParams);
   console.log("shippingDetailsQuery:", shippingDetailsQuery, queryParams);
+  console.log("orderCountQuery:", orderCountQuery, queryParams);
+  console.log("totalRevenueQuery:", totalRevenueQuery, queryParams);
 
+  // Execute all queries in parallel
   Promise.all([
     new Promise((resolve, reject) =>
       db.query(statusQuery, queryParams, (err, result) =>
@@ -1001,11 +966,27 @@ exports.getOrderReport = (req, res) => {
         err ? reject(err) : resolve(result)
       )
     ),
+    new Promise((resolve, reject) =>
+      db.query(orderCountQuery, queryParams, (err, result) =>
+        err ? reject(err) : resolve(result)
+      )
+    ),
+    new Promise((resolve, reject) =>
+      db.query(totalRevenueQuery, queryParams, (err, result) =>
+        err ? reject(err) : resolve(result)
+      )
+    ),
   ])
-    .then(([statusSummary, shippingDetails]) => {
+    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult]) => {
+      // Extract orderCount and totalRevenue from results
+      const orderCount = orderCountResult[0]?.orderCount || 0;
+      const totalRevenue = totalRevenueResult[0]?.totalRevenue || 0;
+
       res.json({
         statusSummary: statusSummary || [],
         shippingDetails: shippingDetails || [],
+        orderCount: orderCount,
+        totalRevenue: totalRevenue,
       });
     })
     .catch((err) => {
@@ -1621,9 +1602,11 @@ exports.exportSalesReportPDF = (req, res) => {
   });
 };
 
-// Export Customer Report as CSV
 exports.exportCustomerReportCSV = (req, res) => {
   const { startDate, endDate } = req.query;
+
+  const today = new Date();
+  const downloadDate = today.toISOString().split("T")[0];
 
   let demographicsQuery = `
     SELECT 
@@ -1636,19 +1619,12 @@ exports.exportCustomerReportCSV = (req, res) => {
   let purchaseHistoryQuery = `
     SELECT 
       om.C_id,
+      c.c_username AS customername,
       COUNT(om.O_id) as totalOrders,
-      SUM(od.ODETAILS_price * od.ODETAILS_Qty) as totalSpent
+      SUM(od.odetails_price * od.odetails_qty) as totalSpent  -- Use lowercase column names
     FROM order_master om
     JOIN order_details od ON om.O_id = od.O_id
-    WHERE om.O_status = 'Delivered'
-  `;
-
-  let lifetimeValueQuery = `
-    SELECT 
-      om.C_id,
-      SUM(od.ODETAILS_price * od.ODETAILS_Qty) as lifetimeValue
-    FROM order_master om
-    JOIN order_details od ON om.O_id = od.O_id
+    JOIN customer c ON om.C_id = c.C_id
     WHERE om.O_status = 'Delivered'
   `;
 
@@ -1667,85 +1643,63 @@ exports.exportCustomerReportCSV = (req, res) => {
   if (whereClauses.length > 0) {
     const whereClause = ` AND ${whereClauses.join(" AND ")}`;
     purchaseHistoryQuery += whereClause;
-    lifetimeValueQuery += whereClause;
   }
 
-  purchaseHistoryQuery += ` GROUP BY om.C_id ORDER BY totalSpent DESC LIMIT 10`;
-  lifetimeValueQuery += ` GROUP BY om.C_id ORDER BY lifetimeValue DESC LIMIT 10`;
+  purchaseHistoryQuery += ` GROUP BY om.C_id, c.c_username ORDER BY totalSpent DESC LIMIT 10`;
 
-  // Log the final queries for debugging
   console.log("demographicsQuery:", demographicsQuery);
   console.log("purchaseHistoryQuery:", purchaseHistoryQuery, queryParams);
-  console.log("lifetimeValueQuery:", lifetimeValueQuery, queryParams);
 
   Promise.all([
     new Promise((resolve, reject) =>
-      db.query(demographicsQuery, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
+      db.query(demographicsQuery, (err, result) => {
+        if (err) {
+          console.error("Demographics query error:", err);
+          return reject(err);
+        }
+        resolve(result);
+      })
     ),
     new Promise((resolve, reject) =>
-      db.query(purchaseHistoryQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(lifetimeValueQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
+      db.query(purchaseHistoryQuery, queryParams, (err, result) => {
+        if (err) {
+          console.error("Purchase history query error:", err);
+          return reject(err);
+        }
+        resolve(result);
+      })
     ),
   ])
-    .then(([demographics, purchaseHistory, lifetimeValue]) => {
+    .then(([demographics, purchaseHistory]) => {
       console.log("demographics:", demographics);
       console.log("purchaseHistory:", purchaseHistory);
-      console.log("lifetimeValue:", lifetimeValue);
 
-      const demographicsData = demographics.map((item) => ({
-        Section: "Customer Demographics",
-        AreaID: item.areaId,
-        CustomerCount: item.customerCount,
-      }));
+      let csvContent = "";
 
-      const purchaseHistoryData = purchaseHistory.map((item) => ({
-        Section: "Purchase History",
-        CustomerID: item.C_id,
-        TotalOrders: item.totalOrders,
-        TotalSpent: item.totalSpent,
-      }));
+      csvContent += "Customer Report\n";
+      csvContent += `Date: ${downloadDate}\n`;
+      csvContent += `Between: ${startDate || "N/A"} to ${endDate || "N/A"}\n\n`;
 
-      const lifetimeValueData = lifetimeValue.map((item) => ({
-        Section: "Customer Lifetime Value",
-        CustomerID: item.C_id,
-        LifetimeValue: item.lifetimeValue,
-      }));
+      csvContent += "Customer Demographics\n";
+      const demographicsHeader = "Area ID,Customer Count\n";
+      const demographicsRows = demographics.map(
+        (item) => `${item.areaId || "N/A"},${item.customerCount || 0}`
+      ).join("\n");
+      csvContent += demographicsHeader + demographicsRows + "\n\n";
 
-      const csvData = [
-        ...demographicsData,
-        { Section: "" },
-        ...purchaseHistoryData,
-        { Section: "" },
-        ...lifetimeValueData,
-      ];
-
-      const fields = [
-        "Section",
-        "AreaID",
-        "CustomerCount",
-        "CustomerID",
-        "TotalOrders",
-        "TotalSpent",
-        "LifetimeValue",
-      ];
-
-      const json2csvParser = new Parser({ fields });
-      const csv = json2csvParser.parse(csvData);
+      csvContent += "Purchase History\n";
+      const purchaseHistoryHeader = "Customer ID,Customer Name,Total Orders,Total Spent (Rs.)\n";
+      const purchaseHistoryRows = purchaseHistory.map(
+        (item) => `${item.C_id || "N/A"},${item.customername || "Unknown"},${item.totalOrders || 0},${item.totalSpent ? item.totalSpent.toFixed(2) : "0.00"}`
+      ).join("\n");
+      csvContent += purchaseHistoryHeader + purchaseHistoryRows + "\n";
 
       res.header("Content-Type", "text/csv");
       res.header(
         "Content-Disposition",
         'attachment; filename="customer_report.csv"'
       );
-      res.send(csv);
+      res.send(csvContent);
     })
     .catch((err) => {
       console.error("Error exporting customer report as CSV:", err);
@@ -1753,73 +1707,84 @@ exports.exportCustomerReportCSV = (req, res) => {
     });
 };
 
-// Export Customer Report as PDF
+// Helper function to capitalize names
+const capitalizeName = (name) => {
+  if (!name) return "Unknown";
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 exports.exportCustomerReportPDF = (req, res) => {
   const { startDate, endDate } = req.query;
 
+  const today = new Date();
+  const downloadDate = today.toISOString().split("T")[0];
+
   let demographicsQuery = `
-        SELECT 
-            c.Area_id as areaId,
-            COUNT(*) as customerCount
-        FROM customer c
-        GROUP BY c.Area_id
-    `;
+    SELECT 
+        c.c_pincode as areaId,
+        COUNT(*) as customerCount
+    FROM customer c
+    GROUP BY c.c_pincode
+  `;
+
   let purchaseHistoryQuery = `
-        SELECT 
-            om.C_id,
-            COUNT(om.O_id) as totalOrders,
-            SUM(od.ODETAILS_price * od.ODETAILS_Qty) as totalSpent
-        FROM order_master om
-        JOIN order_details od ON om.O_id = od.O_id
-        WHERE om.O_status = 'Delivered'
-    `;
-  let lifetimeValueQuery = `
-        SELECT 
-            om.C_id,
-            SUM(od.ODETAILS_price * od.ODETAILS_Qty) as lifetimeValue
-        FROM order_master om
-        JOIN order_details od ON om.O_id = od.O_id
-        WHERE om.O_status = 'Delivered'
-    `;
+    SELECT 
+        om.C_id,
+        c.c_username AS customername,
+        COUNT(om.O_id) as totalOrders,
+        SUM(od.odetails_price * od.odetails_qty) as totalSpent
+    FROM order_master om
+    JOIN order_details od ON om.O_id = od.O_id
+    JOIN customer c ON om.C_id = c.C_id
+    WHERE om.O_status = 'Delivered'
+  `;
+
   const queryParams = [];
 
   let whereClauses = [];
   if (startDate) {
-    whereClauses.push("O_date >= ?");
+    whereClauses.push("om.O_date >= ?");
     queryParams.push(startDate);
   }
   if (endDate) {
-    whereClauses.push("O_date <= ?");
+    whereClauses.push("om.O_date <= ?");
     queryParams.push(endDate);
   }
   if (whereClauses.length > 0) {
     const whereClause = ` AND ${whereClauses.join(" AND ")}`;
     purchaseHistoryQuery += whereClause;
-    lifetimeValueQuery += whereClause;
   }
 
-  purchaseHistoryQuery += ` GROUP BY om.C_id ORDER BY totalSpent DESC LIMIT 10`;
-  lifetimeValueQuery += ` GROUP BY om.C_id ORDER BY lifetimeValue DESC LIMIT 10`;
+  purchaseHistoryQuery += ` GROUP BY om.C_id, c.c_username ORDER BY totalSpent DESC LIMIT 10`;
+
+  console.log("demographicsQuery:", demographicsQuery);
+  console.log("purchaseHistoryQuery:", purchaseHistoryQuery, queryParams);
 
   Promise.all([
     new Promise((resolve, reject) =>
-      db.query(demographicsQuery, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
+      db.query(demographicsQuery, (err, result) => {
+        if (err) {
+          console.error("Demographics query error:", err);
+          return reject(err);
+        }
+        resolve(result);
+      })
     ),
     new Promise((resolve, reject) =>
-      db.query(purchaseHistoryQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(lifetimeValueQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
+      db.query(purchaseHistoryQuery, queryParams, (err, result) => {
+        if (err) {
+          console.error("Purchase history query error:", err);
+          return reject(err);
+        }
+        resolve(result);
+      })
     ),
   ])
-    .then(([demographics, purchaseHistory, lifetimeValue]) => {
-      const doc = new PDFDocument();
+    .then(([demographics, purchaseHistory]) => {
+      const doc = new PDFDocument({ margin: 50 });
       let buffers = [];
       doc.on("data", buffers.push.bind(buffers));
       doc.on("end", () => {
@@ -1832,43 +1797,58 @@ exports.exportCustomerReportPDF = (req, res) => {
         res.end(pdfData);
       });
 
-      doc.fontSize(20).text("Customer Report", { align: "center" });
-      doc.moveDown();
+      // Track page numbers dynamically
+      let pageNumber = 1;
+      doc.on("pageAdded", () => {
+        pageNumber++;
+      });
 
+      // Function to add page numbers to all pages
+    
+
+      // Header
+      doc.fontSize(20).text("Customer Report", { align: "center" });
+      doc.moveDown(0.5);
+      doc.fontSize(12).text(` Date: ${downloadDate}`, { align: "center" });
+      doc.moveDown(0.5);
+      doc.fontSize(12).text(`Between: ${startDate || "N/A"} to ${endDate || "N/A"}`, { align: "center" });
+      doc.moveDown(0.8); // Reduced spacing to ensure content starts on the first page
+
+      // Customer Demographics Section
       doc.fontSize(14).text("Customer Demographics", { underline: true });
       doc.moveDown(0.5);
-      demographics.forEach((item) => {
-        doc
-          .fontSize(12)
-          .text(
-            `Area ID: ${item.areaId}, Customer Count: ${item.customerCount}`
-          );
-      });
-      doc.moveDown();
 
+      demographics.forEach((item) => {
+        doc.fontSize(12).text(`Area ID: ${item.areaId || "N/A"}`);
+        doc.moveDown(0.2);
+        doc.fontSize(12).text(`Customer Count: ${item.customerCount || 0}`);
+        doc.moveDown(1); // Blank line after each entry
+      });
+
+      doc.moveDown(0.8); // Reduced spacing between sections
+
+      // Purchase History Section
       doc.fontSize(14).text("Purchase History", { underline: true });
       doc.moveDown(0.5);
-      purchaseHistory.forEach((item) => {
-        doc
-          .fontSize(12)
-          .text(
-            `Customer ID: ${item.C_id}, Total Orders: ${
-              item.totalOrders
-            }, Total Spent: $${item.totalSpent.toFixed(2)}`
-          );
-      });
-      doc.moveDown();
 
-      doc.fontSize(14).text("Customer Lifetime Value", { underline: true });
-      doc.moveDown(0.5);
-      lifetimeValue.forEach((item) => {
-        doc
-          .fontSize(12)
-          .text(
-            `Customer ID: ${
-              item.C_id
-            }, Lifetime Value: $${item.lifetimeValue.toFixed(2)}`
-          );
+      purchaseHistory.forEach((item) => {
+        doc.fontSize(12).text(`Customer: ${capitalizeName(item.customername)}`);
+        doc.moveDown(0.2);
+        doc.fontSize(12).text(`Customer ID: ${item.C_id || "N/A"}`);
+        doc.moveDown(0.2);
+        doc.fontSize(12).text(`Total Orders: ${item.totalOrders || 0}`);
+        doc.moveDown(0.2);
+        doc.fontSize(12).text(
+          `Total Spent: ${
+            item.totalSpent
+              ? `Rs. ${item.totalSpent.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`
+              : "Rs. 0.00"
+          }`
+        );
+        doc.moveDown(1); // Blank line after each entry
       });
 
       doc.end();
@@ -2219,26 +2199,38 @@ exports.exportOrderReportCSV = (req, res) => {
   const { startDate, endDate, status } = req.query;
 
   let statusQuery = `
-        SELECT 
-            O_status as status,
-            COUNT(*) as count
-        FROM order_master om
-    `;
+    SELECT 
+      O_status as status,
+      COUNT(*) as count
+    FROM order_master om
+  `;
   let shippingDetailsQuery = `
-        SELECT 
-            om.O_id,
-            om.C_id,
-            c.C_address as customerAddress,
-            c.C_pincode as customerPincode,
-            dp.D_NAME as deliveryPerson
-        FROM order_master om
-        JOIN customer c ON om.C_id = c.C_id
-        LEFT JOIN deliveries d ON om.O_id = d.O_id
-        LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
-    `;
-  const queryParams = [];
+    SELECT 
+      om.O_id,
+      om.C_id,
+      c.C_address as customerAddress,
+      c.C_pincode as customerPincode,
+      dp.D_NAME as deliveryPerson
+    FROM order_master om
+    JOIN customer c ON om.C_id = c.C_id
+    LEFT JOIN deliveries d ON om.O_id = d.O_id
+    LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
+  `;
+  let orderCountQuery = `
+    SELECT 
+      COUNT(DISTINCT om.O_id) as orderCount
+    FROM order_master om
+  `;
+  let totalRevenueQuery = `
+    SELECT 
+      SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
+    FROM order_master om
+    JOIN order_details od ON om.O_id = od.O_id
+  `;
 
+  const queryParams = [];
   let whereClauses = [];
+
   if (startDate) {
     whereClauses.push("O_date >= ?");
     queryParams.push(startDate);
@@ -2249,17 +2241,18 @@ exports.exportOrderReportCSV = (req, res) => {
   }
   if (
     status &&
-    ["Pending", "Processing", "Shipped", "Delivered", "Canceled"].includes(
-      status
-    )
+    ["PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)
   ) {
     whereClauses.push("O_status = ?");
     queryParams.push(status);
   }
+
   if (whereClauses.length > 0) {
     const whereClause = ` WHERE ${whereClauses.join(" AND ")}`;
     statusQuery += whereClause;
     shippingDetailsQuery += whereClause;
+    orderCountQuery += whereClause;
+    totalRevenueQuery += whereClause;
   }
 
   statusQuery += ` GROUP BY O_status`;
@@ -2276,42 +2269,60 @@ exports.exportOrderReportCSV = (req, res) => {
         err ? reject(err) : resolve(result)
       )
     ),
+    new Promise((resolve, reject) =>
+      db.query(orderCountQuery, queryParams, (err, result) =>
+        err ? reject(err) : resolve(result)
+      )
+    ),
+    new Promise((resolve, reject) =>
+      db.query(totalRevenueQuery, queryParams, (err, result) =>
+        err ? reject(err) : resolve(result)
+      )
+    ),
   ])
-    .then(([statusSummary, shippingDetails]) => {
-      const statusSummaryData = statusSummary.map((item) => ({
-        Section: "Order Status Summary",
-        Status: item.status,
-        Count: item.count,
-      }));
-      const shippingDetailsData = shippingDetails.map((item) => ({
-        Section: "Shipping Details",
-        OrderID: item.O_id,
-        CustomerID: item.C_id,
-        CustomerAddress: item.customerAddress,
-        CustomerPincode: item.customerPincode,
-        DeliveryPerson: item.deliveryPerson || "N/A",
-      }));
+    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult]) => {
+      const orderCount = orderCountResult[0]?.orderCount || 0;
+      const totalRevenue = totalRevenueResult[0]?.totalRevenue || 0;
+      const refundCount = statusSummary.find((item) => item.status === "CANCELLED")?.count || 0;
+      const downloadDate = new Date().toISOString().split("T")[0]; // e.g., "2025-03-23"
 
-      const csvData = [
-        ...statusSummaryData,
-        { Section: "" },
-        ...shippingDetailsData,
-      ];
+      // Initialize the CSV content as an array of strings
+      let csvContent = [];
 
-      const fields = [
-        "Section",
-        "Status",
-        "Count",
-        "OrderID",
-        "OrderDate",
-        "DeliveryDate",
-        "CustomerID",
-        "CustomerAddress",
-        "CustomerPincode",
-        "DeliveryPerson",
-      ];
-      const json2csvParser = new Parser({ fields });
-      const csv = json2csvParser.parse(csvData);
+      // Header
+      csvContent.push("Order Report");
+      csvContent.push(`"Date: ${downloadDate}"`);
+      csvContent.push(""); // Empty row for spacing
+
+      // Order Summary Report Section
+      csvContent.push("Order Summary Report");
+      csvContent.push("Order Count,Total Revenue,Average Order Value,Refunds");
+      csvContent.push(
+        `"${orderCount}","${totalRevenue}","${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}","${refundCount}"`
+      );
+      csvContent.push(""); // Empty row for spacing
+      csvContent.push(""); // Additional empty row for separation
+
+      // Order Status Summary Section
+      csvContent.push("Order Status Summary");
+      csvContent.push("Status,Count");
+      statusSummary.forEach((item) => {
+        csvContent.push(`"${item.status}","${item.count}"`);
+      });
+      csvContent.push(""); // Empty row for spacing
+      csvContent.push(""); // Additional empty row for separation
+
+      // Shipping Details Section
+      csvContent.push("Shipping Details");
+      csvContent.push("Order ID,Customer ID,Address,Pincode,Delivery Person");
+      shippingDetails.forEach((item) => {
+        csvContent.push(
+          `"${item.O_id}","${item.C_id}","${item.customerAddress.replace(/"/g, '""')}",${item.customerPincode},"${item.deliveryPerson || "N/A"}"`
+        );
+      });
+
+      // Join the CSV content with newlines
+      const csv = csvContent.join("\n");
 
       res.header("Content-Type", "text/csv");
       res.header(
@@ -2331,26 +2342,38 @@ exports.exportOrderReportPDF = (req, res) => {
   const { startDate, endDate, status } = req.query;
 
   let statusQuery = `
-        SELECT 
-            O_status as status,
-            COUNT(*) as count
-        FROM order_master om
-    `;
+    SELECT 
+      O_status as status,
+      COUNT(*) as count
+    FROM order_master om
+  `;
   let shippingDetailsQuery = `
-        SELECT 
-            om.O_id,
-            om.C_id,
-            c.C_address as customerAddress,
-            c.C_pincode as customerPincode,
-            dp.D_NAME as deliveryPerson
-        FROM order_master om
-        JOIN customer c ON om.C_id = c.C_id
-        LEFT JOIN deliveries d ON om.O_id = d.O_id
-        LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
-    `;
-  const queryParams = [];
+    SELECT 
+      om.O_id,
+      om.C_id,
+      c.C_address as customerAddress,
+      c.C_pincode as customerPincode,
+      dp.D_NAME as deliveryPerson
+    FROM order_master om
+    JOIN customer c ON om.C_id = c.C_id
+    LEFT JOIN deliveries d ON om.O_id = d.O_id
+    LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
+  `;
+  let orderCountQuery = `
+    SELECT 
+      COUNT(DISTINCT om.O_id) as orderCount
+    FROM order_master om
+  `;
+  let totalRevenueQuery = `
+    SELECT 
+      SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
+    FROM order_master om
+    JOIN order_details od ON om.O_id = od.O_id
+  `;
 
+  const queryParams = [];
   let whereClauses = [];
+
   if (startDate) {
     whereClauses.push("O_date >= ?");
     queryParams.push(startDate);
@@ -2361,17 +2384,18 @@ exports.exportOrderReportPDF = (req, res) => {
   }
   if (
     status &&
-    ["Pending", "Processing", "Shipped", "Delivered", "Canceled"].includes(
-      status
-    )
+    ["PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)
   ) {
     whereClauses.push("O_status = ?");
     queryParams.push(status);
   }
+
   if (whereClauses.length > 0) {
     const whereClause = ` WHERE ${whereClauses.join(" AND ")}`;
     statusQuery += whereClause;
     shippingDetailsQuery += whereClause;
+    orderCountQuery += whereClause;
+    totalRevenueQuery += whereClause;
   }
 
   statusQuery += ` GROUP BY O_status`;
@@ -2388,9 +2412,23 @@ exports.exportOrderReportPDF = (req, res) => {
         err ? reject(err) : resolve(result)
       )
     ),
+    new Promise((resolve, reject) =>
+      db.query(orderCountQuery, queryParams, (err, result) =>
+        err ? reject(err) : resolve(result)
+      )
+    ),
+    new Promise((resolve, reject) =>
+      db.query(totalRevenueQuery, queryParams, (err, result) =>
+        err ? reject(err) : resolve(result)
+      )
+    ),
   ])
-    .then(([statusSummary, shippingDetails]) => {
-      const doc = new PDFDocument();
+    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult]) => {
+      const orderCount = orderCountResult[0]?.orderCount || 0;
+      const totalRevenue = totalRevenueResult[0]?.totalRevenue || 0;
+      const refundCount = statusSummary.find((item) => item.status === "CANCELLED")?.count || 0;
+
+      const doc = new PDFDocument({ margin: 50 });
       let buffers = [];
       doc.on("data", buffers.push.bind(buffers));
       doc.on("end", () => {
@@ -2403,28 +2441,41 @@ exports.exportOrderReportPDF = (req, res) => {
         res.end(pdfData);
       });
 
+      // Header
       doc.fontSize(20).text("Order Report", { align: "center" });
-      doc.moveDown();
+      doc.fontSize(12).text(`Date: ${new Date().toISOString().split("T")[0]}`, { align: "center" });
+      doc.moveDown(2);
 
-      doc.fontSize(14).text("Order Status Summary", { underline: true });
+      // Order Summary Report Section
+      doc.fontSize(16).text("Order Summary Report", { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(12).text(`Order Count: ${orderCount}`, { indent: 20 });
+      doc.fontSize(12).text(`Total Revenue: $${totalRevenue.toLocaleString()}`, { indent: 20 });
+      doc.fontSize(12).text(`Average Order Value: $${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}`, { indent: 20 });
+      doc.fontSize(12).text(`Refunds: ${refundCount}`, { indent: 20 });
+      doc.moveDown(1.5);
+
+      // Order Status Summary Section
+      doc.fontSize(16).text("Order Status Summary", { underline: true });
       doc.moveDown(0.5);
       statusSummary.forEach((item) => {
-        doc.fontSize(12).text(`Status: ${item.status}, Count: ${item.count}`);
+        doc.fontSize(12).text(`Status: ${item.status}, Count: ${item.count}`, { indent: 20 });
       });
-      doc.moveDown();
+      doc.moveDown(1.5);
 
-      doc.fontSize(14).text("Shipping Details", { underline: true });
+      // Shipping Details Section
+      doc.fontSize(16).text("Shipping Details", { underline: true });
       doc.moveDown(0.5);
-      shippingDetails.forEach((item) => {
-        doc
-          .fontSize(12)
-          .text(
-            `Order ID: ${item.O_id}, Customer ID: ${item.C_id}, Address: ${
-              item.customerAddress
-            }, Pincode: ${item.customerPincode}, Delivery Person: ${
-              item.deliveryPerson || "N/A"
-            }`
-          );
+      shippingDetails.forEach((item, index) => {
+        doc.fontSize(12).text(`Order ID: ${item.O_id}`, { indent: 20 });
+        doc.fontSize(12).text(`Customer ID: ${item.C_id}`, { indent: 20 });
+        doc.fontSize(12).text(`Address: ${item.customerAddress}`, { indent: 20 });
+        doc.fontSize(12).text(`Pincode: ${item.customerPincode}`, { indent: 20 });
+        doc.fontSize(12).text(`Delivery Person: ${item.deliveryPerson || "N/A"}`, { indent: 20 });
+        // Add space after each record, but not after the last one
+        if (index < shippingDetails.length - 1) {
+          doc.moveDown(1); // Adds an empty line between records
+        }
       });
 
       doc.end();
