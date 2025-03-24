@@ -102,7 +102,7 @@ const userfeedback = async (req, res) => {
               console.error(`Error querying view ${view}:`, err);
               return reject(err);
             }
-            console.log(result);
+            // console.log(result);
             resolve(result);
           });
         });
@@ -179,7 +179,7 @@ JOIN
               console.error(`Error querying view ${view}:`, err);
               return reject(err);
             }
-            console.log(result);
+            // console.log(result);
             resolve(result);
           });
         });

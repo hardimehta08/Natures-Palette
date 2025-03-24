@@ -75,7 +75,7 @@ const fetchDataCat = (req, res) => {
           desc,
           products: formattedProducts,
         };
-        console.log(response);
+        // console.log(response);
         res.json(response);
       });
     });

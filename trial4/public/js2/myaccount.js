@@ -220,3 +220,34 @@ function delfeedback(f_id) {
     })
     .catch((error) => console.error("Error:", error));
 }
+function deleteUser() {
+  const userConfirmed = confirm(
+    "Are you sure you want to delete your account?"
+  );
+  if (!userConfirmed) {
+    return; // Exit if the user cancels the action
+  }
+
+  fetch("/user/delete", {
+    method: "DELETE", // Specify the HTTP method as DELETE
+    headers: {
+      "Content-Type": "application/json", // Ensure the server knows it's JSON data
+    },
+  })
+    .then((response) => {
+      if (response.ok) {
+        alert("Your account has been deleted successfully."); // Notify user of success
+        window.location.href = "/login.html";
+      } else {
+        response.json().then((data) => {
+          alert(`Error: ${data.error || "Failed to delete your account."}`); // Show error from the server
+        });
+      }
+    })
+    .catch((error) => {
+      console.error("Error deleting account:", error);
+      alert(
+        "An error occurred while trying to delete your account. Please try again."
+      );
+    });
+}

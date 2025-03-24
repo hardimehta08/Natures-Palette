@@ -87,6 +87,7 @@ document.addEventListener("DOMContentLoaded", function () {
     submitPasswordButton.addEventListener("click", function () {
       const password = document.getElementById("password").value;
 
+      // Verify user password
       fetch("/user/verify-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -109,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
               .then((response) => response.json())
               .then((data) => {
                 console.log(data);
-                qrCodeImage.src = data.qrCodeURL;
+                qrCodeImage.src = data.qrCodeURL; // Show QR code for payment
                 pyId = data.PY_ID; // ✅ Store PY_ID globally
                 transactionIdContainer.style.display = "block";
               })
@@ -123,12 +124,12 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch((error) => console.error("❌ Error verifying password:", error));
     });
 
-    // Handle transaction ID submission
-
+    // Handle UPI transaction ID submission
     submitTransactionIdButton.addEventListener("click", function () {
       const transactionId12 = transactionIdInput.value.trim();
       const upiTransactionIdFormat = /^[a-zA-Z0-9]{12}$/;
 
+      // Validate transaction ID format
       if (!upiTransactionIdFormat.test(transactionId12)) {
         alert("❌ Please enter a valid UPI transaction ID.");
         return;
@@ -140,6 +141,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
+      // Confirm payment by updating transaction ID and processing payment server-side
       fetch("/payment/confirm-qr-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -150,37 +152,18 @@ document.addEventListener("DOMContentLoaded", function () {
       })
         .then((response) => response.json())
         .then((data) => {
-          if (data.message === "Payment confirmed.") {
-            // Call the new endpoint to generate the bill and update the order status
-            fetch("/payment/generateBillAndRedirect", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ O_ID: orderId }),
-            })
-              .then((response) => response.json())
-              .then((data) => {
-                if (
-                  data.message ===
-                  "Payment successful, bill generated, and order updated!"
-                ) {
-                  // Redirect to the order placed page
-                  alert("Order placed successfully!");
-                  window.location.href = "/orderPlaced.html";
-                } else {
-                  alert("❌ Error generating the bill. Please try again.");
-                }
-              })
-              .catch((error) => {
-                console.error("❌ Error generating the bill:", error);
-                alert("❌ Error generating the bill. Please try again.");
-              });
+          if (data.message === "Payment successful and bill generated!") {
+            // Redirect to the order placed page
+            alert("Order placed successfully! Invoice generated.");
+            window.location.href = "/orderPlaced.html";
           } else {
-            alert("❌ Error updating transaction ID. Please try again.");
+            console.log(data);
+            alert("❌ Error confirming payment or generating the bill.");
           }
         })
         .catch((error) => {
-          console.error("❌ Error updating transaction ID:", error);
-          alert("❌ Error updating transaction ID. Please try again.");
+          console.error("❌ Error confirming payment:", error);
+          alert("❌ Error confirming payment. Please try again.");
         });
     });
   });
@@ -188,6 +171,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function handleConfirmOrder() {
     console.log("✅ handleConfirmOrder() triggered");
 
+    // Get the selected payment method
     const paymentMethod = document.querySelector(
       'input[name="payment"]:checked'
     )?.value;
@@ -197,8 +181,16 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // Ensure the confirm button is defined
+    const confirmOrderButton = document.getElementById("confirm-order");
+    if (!confirmOrderButton) {
+      console.error("❌ confirmOrderButton not found in the DOM.");
+      return;
+    }
+
     confirmOrderButton.disabled = true;
 
+    // Prepare payment data
     const paymentData = {
       PY_MODE: paymentMethod.toUpperCase(),
       PY_DATE: new Date().toISOString().split("T")[0],
@@ -207,21 +199,24 @@ document.addEventListener("DOMContentLoaded", function () {
       O_ID: orderId,
     };
 
+    console.log("📤 Sending payment data to server:", paymentData);
     fetch("/payment/createPaymentWithBill", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(paymentData),
     })
-      .then((response) => response.json())
+      .then((response) => {
+        return response.json();
+      })
       .then((data) => {
-        console.log("✅ Payment & Bill successful:", data);
-        alert("Order placed successfully!");
+        console.log("✅ Success:", data);
+        alert(data.message || "Order placed successfully!");
         setTimeout(() => {
           window.location.href = "/orderPlaced.html";
-        }, 5000);
+        }, 3000);
       })
       .catch((error) => {
-        console.error("❌ Error in handleConfirmOrder():", error.message);
+        console.error("❌ Error:", error.message);
         alert(`Error: ${error.message}`);
       })
       .finally(() => {

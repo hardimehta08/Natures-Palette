@@ -13,13 +13,12 @@ const db = mysql.createConnection({
 });
 
 // Connect to the database
-// db.connect(err => {
-//   if (err) {
-//     console.error('Error connecting to the database:', err);
-//     return;
-//   }
-//   console.log('Connected to the database');
-// });
+db.connect((err) => {
+  if (err) {
+    console.error("Error connecting to the database:", err);
+    return;
+  }
+});
 const generateQRCode = async (paymentDetails) => {
   try {
     const qrCodeData = `upi://pay?pa=${paymentDetails.recipient}&pn=Nature's Palette&mc=&tid=${paymentDetails.orderId}&tn=${paymentDetails.purpose}&am=${paymentDetails.amount}&cu=INR`;
@@ -69,44 +68,49 @@ exports.createPaymentWithQRCode = (req, res) => {
   db.beginTransaction((err) => {
     if (err) return res.status(500).json({ error: "Transaction error" });
 
-    db.query("SELECT MAX(PY_ID) AS maxId FROM PAYMENT", async (err, result) => {
+    db.query("SELECT MAX(PY_ID) AS maxId FROM PAYMENT", (err, result) => {
       if (err)
         return db.rollback(() =>
           res.status(500).json({ error: "Database error" })
         );
+
       const newPyId = generateUniquePyId(result);
+
       db.query(
         "INSERT INTO PAYMENT (PY_ID, PY_MODE, PY_DATE, PY_STATUS, PY_AMOUNT, O_ID, PY_OTP) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [newPyId, PY_MODE, PY_DATE, PY_STATUS, PY_AMOUNT, O_ID, PY_OTP],
-        async (err) => {
+        (err) => {
           if (err)
             return db.rollback(() =>
               res.status(500).json({ error: "Payment insert failed" })
             );
 
-          try {
-            const qrCodeURL = await generateQRCode({
-              recipient: "mehtahardi084@okicici",
-              orderId: O_ID,
-              amount: PY_AMOUNT,
-              purpose: "Purchase order",
-            });
-            db.commit((err) => {
-              if (err)
-                return res
-                  .status(500)
-                  .json({ error: "Transaction commit failed" });
-              res.json({
-                message: "QR Code generated. Scan to pay.",
-                qrCodeURL,
-                PY_ID: newPyId,
+          // Generate QR code
+          generateQRCode({
+            recipient: "mehtahardi084@okicici",
+            orderId: O_ID,
+            amount: PY_AMOUNT,
+            purpose: "Purchase order",
+          })
+            .then((qrCodeURL) => {
+              db.commit((err) => {
+                if (err)
+                  return res
+                    .status(500)
+                    .json({ error: "Transaction commit failed" });
+
+                res.json({
+                  message: "QR Code generated. Scan to pay.",
+                  qrCodeURL,
+                  PY_ID: newPyId,
+                });
               });
-            });
-          } catch (error) {
-            db.rollback(() =>
-              res.status(500).json({ error: "QR Code generation failed" })
+            })
+            .catch((error) =>
+              db.rollback(() =>
+                res.status(500).json({ error: "QR Code generation failed" })
+              )
             );
-          }
         }
       );
     });
@@ -116,28 +120,185 @@ exports.createPaymentWithQRCode = (req, res) => {
 exports.confirmQRCodePayment = (req, res) => {
   const { PY_ID, transactionId } = req.body;
 
-  db.query(
-    "UPDATE PAYMENT SET PY_TRANSACTION_ID = ?, PY_STATUS = 'PAID' WHERE PY_ID = ? AND PY_STATUS = 'UNPAID'",
-    [transactionId, PY_ID],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: "Database error" });
-      if (!result.affectedRows)
-        return res
-          .status(404)
-          .json({ error: "Invalid payment ID or already confirmed" });
+  db.beginTransaction((err) => {
+    if (err) return res.status(500).json({ error: "Transaction error" });
 
-      db.query(
-        "UPDATE ORDER_MASTER SET O_STATUS = 'PROCESSING' WHERE O_ID = (SELECT O_ID FROM PAYMENT WHERE PY_ID = ?)",
-        [PY_ID],
-        (err) => {
-          if (err) return res.status(500).json({ error: "Order update error" });
-          res.json({ message: "Payment confirmed." });
-        }
-      );
-    }
-  );
+    // Update payment status
+    db.query(
+      "UPDATE PAYMENT SET PY_TRANSACTION_ID = ?, PY_STATUS = 'PAID' WHERE PY_ID = ? AND PY_STATUS = 'UNPAID'",
+      [transactionId, PY_ID],
+      (err, result) => {
+        if (err)
+          return db.rollback(() =>
+            res.status(500).json({ error: "Payment update failed" })
+          );
+        if (!result.affectedRows)
+          return db.rollback(() =>
+            res
+              .status(404)
+              .json({ error: "Invalid payment ID or already confirmed" })
+          );
+
+        // Fetch PY_OTP and O_ID from PAYMENT table
+        db.query(
+          "SELECT PY_OTP, O_ID FROM PAYMENT WHERE PY_ID = ?",
+          [PY_ID],
+          (err, paymentResult) => {
+            if (err || paymentResult.length === 0)
+              return db.rollback(() =>
+                res
+                  .status(500)
+                  .json({ error: "Failed to fetch payment details" })
+              );
+
+            const PY_OTP = paymentResult[0].PY_OTP;
+            const O_ID = paymentResult[0].O_ID;
+
+            // Update order status
+            db.query(
+              "UPDATE ORDER_MASTER SET O_STATUS = 'PLACED' WHERE O_ID = ?",
+              [O_ID],
+              (err) => {
+                if (err)
+                  return db.rollback(() =>
+                    res
+                      .status(500)
+                      .json({ error: "Order update failed" })
+                  );
+
+                // Fetch order details
+                const orderQuery = `
+                  SELECT o.O_ID, o.O_DATE, o.O_STATUS, o.C_ID, od.ODETAILS_QTY, od.PRODUCT_ID, 
+                         s.S_ADDRESS, s.S_PINCODE, s.S_CONTACTNO, c.C_EMAIL, c.C_USERNAME
+                  FROM ORDER_MASTER o
+                  JOIN ORDER_DETAILS od ON o.O_ID = od.O_ID
+                  JOIN ORDER_SHIPPING_ADDRESS s ON o.O_ID = s.O_ID
+                  JOIN CUSTOMER c ON o.C_ID = c.C_ID
+                  WHERE o.O_ID = ?`;
+                db.query(orderQuery, [O_ID], (err, orderResult) => {
+                  if (err || orderResult.length === 0)
+                    return db.rollback(() =>
+                      res
+                        .status(500)
+                        .json({ error: "Failed to fetch order details" })
+                    );
+
+                  const order = orderResult[0];
+                  const customerEmail = order.C_EMAIL;
+                  const customerName = order.C_USERNAME;
+
+                  // Fetch product details dynamically from views
+                  const productDetails = [];
+                  let completed = 0;
+
+                  const viewsQuery = `
+                    SELECT table_name
+                    FROM INFORMATION_SCHEMA.views
+                    WHERE table_schema = 'main_project';`;
+                  db.query(viewsQuery, (err, viewsResult) => {
+                    if (err || viewsResult.length === 0)
+                      return db.rollback(() =>
+                        res
+                          .status(500)
+                          .json({ error: "Failed to fetch views" })
+                      );
+
+                    for (let item of orderResult) {
+                      let found = false;
+                      for (const view of viewsResult) {
+                        if (found) break;
+
+                        const checkProductIdQuery = `SELECT COUNT(*) AS count FROM ${view.TABLE_NAME} WHERE id = ?;`;
+                        db.query(
+                          checkProductIdQuery,
+                          [item.PRODUCT_ID],
+                          (err, result) => {
+                            if (err)
+                              return db.rollback(() =>
+                                res
+                                  .status(500)
+                                  .json({ error: "Failed to check product" })
+                              );
+
+                            if (result[0].count > 0) {
+                              const productQuery = `SELECT pd.name, pd.price FROM ${view.TABLE_NAME} AS pd WHERE pd.id = ?;`;
+                              db.query(
+                                productQuery,
+                                [item.PRODUCT_ID],
+                                (err, productResult) => {
+                                  if (err || productResult.length === 0)
+                                    return db.rollback(() =>
+                                      res
+                                        .status(500)
+                                        .json({ error: "Failed to fetch product details" })
+                                    );
+
+                                  productDetails.push({
+                                    ...item,
+                                    name: productResult[0].name,
+                                    price: productResult[0].price,
+                                  });
+
+                                  // Delete item from cart
+                                  const deleteCartQuery =
+                                    "DELETE FROM CART WHERE PRODUCT_ID = ? AND C_ID = ?";
+                                  db.query(
+                                    deleteCartQuery,
+                                    [item.PRODUCT_ID, req.session.userId],
+                                    (err) => {
+                                      if (err)
+                                        return db.rollback(() =>
+                                          res
+                                            .status(500)
+                                            .json({ error: "Failed to delete cart item" })
+                                        );
+                                    }
+                                  );
+
+                                  completed++;
+                                  if (completed === orderResult.length) {
+                                    // Commit transaction and generate PDF bill
+                                    db.commit((err) => {
+                                      if (err)
+                                        return db.rollback(() =>
+                                          res
+                                            .status(500)
+                                            .json({ error: "Transaction commit failed" })
+                                        );
+
+                                      // Generate PDF bill and send final response
+                                      generatePDFBill(
+                                        order,
+                                        productDetails,
+                                        customerName,
+                                        PY_OTP,
+                                        customerEmail,
+                                        res
+                                      );
+                                    });
+
+                                    console.log(
+                                      "✅ PDF bill generated successfully."
+                                    );
+                                  }
+                                  found = true; // Stop checking once product is found
+                                }
+                              );
+                            }
+                          }
+                        );
+                      }
+                    }
+                  });
+                });
+              }
+            );
+          }
+        );
+      }
+    );
+  });
 };
-
 // Get payment details for an order
 exports.getPaymentDetails = (req, res) => {
   const orderId = req.params.orderId;
@@ -147,7 +308,7 @@ exports.getPaymentDetails = (req, res) => {
       (od.ODETAILS_QTY * od.ODETAILS_PRICE) AS Total_Product_Cost
       FROM ORDER_MASTER om LEFT JOIN ORDER_SHIPPING_ADDRESS sa ON om.O_ID = sa.O_ID
       LEFT JOIN ORDER_DETAILS od ON om.O_ID = od.O_ID
-      WHERE om.O_ID = ? and om.O_STATUS = 'PLACED'`;
+      WHERE om.O_ID = ? and om.O_STATUS IN ('PLACED','PROCESSING')`;
 
   db.query(query, [orderId], (err, results) => {
     if (err) {
@@ -194,8 +355,6 @@ exports.createPaymentWithBill = (req, res) => {
       console.error("Error starting transaction:", err);
       return res.status(500).json({ error: "Internal Server Error" });
     }
-
-    // 1️⃣ Get max PY_ID
     db.query("SELECT MAX(PY_ID) AS maxId FROM PAYMENT", (err, result) => {
       if (err)
         return db.rollback(() =>
@@ -203,7 +362,6 @@ exports.createPaymentWithBill = (req, res) => {
         );
       let newPyId = generateUniquePyId(result);
 
-      // 2️⃣ Check if PY_ID already exists
       db.query(
         "SELECT COUNT(*) AS count FROM PAYMENT WHERE PY_ID = ?",
         [newPyId],
@@ -301,16 +459,51 @@ exports.createPaymentWithBill = (req, res) => {
                                   price: productResult[0].price,
                                 });
 
+                                // Cart Deletion Query
+                                const deleteCartQuery =
+                                  "DELETE FROM CART WHERE PRODUCT_ID = ? AND C_ID = ?";
+                                db.query(
+                                  deleteCartQuery,
+                                  [item.PRODUCT_ID, req.session.userId],
+                                  (err) => {
+                                    if (err) {
+                                      return db.rollback(() =>
+                                        res.status(500).json({
+                                          error: "Cart Deletion Error",
+                                        })
+                                      );
+                                    }
+                                    console.log(
+                                      `Cart item with Product ID: ${item.PRODUCT_ID} deleted for User ID: ${req.session.userId}`
+                                    );
+                                  }
+                                );
+
                                 completed++;
                                 if (completed === orderResult.length) {
-                                  generatePDFBill(
-                                    order,
-                                    productDetails,
-                                    customerName,
-                                    PY_OTP,
-                                    customerEmail,
-                                    res
-                                  );
+                                  // All operations are successful, commit the transaction
+                                  db.commit((err) => {
+                                    if (err) {
+                                      return db.rollback(() =>
+                                        res.status(500).json({
+                                          error: "Transaction Commit Error",
+                                        })
+                                      );
+                                    }
+                                    console.log(
+                                      "Transaction successfully committed!"
+                                    );
+
+                                    // Generate the PDF bill
+                                    generatePDFBill(
+                                      order,
+                                      productDetails,
+                                      customerName,
+                                      PY_OTP,
+                                      customerEmail,
+                                      res
+                                    );
+                                  });
                                 }
                                 found = true; // Stop checking once product is found
                               }
@@ -368,34 +561,34 @@ function generatePDFBill(
 
   try {
     console.log("✅ Starting invoice generation...");
-    sendInvoiceEmail(customerEmail, filePath, res);
-  
+    sendInvoiceEmail(order,customerEmail, filePath, res);
+
     console.log("✅ Committing transaction...");
     db.commit((err) => {
       if (err) {
         console.error("❌ Transaction Commit Error:", err);
         return res.status(500).json({ error: "Transaction Commit Error" });
       }
-  
+
       console.log("✅ Sending final response...");
       res.json({
-        message: "Payment successful, bill generated, and order updated!",
+        message: "Payment successful and bill generated!",
       });
     });
   } catch (error) {
     console.error("❌ Unexpected Error:", error);
     res.status(500).json({ error: "Unexpected Server Error" });
   }
-  
 }
 
 // ✅ Function to Send Invoice via Email
-function sendInvoiceEmail(customerEmail, filePath, res) {
+function sendInvoiceEmail(order,customerEmail, filePath, res) {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: { user: "natures.palette099@gmail.com", pass: "edtf trae flab nrit" },
   });
-
   const mailOptions = {
     from: "natures.palette099@gmail.com",
     to: customerEmail,
@@ -406,28 +599,23 @@ function sendInvoiceEmail(customerEmail, filePath, res) {
 
   transporter.sendMail(mailOptions, (emailErr) => {
     if (emailErr) return res.status(500).json({ error: "Email Sending Error" });
-
-    // ✅ Update Order Status to "Processing"
+    
     db.query(
-      "UPDATE ORDER_MASTER SET O_STATUS = 'Processing' WHERE O_ID = ?",
+      "UPDATE ORDER_MASTER SET O_STATUS = 'PROCESSING' WHERE O_ID = ?",
       [order.O_ID],
       (err) => {
         if (err) return res.status(500).json({ error: "Order Update Error" });
-
+        
         db.commit((err) => {
           if (err)
             return res.status(500).json({ error: "Transaction Commit Error" });
-
-          console.log("✅ Sending response to client...");
-          res.json({
-            message: "Payment successful, bill generated, and order updated!",
-          });
         });
       }
     );
   });
 }
 exports.generateBillAndRedirect = (req, res) => {
+  console.log("Generating bill and redirecting to order placed page...");
   const { O_ID } = req.body;
   let PY_OTP;
 

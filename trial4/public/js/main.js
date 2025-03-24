@@ -234,24 +234,39 @@ window.onload = updateCartAndWishlistCounts;
 fetch("/feedback/")
   .then((response) => response.json())
   .then((data) => {
-    console.log(data);
     const feedback = document.getElementById("feedback");
 
-    // Limit the number of feedback items to display
-    const limitedData = data.slice(0, 3);
+    // Check if the feedback container exists
+    if (feedback) {
+      // Limit the number of feedback items to display
+      const limitedData = data.slice(0, 3);
 
-    feedback.innerHTML = limitedData
-      .map(
-        (item) => `
-        <div class="feedback-item">
-          <div class="feedback-row">
-            <div class="feedback-category"><strong>Category:</strong> ${item.CY_NAME}</div>
-            <div class="feedback-comment"><strong>Comment:</strong> ${item.F_DESC}</div>
-            <div class="feedback-author"><strong>Author:</strong> ${item.C_USERNAME}</div>
-          </div>
-        </div>
-      `
-      )
-      .join("");
+      feedback.innerHTML = `
+        <table class="feedback-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Comment</th>
+              <th>Author</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${limitedData
+              .map(
+                (item) => `
+                <tr>
+                  <td>${item.CY_NAME}</td>
+                  <td>${item.F_DESC}</td>
+                  <td>${item.C_USERNAME}</td>
+                </tr>
+              `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `;
+    } else {
+      // console.log("Feedback container not found on this page.");
+    }
   })
   .catch((error) => console.error("Error fetching feedback:", error));

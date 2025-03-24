@@ -13,6 +13,10 @@ function fetchWishlist() {
     })
     .then((data) => {
       const wishlistContainer = document.getElementById("wishlist-container");
+      if(data.length === 0){
+        const messageElement = document.getElementById("message");
+        messageElement.innerHTML = "No items in wishlist";
+      }
 
       if (!wishlistContainer) {
         console.error("Wishlist container not found!");

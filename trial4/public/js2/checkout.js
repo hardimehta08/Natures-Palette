@@ -76,11 +76,6 @@ document
   .getElementById("continueForPayment")
   .addEventListener("click", placeOrder);
 
-// Add event listener for continueForPayment button
-document
-  .getElementById("continueForPayment")
-  .addEventListener("click", placeOrder);
-
 function placeOrder(event) {
   event.preventDefault();
 

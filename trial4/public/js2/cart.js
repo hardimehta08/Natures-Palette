@@ -23,7 +23,7 @@ function loadCart(data) {
       </tr>
     `;
     Stotal += item.total;
-    fdata=data;
+    fdata = data;
   });
 
   const total = document.getElementById("total");
@@ -36,7 +36,7 @@ fetch("/cart/user")
     if (data.length > 0) {
       loadCart(data);
     } else {
-      document.getElementById("message").innerHTML = data.error;
+      document.getElementById("message").innerHTML = "No items in the cart";
     }
   })
   .catch((error) => {

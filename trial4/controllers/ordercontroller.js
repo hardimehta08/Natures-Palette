@@ -1,15 +1,18 @@
-const mysql = require("mysql2/promise"); // Use the promise-based version
+const mysql = require("mysql2/promise");
 
-const conn = mysql.createConnection({
+const conn = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
-  database: "main_project",
+  password: "Hardi@sql8705", // Your database password
+  database: "main_project", // Your database name
+  waitForConnections: true,
+  connectionLimit: 10, // Maximum number of concurrent connections
+  queueLimit: 0, // Unlimited queue length
 });
 
 const placeOrder = async (req, res) => {
   var { s_add = null, s_pc = null, s_cno = null } = req.body;
-  const connection = await conn;
+  const connection = await conn.getConnection(); // Obtain a transaction-enabled connection
   await connection.beginTransaction(); // Start a transaction
 
   try {
@@ -24,7 +27,7 @@ const placeOrder = async (req, res) => {
 
     // Insert into ORDER_MASTER
     await connection.query(
-      "INSERT INTO ORDER_MASTER(O_ID,O_DATE,O_STATUS,C_ID) VALUES(?,NOW(),'Placed',?)",
+      "INSERT INTO ORDER_MASTER(O_ID, O_DATE, O_STATUS, C_ID) VALUES(?, NOW(), 'PLACED', ?)",
       [o_id, req.session.userId]
     );
 
@@ -89,7 +92,7 @@ const placeOrder = async (req, res) => {
 
       // Insert into ORDER_DETAILS
       await connection.query(
-        "INSERT INTO ORDER_DETAILS(ODETAILS_ID,O_ID,ODETAILS_QTY,ODETAILS_PRICE,Product_id) VALUES(?,?,?,?,?)",
+        "INSERT INTO ORDER_DETAILS(ODETAILS_ID, O_ID, ODETAILS_QTY, ODETAILS_PRICE, Product_id) VALUES(?,?,?,?,?)",
         [odetails_id, o_id, qty, odetails_price, product_id]
       );
 
@@ -132,10 +135,7 @@ const placeOrder = async (req, res) => {
       [s_id, s_add, s_pc, s_cno, o_id]
     );
 
-    // Delete from CART
-    await connection.query("DELETE FROM CART WHERE C_ID=?", [
-      req.session.userId,
-    ]);
+    // Do NOT delete from CART here; handle this in the payment confirmation step.
 
     await connection.commit(); // Commit the transaction
     res
@@ -143,8 +143,10 @@ const placeOrder = async (req, res) => {
       .send({ message: "Order placed!", status: 200, orderID: o_id });
   } catch (err) {
     await connection.rollback(); // Rollback the transaction in case of error
-    console.log(err);
+    console.error(err);
     res.status(500).send({ message: "Error placing order" });
+  } finally {
+    connection.release(); // Always release the connection
   }
 };
 
