@@ -83,6 +83,8 @@ function updateBestSellersChart() {
     },
     options: {
       indexAxis: "y", // This sets the bar chart to horizontal
+      maintainAspectRatio: false, 
+      responsive: true,
       scales: {
         x: {
           beginAtZero: true,
@@ -118,11 +120,12 @@ function updateBestSellersChart() {
       layout: {
         padding: {
           right: 30,
+          bottom:30,
         },
       },
       maintainAspectRatio: false, // Allow the chart to adjust its height
     },
-    height: 320, // Set the height of the chart
+    height: 400, // Set the height of the chart
   });
 
   const popup = document.getElementById("popup");
@@ -466,13 +469,13 @@ function fetchInventoryCategories() {
 
 function handleDateRangeChangeSales() {
   const dateRange = document.getElementById("salesDateRange").value;
-  const customDateRange = document.getElementById("salesCustomDateRange");
+  const customDateRangeDiv = document.getElementById("salesCustomDateRange");
 
   if (dateRange === "custom") {
-    customDateRange.style.display = "block";
+    customDateRangeDiv.style.display = "block"; // Show custom date inputs
   } else {
-    customDateRange.style.display = "none";
-    fetchSalesReport(); // Automatically fetch the report when a non-custom range is selected
+    customDateRangeDiv.style.display = "none"; // Hide custom date inputs
+    fetchSalesReport(); // Trigger the fetch for predefined ranges
   }
 }
 // Fetch Sales Report
@@ -1279,8 +1282,9 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchInventoryReport();
 });
 
-function fetchInventoryReport() {
+function fetchInventoryReport(page = 1) {
   const category = document.getElementById("inventoryCategoryFilter").value;
+  const itemsPerPage = 10; // Number of items per page for pagination
   const queryParams = new URLSearchParams();
   if (category) queryParams.append("category", category);
 
@@ -1289,7 +1293,7 @@ function fetchInventoryReport() {
     .then((data) => {
       console.log("Fetched data.stockLevels:", data.stockLevels);
 
-      // Low Stock Products
+      // Low Stock Products with Update Link
       const lowStockTbody = document.getElementById("lowStockProducts");
       lowStockTbody.innerHTML = "";
       data.stockLevels.forEach((product) => {
@@ -1299,6 +1303,9 @@ function fetchInventoryReport() {
             <td>${product.productName}</td>
             <td>${product.category}</td>
             <td>${product.stock}</td>
+            <td>
+              <a href="/update-stock?productId=${product.productId}&category=${encodeURIComponent(product.category)}" class="update-link">Update</a>
+            </td>
           </tr>
         `;
         lowStockTbody.innerHTML += row;
@@ -1328,7 +1335,7 @@ function fetchInventoryReport() {
       const alertMessage = document.getElementById("criticalStockMessage");
       const bellIcon = document.getElementById("notificationBell");
       const notificationList = document.getElementById("notificationList");
-      const notificationDrawer = document.getElementById("notificationDrawer"); // Added for closing
+      const notificationDrawer = document.getElementById("notificationDrawer");
 
       if (criticalStockData.length > 0) {
         const criticalProducts = criticalStockData
@@ -1357,7 +1364,6 @@ function fetchInventoryReport() {
               console.warn("Failed to navigate to report section. Ensure 'report' ID exists.");
               return;
             }
-            // Fetch inventory report and close the drawer immediately
             fetchInventoryReport().then(() => {
               if (notificationDrawer) {
                 console.log("Closing drawer after navigating to report");
@@ -1397,10 +1403,18 @@ function fetchInventoryReport() {
         console.log("No critical stock data found, skipping notification update");
       }
 
-      // Inventory Turnover
+      // Inventory Turnover with Pagination
       const turnoverTbody = document.getElementById("inventoryTurnover");
+      const paginationDiv = document.getElementById("turnoverPagination"); // Add this div in your HTML
       turnoverTbody.innerHTML = "";
-      data.turnover.forEach((product) => {
+
+      const totalItems = data.turnover.length;
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const paginatedTurnover = data.turnover.slice(startIndex, endIndex);
+
+      paginatedTurnover.forEach((product) => {
         const row = `
           <tr>
             <td>${product.productId}</td>
@@ -1413,23 +1427,69 @@ function fetchInventoryReport() {
         turnoverTbody.innerHTML += row;
       });
 
+      // Pagination Controls
+      if (paginationDiv) {
+        paginationDiv.innerHTML = "";
+        const prevButton = document.createElement("button");
+        prevButton.textContent = "Previous";
+        prevButton.disabled = page === 1;
+        prevButton.onclick = () => fetchInventoryReport(page - 1);
+        prevButton.style.marginRight = "10px";
+
+        const nextButton = document.createElement("button");
+        nextButton.textContent = "Next";
+        nextButton.disabled = page === totalPages;
+        nextButton.onclick = () => fetchInventoryReport(page + 1);
+
+        const pageInfo = document.createElement("span");
+        pageInfo.textContent = `Page ${page} of ${totalPages}`;
+        pageInfo.style.margin = "0 10px";
+
+        paginationDiv.appendChild(prevButton);
+        paginationDiv.appendChild(pageInfo);
+        paginationDiv.appendChild(nextButton);
+      }
+
       // Slow Moving Products
-      const slowMovingTbody = document.getElementById("slowMovingProducts");
-      slowMovingTbody.innerHTML = "";
-      data.slowMoving.forEach((product) => {
-        const row = `
-          <tr>
-            <td>${product.productId}</td>
-            <td>${product.productName}</td>
-            <td>${product.category}</td>
-            <td>${product.stock}</td>
-            <td>${product.totalSold}</td>
-          </tr>
-        `;
-        slowMovingTbody.innerHTML += row;
-      });
+      // const slowMovingTbody = document.getElementById("slowMovingProducts");
+      // slowMovingTbody.innerHTML = "";
+      // data.slowMoving.forEach((product) => {
+      //   const row = `
+      //     <tr>
+      //       <td>${product.productId}</td>
+      //       <td>${product.productName}</td>
+      //       <td>${product.category}</td>
+      //       <td>${product.stock}</td>
+      //       <td>${product.totalSold}</td>
+      //     </tr>
+      //   `;
+      //   slowMovingTbody.innerHTML += row;
+      // });
     })
     .catch((error) => console.error("Error fetching inventory report:", error));
+}
+
+const paginationDiv = document.getElementById("turnoverPagination");
+if (paginationDiv) {
+  paginationDiv.innerHTML = "";
+  const prevButton = document.createElement("button");
+  prevButton.textContent = "Previous";
+  prevButton.disabled = page === 1;
+  prevButton.onclick = () => fetchInventoryReport(page - 1);
+  prevButton.style.marginRight = "10px";
+
+  const nextButton = document.createElement("button");
+  nextButton.textContent = "Next";
+  nextButton.disabled = page === totalPages;
+  nextButton.onclick = () => fetchInventoryReport(page + 1);
+
+  const pageInfo = document.createElement("span");
+  pageInfo.textContent = `Page ${page} of ${totalPages}`;
+  pageInfo.style.margin = "0 10px";
+
+  paginationDiv.appendChild(prevButton);
+  paginationDiv.appendChild(pageInfo);
+  paginationDiv.appendChild(nextButton);
 }
 // Function to clear all notifications and update the bell count
 function clearNotifications() {

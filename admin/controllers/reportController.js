@@ -612,7 +612,7 @@ exports.getSalesReport = (req, res) => {
       } else if (groupByFormat === "weekly") {
         salesQuery = salesQuery.replace(
           "DATE_FORMAT(om.O_date, ?)",
-          "DATE_FORMAT(om.O_date, '%Y-%u') as period"
+          "DATE_FORMAT(om.O_date, '%Y-%u') "
         );
         queryParams[0] = "%Y-%u"; // Update the dateFormat parameter
         salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%u')`;
@@ -810,28 +810,28 @@ exports.getInventoryReport = (req, res) => {
           if (!columnMap.id || !columnMap.name || !columnMap.stock) return;
 
           stockQueries.push(`
-                        SELECT 
-                            \`${tableName}\`.${columnMap.id} as productId, 
-                            \`${tableName}\`.${columnMap.name} as productName, 
-                            \`${tableName}\`.${columnMap.stock} as stock,
-                            '${categoryName}' as category
-                        FROM \`${tableName}\` 
-                        WHERE \`${tableName}\`.${columnMap.stock} <= ? AND \`${tableName}\`.${columnMap.stock} >= 0
-                    `);
+            SELECT 
+              \`${tableName}\`.${columnMap.id} as productId, 
+              \`${tableName}\`.${columnMap.name} as productName, 
+              \`${tableName}\`.${columnMap.stock} as stock,
+              '${categoryName}' as category
+            FROM \`${tableName}\` 
+            WHERE \`${tableName}\`.${columnMap.stock} <= ? AND \`${tableName}\`.${columnMap.stock} >= 0
+          `);
           queryParams.push(lowStockThreshold);
 
           turnoverQueries.push(`
-                        SELECT 
-                            \`${tableName}\`.${columnMap.id} as productId,
-                            \`${tableName}\`.${columnMap.name} as productName,
-                            \`${tableName}\`.${columnMap.stock} as stock,
-                            COALESCE(SUM(od.Odetails_Qty), 0) as totalSold,
-                            '${categoryName}' as category
-                        FROM \`${tableName}\`
-                        LEFT JOIN order_details od ON \`${tableName}\`.${columnMap.id} = od.Product_id
-                        LEFT JOIN order_master om ON od.O_id = om.O_id AND om.O_status = 'Delivered'
-                        GROUP BY \`${tableName}\`.${columnMap.id}, \`${tableName}\`.${columnMap.name}, \`${tableName}\`.${columnMap.stock}
-                    `);
+            SELECT 
+              \`${tableName}\`.${columnMap.id} as productId,
+              \`${tableName}\`.${columnMap.name} as productName,
+              \`${tableName}\`.${columnMap.stock} as stock,
+              COALESCE(SUM(od.Odetails_Qty), 0) as totalSold,
+              '${categoryName}' as category
+            FROM \`${tableName}\`
+            LEFT JOIN order_details od ON \`${tableName}\`.${columnMap.id} = od.Product_id
+            LEFT JOIN order_master om ON od.O_id = om.O_id AND om.O_status = 'Delivered'
+            GROUP BY \`${tableName}\`.${columnMap.id}, \`${tableName}\`.${columnMap.name}, \`${tableName}\`.${columnMap.stock}
+          `);
         });
       });
     }
@@ -843,7 +843,8 @@ exports.getInventoryReport = (req, res) => {
 
       const finalStockQuery =
         stockQueries.join(" UNION ") + " ORDER BY stock ASC";
-      const finalTurnoverQuery = turnoverQueries.join(" UNION ");
+      const finalTurnoverQuery =
+        turnoverQueries.join(" UNION ") + " ORDER BY totalSold DESC"; // Sort by totalSold for consistency
 
       Promise.all([
         new Promise((resolve, reject) =>
@@ -1002,603 +1003,455 @@ exports.getOrderReport = (req, res) => {
 exports.exportSalesReportCSV = (req, res) => {
   const { startDate, endDate, groupBy } = req.query;
 
-  let totalSalesQuery = `
+  // Default date range if not provided
+  const defaultStartDate = "2020-01-01";
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
+
+  const effectiveStartDate = startDate || defaultStartDate;
+  const effectiveEndDate = endDate || defaultEndDate;
+
+  // Current date for "Downloaded on"
+  const currentDate = today.toISOString().split("T")[0]; // e.g., "2025-03-24"
+
+  // Fetch categories to build the UNION query
+  db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
+    if (err) {
+      console.error("Error fetching categories:", err);
+      return res.status(500).json({ error: "Database error", details: err.sqlMessage });
+    }
+
+    // Map CY_NAME to table name (lowercase, replace spaces with underscores)
+    const tablePromises = categories.map(category => {
+      const tableName = category.CY_NAME.trim().toLowerCase().replace(/\s+/g, "_");
+      return new Promise((resolve) => {
+        // Check if the table exists
+        db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
+          if (err || result.length === 0) {
+            console.warn(`Table ${tableName} does not exist for category ${category.CY_NAME}`);
+            resolve(null); // Skip this table
+          } else {
+            resolve({ tableName, categoryId: category.CY_ID, categoryName: category.CY_NAME });
+          }
+        });
+      });
+    });
+
+    Promise.all(tablePromises).then(tableResults => {
+      // Filter out null results (tables that don't exist)
+      const validTables = tableResults.filter(table => table !== null);
+
+      if (validTables.length === 0) {
+        return res.status(500).json({ error: "No valid category tables found" });
+      }
+
+      // Build the UNION query for the product tables
+      const unionQuery = validTables
+        .map(table => `SELECT id, name, category_id FROM \`${table.tableName}\``)
+        .join(" UNION ");
+
+      // Base queries
+      let totalSalesQuery = `
         SELECT 
-            SUM(od.Odetails_price * od.Odetails_Qty) as totalSales,
-            DATE_FORMAT(om.O_date, '%Y-%m') as period
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalSales,
+          DATE_FORMAT(om.O_date, '%Y-%m') as period
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
         WHERE om.O_status = 'Delivered'
-    `;
-  let salesByProductQuery = `
+      `;
+      let salesByProductQuery = `
         SELECT 
-            od.Product_id,
-            SUM(od.Odetails_Qty) as totalUnitsSold,
-            SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue,
-            c.CY_NAME as categoryName
+          od.Product_id,
+          p.name as productName,
+          SUM(od.Odetails_Qty) as totalUnitsSold,
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue,
+          c.CY_NAME as categoryName
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
-        JOIN plants p ON od.Product_id = p.ID
+        JOIN (
+          ${unionQuery}
+        ) p ON od.Product_id = p.id
         JOIN category c ON p.category_id = c.CY_ID
         WHERE om.O_status = 'Delivered'
-    `;
-  let salesByCategoryQuery = `
+      `;
+      let salesByCategoryQuery = `
         SELECT 
-            c.CY_NAME as categoryName,
-            SUM(od.Odetails_Qty) as totalUnitsSold,
-            SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue
+          c.CY_NAME as categoryName,
+          SUM(od.Odetails_Qty) as totalUnitsSold,
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
-        JOIN plants p ON od.Product_id = p.ID
-        JOIN category c ON p.Category_id = c.CY_ID
+        JOIN (
+          ${unionQuery}
+        ) p ON od.Product_id = p.id
+        JOIN category c ON p.category_id = c.CY_ID
         WHERE om.O_status = 'Delivered'
-    `;
-  const queryParams = [];
+      `;
 
-  if (startDate) {
-    totalSalesQuery += ` AND om.O_date >= ?`;
-    salesByProductQuery += ` AND om.O_date >= ?`;
-    salesByCategoryQuery += ` AND om.O_date >= ?`;
-    queryParams.push(startDate);
-  }
-  if (endDate) {
-    totalSalesQuery += ` AND om.O_date <= ?`;
-    salesByProductQuery += ` AND om.O_date <= ?`;
-    salesByCategoryQuery += ` AND om.O_date <= ?`;
-    queryParams.push(endDate);
-  }
+      const queryParams = [];
 
-  if (groupBy === "daily") {
-    totalSalesQuery = totalSalesQuery.replace("%Y-%m", "%Y-%m-%d");
-    totalSalesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d')`;
-  } else if (groupBy === "weekly") {
-    totalSalesQuery = totalSalesQuery.replace(
-      "DATE_FORMAT(om.O_date, '%Y-%m')",
-      "YEARWEEK(om.O_date)"
-    );
-    totalSalesQuery += ` GROUP BY YEARWEEK(om.O_date)`;
-  } else {
-    totalSalesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m')`;
-  }
+      if (startDate) {
+        totalSalesQuery += ` AND om.O_date >= ?`;
+        salesByProductQuery += ` AND om.O_date >= ?`;
+        salesByCategoryQuery += ` AND om.O_date >= ?`;
+        queryParams.push(startDate);
+      }
+      if (endDate) {
+        totalSalesQuery += ` AND om.O_date <= ?`;
+        salesByProductQuery += ` AND om.O_date <= ?`;
+        salesByCategoryQuery += ` AND om.O_date <= ?`;
+        queryParams.push(endDate);
+      }
 
-  salesByProductQuery += ` GROUP BY od.Product_id, c.CY_NAME ORDER BY totalRevenue DESC LIMIT 10`;
-  salesByCategoryQuery += ` GROUP BY c.CY_NAME ORDER BY totalRevenue DESC`;
-
-  Promise.all([
-    new Promise((resolve, reject) =>
-      db.query(totalSalesQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(salesByProductQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(salesByCategoryQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-  ])
-    .then(([totalSales, salesByProductRaw, salesByCategory]) => {
-      console.log("salesByProductRaw (CSV):", salesByProductRaw);
-      db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
-        if (err) {
-          console.error("Error fetching categories:", err);
-          return res
-            .status(500)
-            .json({ error: "Database error", details: err.sqlMessage });
-        }
-
-        const categoryTableMap = new Map(
-          categories.map((c) => [
-            c.CY_NAME.trim().toLowerCase(),
-            c.CY_NAME.trim().toLowerCase().replace(/\s+/g, "_"),
-          ])
+      if (groupBy === "daily") {
+        totalSalesQuery = totalSalesQuery.replace("%Y-%m", "%Y-%m-%d");
+        totalSalesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d')`;
+      } else if (groupBy === "weekly") {
+        totalSalesQuery = totalSalesQuery.replace(
+          "DATE_FORMAT(om.O_date, '%Y-%m')",
+          "YEARWEEK(om.O_date)"
         );
+        totalSalesQuery += ` GROUP BY YEARWEEK(om.O_date)`;
+      } else {
+        totalSalesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m')`;
+      }
 
-        console.log(
-          "Category Table Map:",
-          Array.from(categoryTableMap.entries())
-        );
+      // Limit to top 5 products by total revenue, matching the chart
+      salesByProductQuery += ` GROUP BY od.Product_id, p.name, c.CY_NAME ORDER BY totalRevenue DESC LIMIT 5`;
+      salesByCategoryQuery += ` GROUP BY c.CY_NAME ORDER BY totalRevenue DESC`;
 
-        const namePromises = salesByProductRaw.map((item) => {
-          return new Promise((resolve) => {
-            const productId = item.Product_id;
-            const categoryName = item.categoryName
-              ? item.categoryName.trim().toLowerCase()
-              : null;
-            const tableName = categoryName
-              ? categoryTableMap.get(categoryName)
-              : null;
+      Promise.all([
+        new Promise((resolve, reject) =>
+          db.query(totalSalesQuery, queryParams, (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+        new Promise((resolve, reject) =>
+          db.query(salesByProductQuery, queryParams, (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+        new Promise((resolve, reject) =>
+          db.query(salesByCategoryQuery, queryParams, (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+      ])
+        .then(([totalSales, salesByProduct, salesByCategory]) => {
+          // Prepare CSV data with improved formatting
+          // Header Section
+          const headerData = [
+            { Title: "Sales Report", Value: "" },
+            { Title: "Date: ", Value: currentDate },
+            { Title: "", Value: "" }, // Spacer
+            { Title: "", Value: "" }, // Spacer
+          ];
 
-            console.log(
-              `Fetching product name for Product_id: ${productId}, Category: ${categoryName}, Table: ${tableName}`
-            );
+          // Total Sales by Period Section
+          const totalSalesHeader = [
+            { Title: "Total Sales by Period", Value: "" },
+            { Title: "Period", Value: "Total Sales (Rs.)" },
+          ];
+          const totalSalesData = totalSales.map((item) => ({
+            Title: item.period,
+            Value: item.totalSales ? item.totalSales.toFixed(2) : "0.00",
+          }));
+          const totalSalesSection = [
+            ...totalSalesHeader,
+            ...totalSalesData,
+            { Title: "", Value: "" }, // Spacer
+            { Title: "", Value: "" }, // Spacer
+            { Title: "", Value: "" }, // Spacer
+          ];
 
-            if (!tableName) {
-              console.warn(`No table found for category ${categoryName}`);
-              resolve({
-                Product_id: item.Product_id,
-                productName: `Unknown Product (Category: ${
-                  item.categoryName || "Not Specified"
-                })`,
-                totalUnitsSold: item.totalUnitsSold || 0,
-                totalRevenue: item.totalRevenue
-                  ? item.totalRevenue.toFixed(2)
-                  : "0.00",
-              });
-              return;
-            }
+          // Top 5 Products by Revenue Section
+          const productsHeader = [
+            { Title: "Top 5 Products by Revenue", Value: "" },
+            { Title: "Product ID", Value: "Product Name", Category: "Category", UnitsSold: "Units Sold", Revenue: "Revenue (Rs.)" },
+          ];
+          const productsData = salesByProduct.map((item) => ({
+            Title: item.Product_id,
+            Value: item.productName || "Unknown Product",
+            Category: item.categoryName || "Not Specified",
+            UnitsSold: item.totalUnitsSold || 0,
+            Revenue: item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00",
+          }));
+          const productsSection = [
+            ...productsHeader,
+            ...productsData,
+            { Title: "", Value: "" }, // Spacer
+            { Title: "", Value: "" }, // Spacer
+            { Title: "", Value: "" }, // Spacer
+          ];
 
-            db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
-              if (err || result.length === 0) {
-                console.warn(
-                  `Table ${tableName} does not exist for category ${categoryName}`
-                );
-                resolve({
-                  Product_id: item.Product_id,
-                  productName: `Unknown Product (Category: ${
-                    item.categoryName || "Not Specified"
-                  })`,
-                  totalUnitsSold: item.totalUnitsSold || 0,
-                  totalRevenue: item.totalRevenue
-                    ? item.totalRevenue.toFixed(2)
-                    : "0.00",
-                });
-                return;
-              }
+          // Sales by Category Section
+          const categoriesHeader = [
+            { Title: "Sales by Category", Value: "" },
+            { Title: "Category Name", Value: "Units Sold", Revenue: "Revenue (Rs.)" },
+          ];
+          const categoriesData = salesByCategory.map((item) => ({
+            Title: item.categoryName || "Not Specified",
+            Value: item.totalUnitsSold || 0,
+            Revenue: item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00",
+          }));
+          const categoriesSection = [
+            ...categoriesHeader,
+            ...categoriesData,
+            { Title: "", Value: "" }, // Spacer
+            { Title: "", Value: "" }, // Spacer
+          ];
 
-              db.query(
-                `SHOW COLUMNS FROM \`${tableName}\` WHERE Field LIKE '%name%' OR Field IN ('title', 'description', 'product_name', 'p_name')`,
-                (err, columns) => {
-                  if (err || columns.length === 0) {
-                    console.warn(
-                      `Table ${tableName} has no name column for category ${categoryName}`
-                    );
-                    resolve({
-                      Product_id: item.Product_id,
-                      productName: `Unknown Product (Category: ${
-                        item.categoryName || "Not Specified"
-                      })`,
-                      totalUnitsSold: item.totalUnitsSold || 0,
-                      totalRevenue: item.totalRevenue
-                        ? item.totalRevenue.toFixed(2)
-                        : "0.00",
-                    });
-                    return;
-                  }
+          // Combine all sections into the final CSV data
+          const csvData = [
+            ...headerData,
+            ...totalSalesSection,
+            ...productsSection,
+            ...categoriesSection,
+          ];
 
-                  const nameColumn = columns[0].Field;
-                  const idColumn =
-                    columns.find(
-                      (col) =>
-                        col.Field.toLowerCase().includes("id") &&
-                        !col.Field.includes("cy_id")
-                    )?.Field || "ID";
-                  console.log(
-                    `Using nameColumn: ${nameColumn}, idColumn: ${idColumn}`
-                  );
+          // Define fields for the CSV
+          const fields = [
+            { label: "Title", value: "Title" },
+            { label: "Value", value: "Value" },
+            { label: "Category", value: "Category", default: "" },
+            { label: "Units Sold", value: "UnitsSold", default: "" },
+            { label: "Revenue (Rs.)", value: "Revenue", default: "" },
+          ];
 
-                  const query = `
-                                SELECT \`${nameColumn}\` as productName
-                                FROM \`${tableName}\`
-                                WHERE \`${idColumn}\` = ?
-                            `;
-                  db.query(query, [productId], (err, result) => {
-                    if (err || result.length === 0) {
-                      console.warn(
-                        `Product_id ${productId} not found in table ${tableName}. Query: ${query}`
-                      );
-                      resolve({
-                        Product_id: item.Product_id,
-                        productName: `Unknown Product (Category: ${
-                          item.categoryName || "Not Specified"
-                        })`,
-                        totalUnitsSold: item.totalUnitsSold || 0,
-                        totalRevenue: item.totalRevenue
-                          ? item.totalRevenue.toFixed(2)
-                          : "0.00",
-                      });
-                      return;
-                    }
-                    console.log(
-                      `Found product name for Product_id ${productId}: ${result[0].productName}`
-                    );
-                    resolve({
-                      Product_id: item.Product_id,
-                      productName: result[0].productName,
-                      totalUnitsSold: item.totalUnitsSold || 0,
-                      totalRevenue: item.totalRevenue
-                        ? item.totalRevenue.toFixed(2)
-                        : "0.00",
-                    });
-                  });
-                }
-              );
-            });
-          });
+          const json2csvParser = new Parser({ fields });
+          const csv = json2csvParser.parse(csvData);
+
+          res.header("Content-Type", "text/csv");
+          res.header(
+            "Content-Disposition",
+            'attachment; filename="sales_report.csv"'
+          );
+          res.send(csv);
+        })
+        .catch((err) => {
+          console.error("Error exporting sales report as CSV:", err);
+          res.status(500).json({ error: "Database error", details: err.message });
         });
-
-        Promise.all(namePromises)
-          .then((salesByProduct) => {
-            console.log(
-              "Final Sales by Product with Names (CSV):",
-              salesByProduct
-            );
-            const totalSalesData = totalSales.map((item) => ({
-              Section: "Total Sales by Period",
-              Period: item.period,
-              TotalSales: item.totalSales ? item.totalSales.toFixed(2) : "0.00",
-            }));
-            const salesByProductData = salesByProduct.map((item) => ({
-              Section: "Sales by Product",
-              ProductID: item.Product_id,
-              ProductName: item.productName,
-              TotalUnitsSold: item.totalUnitsSold,
-              TotalRevenue: item.totalRevenue,
-            }));
-            const salesByCategoryData = salesByCategory.map((item) => ({
-              Section: "Sales by Category",
-              CategoryName: item.categoryName,
-              TotalUnitsSold: item.totalUnitsSold || 0,
-              TotalRevenue: item.totalRevenue
-                ? item.totalRevenue.toFixed(2)
-                : "0.00",
-            }));
-
-            const csvData = [
-              ...totalSalesData,
-              { Section: "" },
-              ...salesByProductData,
-              { Section: "" },
-              ...salesByCategoryData,
-            ];
-
-            const fields = [
-              "Section",
-              "Period",
-              "TotalSales",
-              "ProductID",
-              "ProductName",
-              "TotalUnitsSold",
-              "TotalRevenue",
-              "CategoryName",
-            ];
-            const json2csvParser = new Parser({ fields });
-            const csv = json2csvParser.parse(csvData);
-
-            res.header("Content-Type", "text/csv");
-            res.header(
-              "Content-Disposition",
-              'attachment; filename="sales_report.csv"'
-            );
-            res.send(csv);
-          })
-          .catch((err) => {
-            console.error("Error fetching product names for CSV export:", err);
-            res
-              .status(500)
-              .json({ error: "Database error", details: err.message });
-          });
-      });
-    })
-    .catch((err) => {
-      console.error("Error exporting sales report as CSV:", err);
-      res.status(500).json({ error: "Database error", details: err.message });
     });
+  });
 };
 // Export Sales Report as PDF
 exports.exportSalesReportPDF = (req, res) => {
   const { startDate, endDate, groupBy } = req.query;
 
-  let totalSalesQuery = `
-        SELECT 
-            SUM(od.Odetails_price * od.Odetails_Qty) as totalSales,
-            DATE_FORMAT(om.O_date, '%Y-%m') as period
-        FROM order_details od
-        JOIN order_master om ON od.O_id = om.O_id
-        WHERE om.O_status = 'Delivered'
-    `;
-  let salesByProductQuery = `
-        SELECT 
-            od.Product_id,
-            SUM(od.ODETAILS_Qty) as totalUnitsSold,
-            SUM(od.ODETAILS_price * od.ODETAILS_Qty) as totalRevenue,
-            c.CY_NAME as categoryName
-        FROM order_details od
-        JOIN order_master om ON od.O_id = om.O_id
-        JOIN plants p ON od.Product_id = p.ID
-        JOIN category c ON p.category_id = c.CY_ID
-        WHERE om.O_status = 'Delivered'
-    `;
-  let salesByCategoryQuery = `
-        SELECT 
-            c.CY_NAME as categoryName,
-            SUM(od.ODETAILS_Qty) as totalUnitsSold,
-            SUM(od.ODETAILS_price * od.ODETAILS_Qty) as totalRevenue
-        FROM order_details od
-        JOIN order_master om ON od.O_id = om.O_id
-        JOIN plants p ON od.Product_id = p.ID
-        JOIN category c ON p.category_id = c.CY_ID
-        WHERE om.O_status = 'Delivered'
-    `;
-  const queryParams = [];
+  // Default date range if not provided
+  const defaultStartDate = "2020-01-01";
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
 
-  if (startDate) {
-    totalSalesQuery += ` AND om.O_date >= ?`;
-    salesByProductQuery += ` AND om.O_date >= ?`;
-    salesByCategoryQuery += ` AND om.O_date >= ?`;
-    queryParams.push(startDate);
-  }
-  if (endDate) {
-    totalSalesQuery += ` AND om.O_date <= ?`;
-    salesByProductQuery += ` AND om.O_date <= ?`;
-    salesByCategoryQuery += ` AND om.O_date <= ?`;
-    queryParams.push(endDate);
-  }
+  const effectiveStartDate = startDate || defaultStartDate;
+  const effectiveEndDate = endDate || defaultEndDate;
 
-  if (groupBy === "daily") {
-    totalSalesQuery = totalSalesQuery.replace("%Y-%m", "%Y-%m-%d");
-    totalSalesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d')`;
-  } else if (groupBy === "weekly") {
-    totalSalesQuery = totalSalesQuery.replace(
-      "DATE_FORMAT(om.O_date, '%Y-%m')",
-      "YEARWEEK(om.O_date)"
-    );
-    totalSalesQuery += ` GROUP BY YEARWEEK(om.O_date)`;
-  } else {
-    totalSalesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m')`;
-  }
+  // Current date for "Downloaded on"
+  const currentDate = today.toISOString().split("T")[0]; // e.g., "2025-03-24"
 
-  salesByProductQuery += ` GROUP BY od.Product_id, c.CY_NAME ORDER BY totalRevenue DESC LIMIT 10`;
-  salesByCategoryQuery += ` GROUP BY c.CY_NAME ORDER BY totalRevenue DESC`;
-
+  // Fetch categories to build the UNION query
   db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
     if (err) {
       console.error("Error fetching categories:", err);
-      return res
-        .status(500)
-        .json({ error: "Database error", details: err.sqlMessage });
+      return res.status(500).json({ error: "Database error", details: err.sqlMessage });
     }
 
-    const categoryTableMap = new Map(
-      categories.map((c) => [
-        c.CY_NAME.trim().toLowerCase(),
-        c.CY_NAME.trim().toLowerCase().replace(/\s+/g, "_"),
-      ])
-    );
-
-    console.log("Category Table Map:", Array.from(categoryTableMap.entries()));
-
-    Promise.all([
-      new Promise((resolve, reject) =>
-        db.query(totalSalesQuery, queryParams, (err, result) =>
-          err ? reject(err) : resolve(result)
-        )
-      ),
-      new Promise((resolve, reject) =>
-        db.query(salesByProductQuery, queryParams, (err, result) =>
-          err ? reject(err) : resolve(result)
-        )
-      ),
-      new Promise((resolve, reject) =>
-        db.query(salesByCategoryQuery, queryParams, (err, result) =>
-          err ? reject(err) : resolve(result)
-        )
-      ),
-    ])
-      .then(([totalSales, salesByProductRaw, salesByCategory]) => {
-        console.log("salesByProductRaw (PDF):", salesByProductRaw);
-        const namePromises = salesByProductRaw.map((item) => {
-          return new Promise((resolve) => {
-            const productId = item.Product_id;
-            const categoryName = item.categoryName
-              ? item.categoryName.trim().toLowerCase()
-              : null;
-            const tableName = categoryName
-              ? categoryTableMap.get(categoryName)
-              : null;
-
-            console.log(
-              `Fetching product name for Product_id: ${productId}, Category: ${categoryName}, Table: ${tableName}`
-            );
-
-            if (!tableName) {
-              console.warn(`No table found for category ${categoryName}`);
-              resolve({
-                Product_id: item.Product_id,
-                productName: `Unknown Product (Category: ${
-                  item.categoryName || "Not Specified"
-                })`,
-                totalUnitsSold: item.totalUnitsSold || 0,
-                totalRevenue: item.totalRevenue
-                  ? item.totalRevenue.toFixed(2)
-                  : "0.00",
-              });
-              return;
-            }
-
-            db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
-              if (err || result.length === 0) {
-                console.warn(
-                  `Table ${tableName} does not exist for category ${categoryName}`
-                );
-                resolve({
-                  Product_id: item.Product_id,
-                  productName: `Unknown Product (Category: ${
-                    item.categoryName || "Not Specified"
-                  })`,
-                  totalUnitsSold: item.totalUnitsSold || 0,
-                  totalRevenue: item.totalRevenue
-                    ? item.totalRevenue.toFixed(2)
-                    : "0.00",
-                });
-                return;
-              }
-
-              db.query(
-                `SHOW COLUMNS FROM \`${tableName}\` WHERE Field LIKE '%name%' OR Field IN ('title', 'description', 'product_name', 'p_name')`,
-                (err, columns) => {
-                  if (err || columns.length === 0) {
-                    console.warn(
-                      `Table ${tableName} has no name column for category ${categoryName}`
-                    );
-                    resolve({
-                      Product_id: item.Product_id,
-                      productName: `Unknown Product (Category: ${
-                        item.categoryName || "Not Specified"
-                      })`,
-                      totalUnitsSold: item.totalUnitsSold || 0,
-                      totalRevenue: item.totalRevenue
-                        ? item.totalRevenue.toFixed(2)
-                        : "0.00",
-                    });
-                    return;
-                  }
-
-                  const nameColumn = columns[0].Field;
-                  const idColumn =
-                    columns.find(
-                      (col) =>
-                        col.Field.toLowerCase().includes("id") &&
-                        !col.Field.includes("cy_id")
-                    )?.Field || "ID";
-                  console.log(
-                    `Using nameColumn: ${nameColumn}, idColumn: ${idColumn}`
-                  );
-
-                  const query = `
-                                SELECT \`${nameColumn}\` as productName
-                                FROM \`${tableName}\`
-                                WHERE \`${idColumn}\` = ?
-                            `;
-                  db.query(query, [productId], (err, result) => {
-                    if (err || result.length === 0) {
-                      console.warn(
-                        `Product_id ${productId} not found in table ${tableName}. Query: ${query}`
-                      );
-                      resolve({
-                        Product_id: item.Product_id,
-                        productName: `Unknown Product (Category: ${
-                          item.categoryName || "Not Specified"
-                        })`,
-                        totalUnitsSold: item.totalUnitsSold || 0,
-                        totalRevenue: item.totalRevenue
-                          ? item.totalRevenue.toFixed(2)
-                          : "0.00",
-                      });
-                      return;
-                    }
-                    console.log(
-                      `Found product name for Product_id ${productId}: ${result[0].productName}`
-                    );
-                    resolve({
-                      Product_id: item.Product_id,
-                      productName: result[0].productName,
-                      totalUnitsSold: item.totalUnitsSold || 0,
-                      totalRevenue: item.totalRevenue
-                        ? item.totalRevenue.toFixed(2)
-                        : "0.00",
-                    });
-                  });
-                }
-              );
-            });
-          });
+    // Map CY_NAME to table name (lowercase, replace spaces with underscores)
+    const tablePromises = categories.map(category => {
+      const tableName = category.CY_NAME.trim().toLowerCase().replace(/\s+/g, "_");
+      return new Promise((resolve) => {
+        // Check if the table exists
+        db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
+          if (err || result.length === 0) {
+            console.warn(`Table ${tableName} does not exist for category ${category.CY_NAME}`);
+            resolve(null); // Skip this table
+          } else {
+            resolve({ tableName, categoryId: category.CY_ID, categoryName: category.CY_NAME });
+          }
         });
-
-        Promise.all(namePromises)
-          .then((salesByProduct) => {
-            console.log(
-              "Final Sales by Product with Names (PDF):",
-              salesByProduct
-            );
-            const doc = new PDFDocument();
-            let buffers = [];
-            doc.on("data", buffers.push.bind(buffers));
-            doc.on("end", () => {
-              const pdfData = Buffer.concat(buffers);
-              res.writeHead(200, {
-                "Content-Type": "application/pdf",
-                "Content-Disposition":
-                  'attachment; filename="sales_report.pdf"',
-                "Content-Length": pdfData.length,
-              });
-              res.end(pdfData);
-            });
-
-            doc.fontSize(20).text("Sales Report", { align: "center" });
-            doc.moveDown();
-
-            doc.fontSize(14).text("Total Sales by Period", { underline: true });
-            doc.moveDown(0.5);
-            if (totalSales.length > 0) {
-              totalSales.forEach((item) => {
-                doc
-                  .fontSize(12)
-                  .text(
-                    `Period: ${item.period}, Total Sales: Rs. ${
-                      item.totalSales ? item.totalSales.toFixed(2) : "0.00"
-                    }`
-                  );
-              });
-            } else {
-              doc
-                .fontSize(12)
-                .text("No sales data available for the selected period.");
-            }
-            doc.moveDown();
-
-            doc.fontSize(14).text("Sales by Product", { underline: true });
-            doc.moveDown(0.5);
-            if (salesByProduct.length > 0) {
-              salesByProduct.forEach((item) => {
-                doc
-                  .fontSize(12)
-                  .text(
-                    `Product: ${
-                      item.productName || "Unknown Product"
-                    }, Units Sold: ${item.totalUnitsSold || 0}, Revenue: Rs. ${
-                      item.totalRevenue || "0.00"
-                    }`
-                  );
-              });
-            } else {
-              doc.fontSize(12).text("No product sales data available.");
-            }
-            doc.moveDown();
-
-            doc.fontSize(14).text("Sales by Category", { underline: true });
-            doc.moveDown(0.5);
-            if (salesByCategory.length > 0) {
-              salesByCategory.forEach((item) => {
-                doc
-                  .fontSize(12)
-                  .text(
-                    `Category: ${item.categoryName}, Units Sold: ${
-                      item.totalUnitsSold || 0
-                    }, Revenue: Rs. ${item.totalRevenue || "0.00"}`
-                  );
-              });
-            } else {
-              doc.fontSize(12).text("No category sales data available.");
-            }
-
-            doc.end();
-          })
-          .catch((err) => {
-            console.error("Error fetching product names for PDF export:", err);
-            res
-              .status(500)
-              .json({ error: "Database error", details: err.message });
-          });
-      })
-      .catch((err) => {
-        console.error("Error exporting sales report as PDF:", err);
-        res.status(500).json({ error: "Database error", details: err.message });
       });
+    });
+
+    Promise.all(tablePromises).then(tableResults => {
+      // Filter out null results (tables that don't exist)
+      const validTables = tableResults.filter(table => table !== null);
+
+      if (validTables.length === 0) {
+        return res.status(500).json({ error: "No valid category tables found" });
+      }
+
+      // Build the UNION query for the product tables
+      const unionQuery = validTables
+        .map(table => `SELECT id, name, category_id FROM \`${table.tableName}\``)
+        .join(" UNION ");
+
+      // Base queries
+      let totalSalesQuery = `
+        SELECT 
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalSales,
+          DATE_FORMAT(om.O_date, '%Y-%m') as period
+        FROM order_details od
+        JOIN order_master om ON od.O_id = om.O_id
+        WHERE om.O_status = 'Delivered'
+      `;
+      let salesByProductQuery = `
+        SELECT 
+          od.Product_id,
+          p.name as productName,
+          SUM(od.Odetails_Qty) as totalUnitsSold,
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue,
+          c.CY_NAME as categoryName
+        FROM order_details od
+        JOIN order_master om ON od.O_id = om.O_id
+        JOIN (
+          ${unionQuery}
+        ) p ON od.Product_id = p.id
+        JOIN category c ON p.category_id = c.CY_ID
+        WHERE om.O_status = 'Delivered'
+      `;
+      let salesByCategoryQuery = `
+        SELECT 
+          c.CY_NAME as categoryName,
+          SUM(od.Odetails_Qty) as totalUnitsSold,
+          SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue
+        FROM order_details od
+        JOIN order_master om ON od.O_id = om.O_id
+        JOIN (
+          ${unionQuery}
+        ) p ON od.Product_id = p.id
+        JOIN category c ON p.category_id = c.CY_ID
+        WHERE om.O_status = 'Delivered'
+      `;
+
+      const queryParams = [];
+
+      if (startDate) {
+        totalSalesQuery += ` AND om.O_date >= ?`;
+        salesByProductQuery += ` AND om.O_date >= ?`;
+        salesByCategoryQuery += ` AND om.O_date >= ?`;
+        queryParams.push(startDate);
+      }
+      if (endDate) {
+        totalSalesQuery += ` AND om.O_date <= ?`;
+        salesByProductQuery += ` AND om.O_date <= ?`;
+        salesByCategoryQuery += ` AND om.O_date <= ?`;
+        queryParams.push(endDate);
+      }
+
+      if (groupBy === "daily") {
+        totalSalesQuery = totalSalesQuery.replace("%Y-%m", "%Y-%m-%d");
+        totalSalesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d')`;
+      } else if (groupBy === "weekly") {
+        totalSalesQuery = totalSalesQuery.replace(
+          "DATE_FORMAT(om.O_date, '%Y-%m')",
+          "YEARWEEK(om.O_date)"
+        );
+        totalSalesQuery += ` GROUP BY YEARWEEK(om.O_date)`;
+      } else {
+        totalSalesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m')`;
+      }
+
+      // Limit to top 5 products by total revenue, matching the chart
+      salesByProductQuery += ` GROUP BY od.Product_id, p.name, c.CY_NAME ORDER BY totalRevenue DESC LIMIT 5`;
+      salesByCategoryQuery += ` GROUP BY c.CY_NAME ORDER BY totalRevenue DESC`;
+
+      Promise.all([
+        new Promise((resolve, reject) =>
+          db.query(totalSalesQuery, queryParams, (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+        new Promise((resolve, reject) =>
+          db.query(salesByProductQuery, queryParams, (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+        new Promise((resolve, reject) =>
+          db.query(salesByCategoryQuery, queryParams, (err, result) =>
+            err ? reject(err) : resolve(result)
+          )
+        ),
+      ])
+        .then(([totalSales, salesByProduct, salesByCategory]) => {
+          const doc = new PDFDocument();
+          let buffers = [];
+          doc.on("data", buffers.push.bind(buffers));
+          doc.on("end", () => {
+            const pdfData = Buffer.concat(buffers);
+            res.writeHead(200, {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": 'attachment; filename="sales_report.pdf"',
+              "Content-Length": pdfData.length,
+            });
+            res.end(pdfData);
+          });
+
+          // Header
+          doc.fontSize(20).text("Sales Report", { align: "center" });
+          doc.fontSize(12).text(
+            `Downloaded on: ${currentDate}`,
+            { align: "center" }
+          );
+          doc.moveDown(2);
+
+
+          // Total Sales by Period
+          doc.fontSize(14).text("Total Sales by Period", { underline: true });
+          doc.moveDown(0.5);
+          if (totalSales.length > 0) {
+            totalSales.forEach((item) => {
+              doc.fontSize(12).text(`Period: ${item.period}`);
+              doc.fontSize(12).text(`Total Sales (Rs.): ${item.totalSales ? item.totalSales.toFixed(2) : "0.00"}`);
+              doc.moveDown(0.5);
+            });
+          } else {
+            doc.fontSize(12).text("No sales data available for the selected period.");
+          }
+          doc.moveDown(2);
+
+          // Top 5 Products by Revenue
+          doc.fontSize(14).text("Top 5 Products by Revenue", { underline: true });
+          doc.moveDown(0.5);
+          if (salesByProduct.length > 0) {
+            salesByProduct.forEach((item) => {
+              doc.fontSize(12).text(`Product ID: ${item.Product_id}`);
+              doc.fontSize(12).text(`Product Name: ${item.productName || "Unknown Product"}`);
+              doc.fontSize(12).text(`Category: ${item.categoryName || "Not Specified"}`);
+              doc.fontSize(12).text(`Units Sold: ${item.totalUnitsSold || 0}`);
+              doc.fontSize(12).text(`Revenue (Rs.): ${item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00"}`);
+              doc.moveDown(0.5);
+            });
+          } else {
+            doc.fontSize(12).text("No product sales data available.");
+          }
+          doc.moveDown(2);
+
+          // Sales by Category
+          doc.fontSize(14).text("Sales by Category", { underline: true });
+          doc.moveDown(0.5);
+          if (salesByCategory.length > 0) {
+            salesByCategory.forEach((item) => {
+              doc.fontSize(12).text(`Category Name: ${item.categoryName || "Not Specified"}`);
+              doc.fontSize(12).text(`Units Sold: ${item.totalUnitsSold || 0}`);
+              doc.fontSize(12).text(`Revenue (Rs.): ${item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00"}`);
+              doc.moveDown(0.5);
+            });
+          } else {
+            doc.fontSize(12).text("No category sales data available.");
+          }
+
+          doc.end();
+        })
+        .catch((err) => {
+          console.error("Error exporting sales report as PDF:", err);
+          res.status(500).json({ error: "Database error", details: err.message });
+        });
+    });
   });
 };
 
