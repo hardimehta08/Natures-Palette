@@ -35,10 +35,6 @@
                                 <label for="password" class="floating-label">Password</label>
                             </div>
                         </div>
-                        <div class="form-group checkbox">
-                            <input type="checkbox" id="rememberMe">
-                            <label for="rememberMe">Remember me</label>
-                        </div>
                         <div id="error-message" style="color: red; display: none;"></div>
                         <div class="forgot">
                             <a href="forgot.html" class="btn-link">Forgot password?</a>
@@ -80,7 +76,6 @@
     
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value.trim();
-            const rememberMe = document.getElementById("rememberMe").checked;
             const errorMessage = document.getElementById("error-message");
     
             errorMessage.style.display = "none"; // Hide error message initially
@@ -108,7 +103,7 @@
                 const response = await fetch("/delivery/login", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password, rememberMe })
+                    body: JSON.stringify({ email, password })
                 });
     
                 if (!response.ok) {

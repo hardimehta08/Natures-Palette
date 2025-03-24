@@ -342,71 +342,83 @@ exports.loginDeliveryPerson = async (req, res) => {
 
   const { email, password } = req.body;
 
+  // Validate input fields
   if (!email || !password) {
-    return res
-      .status(400)
-      .json({ success: false, message: "All fields are required" });
+      return res
+          .status(400)
+          .json({ success: false, message: "All fields are required" });
   }
 
+  // Query the database for the delivery person
   db.query(
-    "SELECT * FROM delivery_persons WHERE d_email = ?",
-    [email],
-    async (err, results) => {
-      if (err) {
-        console.error("Error fetching user:", err);
-        return res
-          .status(500)
-          .json({ success: false, message: "Database error" });
+      "SELECT * FROM delivery_persons WHERE d_email = ?",
+      [email],
+      async (err, results) => {
+          if (err) {
+              console.error("Error fetching user:", err);
+              return res
+                  .status(500)
+                  .json({ success: false, message: "Database error" });
+          }
+
+          // Check if the user exists
+          if (results.length === 0) {
+              console.log("❌ No user found with this email.");
+              return res
+                  .status(401)
+                  .json({ success: false, message: "Invalid email or password" });
+          }
+
+          const user = results[0];
+
+          // Check if the delivery person's status is active
+          if (user.d_status !== "active") {
+              console.log(`❌ Delivery person ${user.d_name} is not active. Status: ${user.d_status}`);
+              return res
+                  .status(403)
+                  .json({ success: false, message: "Your account is not active. Please contact support." });
+          }
+
+          // Verify the password
+          console.log("Stored Hashed Password:", user.d_password);
+          console.log("Entered Password:", password);
+
+          const passwordMatch = await bcrypt.compare(password, user.d_password);
+
+          if (!passwordMatch) {
+              console.log("❌ Password does not match.");
+              return res
+                  .status(401)
+                  .json({ success: false, message: "Invalid email or password" });
+          }
+
+          // Store user in session
+          req.session.user = { id: user.d_id, name: user.d_name };
+          console.log("✅ Login successful for:", user.d_name);
+          res.json({
+              success: true,
+              message: "Login successful!",
+              redirect: "/html/index.html", // Use absolute path
+              id: user.d_id,
+          });
       }
-
-      if (results.length === 0) {
-        console.log("❌ No user found with this email.");
-        return res
-          .status(401)
-          .json({ success: false, message: "Invalid email or password" });
-      }
-
-      const user = results[0];
-
-      console.log("Stored Hashed Password:", user.d_password);
-      console.log("Entered Password:", password);
-
-      const passwordMatch = await bcrypt.compare(password, user.d_password);
-
-      if (!passwordMatch) {
-        console.log("❌ Password does not match.");
-        return res
-          .status(401)
-          .json({ success: false, message: "Invalid email or password" });
-      }
-
-      // Store user in session
-      req.session.user = { id: user.d_id, name: user.d_name };
-      console.log("✅ Login successful for:", user.d_name);
-      res.json({
-        success: true,
-        message: "Login successful!",
-        redirect: "/html/index.html",
-        id: user.d_id,
-      });
-    }
   );
 };
 
 // Logout User
 exports.logoutUser = (req, res) => {
   req.session.destroy((err) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Failed to logout" });
-    }
-    res.clearCookie("connect.sid"); // Clear session cookie
-    res.json({
-      success: true,
-      message: "Logged out successfully",
-      redirect: "/html/login.html",
-    });
+      if (err) {
+          return res
+              .status(500)
+              .json({ success: false, message: "Failed to logout" });
+      }
+      res.clearCookie("connect.sid"); // Clear session cookie
+      res.json({
+          success: true,
+          message: "Logged out successfully",
+          redirect: "/html/login.html",
+      });
   });
 };
 
