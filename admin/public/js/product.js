@@ -72,7 +72,6 @@ function fetchProductsByCategory(page = 1) {
 
       if (data.products && data.products.length > 0) {
         data.products.forEach((product) => {
-          // Safely handle stock value for the onclick handler
           const stockValue =
             product.stock !== null && product.stock !== undefined
               ? product.stock
@@ -106,16 +105,22 @@ function fetchProductsByCategory(page = 1) {
                     `;
           productTable.innerHTML += row;
         });
-        updatePagination(data.totalPages, data.currentPage);
+
+        // Show pagination only if not searching by productId
+        if (!searchQuery) {
+          updatePagination(data.totalPages, data.currentPage);
+        } else {
+          document.getElementById("pagination-controls").innerHTML = "";
+        }
       } else {
-        productTable.innerHTML = `<tr><td colspan="7" class="text-center">No products found for this category</td></tr>`;
+        productTable.innerHTML = `<tr><td colspan="8" class="text-center">No products found for this category</td></tr>`;
         document.getElementById("pagination-controls").innerHTML = "";
       }
     })
     .catch((error) => {
       console.error("Error fetching products:", error);
       document.getElementById("product-details").innerHTML = `
-                <tr><td colspan="7" class="text-center">Error loading products: ${error.message}</td></tr>
+                <tr><td colspan="8" class="text-center">Error loading products: ${error.message}</td></tr>
             `;
       document.getElementById("pagination-controls").innerHTML = "";
     });
@@ -125,12 +130,14 @@ function updatePagination(totalPages, currentPage) {
   const paginationControls = document.getElementById("pagination-controls");
   paginationControls.innerHTML = "";
 
+  // Calculate the page to go to for Previous and Next buttons (for circular pagination)
+  const prevPage = currentPage === 1 ? totalPages : currentPage - 1; // If on first page, go to last page
+  const nextPage = currentPage === totalPages ? 1 : currentPage + 1; // If on last page, go to first page
+
   // Previous Button (<)
   paginationControls.innerHTML += `
-    <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
-      <a class="page-link" href="#" onclick="fetchProductsByCategory(${
-        currentPage - 1
-      }); return false;">&lt;</a>
+    <li class="page-item">
+      <a class="page-link" href="#" onclick="fetchProductsByCategory(${prevPage}); return false;"><</a>
     </li>
   `;
 
@@ -154,10 +161,8 @@ function updatePagination(totalPages, currentPage) {
 
   // Next Button (>)
   paginationControls.innerHTML += `
-    <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
-      <a class="page-link" href="#" onclick="fetchProductsByCategory(${
-        currentPage + 1
-      }); return false;">&gt;</a>
+    <li class="page-item">
+      <a class="page-link" href="#" onclick="fetchProductsByCategory(${nextPage}); return false;">></a>
     </li>
   `;
 }

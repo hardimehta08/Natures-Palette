@@ -9,8 +9,9 @@ const db = mysql.createConnection({
 });
 
 // Fetch feedback report with customer name filter
+// Fetch feedback report with customer name and rating filters
 exports.getFeedback = (req, res) => {
-  const { startDate, endDate, rating, customerName } = req.query;
+  const { rating, customerName } = req.query;
 
   let query = `
         SELECT 
@@ -27,14 +28,6 @@ exports.getFeedback = (req, res) => {
 
   // Apply filters
   let whereClauses = [];
-  if (startDate) {
-    whereClauses.push("f.F_date >= ?");
-    queryParams.push(startDate);
-  }
-  if (endDate) {
-    whereClauses.push("f.F_date <= ?");
-    queryParams.push(endDate);
-  }
   if (rating) {
     whereClauses.push("f.star_rating = ?");
     queryParams.push(rating);

@@ -13,6 +13,7 @@ const db = mysql.createConnection({
 const getProductsByTable = (req, res) => {
   const viewName = req.params.tableName;
   const page = parseInt(req.query.page) || 1;
+  const productId = req.query.productId || ""; // Get the productId from query parameters
   const limit = 10;
   const offset = (page - 1) * limit;
 
@@ -67,7 +68,8 @@ const getProductsByTable = (req, res) => {
           });
         }
 
-        const productQuery = `
+        // Base query
+        let productQuery = `
           SELECT 
             v.id AS Product_id, 
             v.name AS product_name, 
@@ -79,28 +81,58 @@ const getProductsByTable = (req, res) => {
           FROM ${viewName} v
           LEFT JOIN image i ON v.id = i.product_id
           LEFT JOIN category c ON v.Category_id = c.CY_ID
-          LIMIT ${limit} OFFSET ${offset}
         `;
 
-        db.query(productQuery, (err, results) => {
+        const queryParams = [];
+
+        // Add WHERE clause for productId if provided
+        if (productId) {
+          productQuery += ` WHERE v.id = ?`;
+          queryParams.push(productId);
+        }
+
+        // Add LIMIT and OFFSET for pagination (only if no productId is provided)
+        if (!productId) {
+          productQuery += ` LIMIT ${limit} OFFSET ${offset}`;
+        }
+
+        // Query to get total count (for pagination, only needed if no productId)
+        const countQuery = `SELECT COUNT(*) as total FROM ${viewName} v`;
+        let totalCount = 0;
+
+        db.query(countQuery, (err, countResult) => {
           if (err) {
-            console.error("Error fetching products:", err);
+            console.error("Error fetching total count:", err);
             return res
               .status(500)
-              .json({ error: "Internal server error", details: err.message });
+              .json({ error: "Database error", details: err.message });
           }
+          totalCount = countResult[0].total;
 
-          // Process BLOB data to Base64
-          const processedResults = results.map((row) => {
-            if (row.image) {
-              row.image = Buffer.from(row.image).toString();
+          // Fetch the products
+          db.query(productQuery, queryParams, (err, results) => {
+            if (err) {
+              console.error("Error fetching products:", err);
+              return res
+                .status(500)
+                .json({ error: "Internal server error", details: err.message });
             }
-            return row;
-          });
-          res.json({
-            products: processedResults,
-            totalPages: Math.ceil(results.length / limit),
-            currentPage: page,
+
+            // Process BLOB data to Base64
+            const processedResults = results.map((row) => {
+              if (row.image) {
+                row.image = Buffer.from(row.image).toString();
+              }
+              return row;
+            });
+
+            // If searching by productId, pagination is not needed
+            const totalPages = productId ? 1 : Math.ceil(totalCount / limit);
+            res.json({
+              products: processedResults,
+              totalPages: totalPages,
+              currentPage: page,
+            });
           });
         });
       });

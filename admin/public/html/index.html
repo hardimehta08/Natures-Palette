@@ -714,25 +714,9 @@
             <div class="tab__content" content id="review">
                 <h1>Review</h1>
                 <div class="filter-container">
-                    <!-- Date Range Filter -->
-                    <label for="reviewDateRange">Date Range:</label>
-                    <select id="reviewDateRange" onchange="handleDateRangeChange()">
-                        <option value="all">All Dates</option>
-                        <option value="today">Today</option>
-                        <option value="last7days">Last 7 Days</option>
-                        <option value="last30days">Last 30 Days</option>
-                        <option value="custom">Custom Range</option>
-                    </select>
-                    <div id="reviewCustomDateRange" style="display: none;">
-                        <label for="reviewStartDate">Start Date:</label>
-                        <input type="date" id="reviewStartDate" min="2020-01-01">
-                        <label for="reviewEndDate">End Date:</label>
-                        <input type="date" id="reviewEndDate">
-                        <button onclick="fetchFeedbackReport()">Apply</button>
-                    </div>
                     <!-- Rating Filter -->
                     <label for="reviewRatingFilter">Rating:</label>
-                    <select id="reviewRatingFilter" onchange="fetchFeedbackReport()">
+                    <select id="reviewRatingFilter" onchange="fetchFeedback()">
                         <option value="">All Ratings</option>
                         <option value="1">1 Star</option>
                         <option value="2">2 Stars</option>
@@ -743,7 +727,7 @@
                     
                     <!-- Customer Search -->
                     <label for="reviewCustomerSearch">Customer:</label>
-                    <input type="text" id="reviewCustomerSearch" placeholder="Search customer..." oninput="fetchFeedbackReport()">
+                    <input type="text" id="reviewCustomerSearch" placeholder="Search customer..." oninput="fetchFeedback()">
                 </div>
                 <table id="review-table">
                     <thead>
