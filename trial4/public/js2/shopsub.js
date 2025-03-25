@@ -56,11 +56,12 @@ const displayProducts = (products) => {
 
   if (products && products.forEach) {
     products.forEach((product) => {
+      const formattedName = product.name.replace(/_/g, " ");
       const productHTML = `
         <div class="product-card">
           <a href="/product.html?product=${product.name}">
             <img src="../${product.image}" alt="${product.name}" class="">
-            <h3 class="product-name">${product.name}</h3>
+            <h3 class="product-name">${formattedName}</h3>
             <p class="product-price">₹${product.price}</p>
           </a>
         </div>
@@ -78,11 +79,12 @@ const displayNewArrivals = (data) => {
 
   if (data && data.forEach) {
     data.forEach((item) => {
+      const formattedName = item.P_NAME.replace(/_/g, " "); // Replace underscores with spaces
       const productHTML = `
         <div class="product-card">
-          <a href="/product.html?product=${item.P_NAME}">
-            <img src="../${item.PATH1}" alt="${item.P_NAME}">
-            <h3 class="product-name">${item.P_NAME}</h3>
+          <a href="/product.html?product=${formattedName}">
+            <img src="../${item.PATH1}" alt="${formattedName}">
+            <h3 class="product-name">${formattedName}</h3>
             <p class="product-price">₹${item.P_PRICE}</p>
           </a>
         </div>

@@ -40,10 +40,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         </tr>
       `;
       itemSummaryTable.innerHTML = tableHeader;
-
+      let totalAmount = 0;
       cartData.forEach((item) => {
         const itemRow = document.createElement("tr");
-        
+
         itemRow.innerHTML = `
           <td>${item.name}</td>
           <td>${item.CA_QTY}</td>
@@ -54,17 +54,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         itemSummaryTable.appendChild(itemRow);
 
         subtotal += item.price * item.CA_QTY;
+        totalAmount += item.price * item.CA_QTY;
       });
-
-      const totalAmount = subtotal;
-      const totalRow = document.createElement("tr");
-      totalRow.innerHTML = `
-        <td colspan="3"><strong>Total Amount</strong></td>
-        <td><strong>₹${totalAmount.toFixed(2)}</strong></td>
-      `;
-      itemSummaryTable.appendChild(totalRow);
-
-      document.getElementById("total_amount").textContent = `₹${totalAmount.toFixed(2)}`;
+      document.getElementById(
+        "total_amount"
+      ).textContent = `₹${totalAmount.toFixed(2)}`;
     }
   } catch (error) {
     console.error("Error fetching data:", error);

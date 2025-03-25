@@ -31,15 +31,18 @@ const generateCustomerId = (callback) => {
 
 const registerUser = async (req, res) => {
   try {
-    const { username, email, password, address, pincode, mobile } = req.body;
+    let { username, email, password, address, pincode, mobile } = req.body;
 
     // Check for unique email and username among active users only
-    const checkUserSql = "SELECT * FROM customer WHERE (c_email = ? OR c_username = ?) AND c_status != 'INACTIVE'";
+    const checkUserSql =
+      "SELECT * FROM customer WHERE (c_email = ? OR c_username = ?) AND c_status != 'INACTIVE'";
     conn.query(checkUserSql, [email, username], async (err, result) => {
       if (err) throw err;
 
       if (result.length > 0) {
-        return res.status(400).json({ error: "Email or username already in use." });
+        return res
+          .status(400)
+          .json({ error: "Email or username already in use." });
       }
 
       // Validate pincode
@@ -60,16 +63,36 @@ const registerUser = async (req, res) => {
             return res
               .status(500)
               .json({ error: "Error generating customer ID." });
-
+          const currentDate = new Date();
+          const formattedDate = currentDate.toISOString().split("T")[0];
           // Create a new user
           const insertUserSql =
-            "INSERT INTO customer (c_id, c_username, c_email, c_password, c_address, c_pincode, c_mobile) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            "INSERT INTO customer (c_id, c_username, c_email, c_password, c_address, c_pincode, c_mobile,Pincode,c_reg_date) VALUES (?, ?, ?, ?, ?, ?, ?,?,?)";
           conn.query(
             insertUserSql,
-            [newId, username, email, hashedPassword, address, pincode, mobile],
+            [
+              newId,
+              username,
+              email,
+              hashedPassword,
+              address,
+              pincode,
+              mobile,
+              pincode,
+              formattedDate,
+            ],
             (err, result) => {
               if (err) throw err;
-
+              const name = username;
+              const capitalized = name
+                .split(" ")
+                .map(
+                  (word) =>
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                )
+                .join(" ");
+              username
+               = capitalized;
               // Send welcome email
               sendMail(
                 email,
@@ -207,7 +230,8 @@ const updatePassword = (req, res) => {
       .json({ message: "New password and confirm password do not match." });
   }
 
-  const sql = "SELECT c_password FROM customer WHERE c_id = ? AND c_status = 'ACTIVE'";
+  const sql =
+    "SELECT c_password FROM customer WHERE c_id = ? AND c_status = 'ACTIVE'";
   conn.query(sql, [req.session.userId], async (err, rows) => {
     if (err) {
       console.error(err);
@@ -228,15 +252,20 @@ const updatePassword = (req, res) => {
     }
 
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    const updateSql = "UPDATE customer SET c_password = ? WHERE c_id = ? AND c_status = 'ACTIVE'";
-    conn.query(updateSql, [newPasswordHash, req.session.userId], (updateErr) => {
-      if (updateErr) {
-        console.error(updateErr);
-        return res.status(500).json({ message: "Error updating password." });
-      }
+    const updateSql =
+      "UPDATE customer SET c_password = ? WHERE c_id = ? AND c_status = 'ACTIVE'";
+    conn.query(
+      updateSql,
+      [newPasswordHash, req.session.userId],
+      (updateErr) => {
+        if (updateErr) {
+          console.error(updateErr);
+          return res.status(500).json({ message: "Error updating password." });
+        }
 
-      res.status(200).json({ message: "Password updated successfully." });
-    });
+        res.status(200).json({ message: "Password updated successfully." });
+      }
+    );
   });
 };
 
@@ -251,7 +280,8 @@ const logoutUser = (req, res) => {
 // Verify Password
 const verifyPassword = (req, res) => {
   const { email, password } = req.body;
-  const sql = "SELECT c_password FROM customer WHERE c_email = ? AND c_status = 'ACTIVE'";
+  const sql =
+    "SELECT c_password FROM customer WHERE c_email = ? AND c_status = 'ACTIVE'";
 
   conn.query(sql, [email], async (err, result) => {
     if (err) {
@@ -277,8 +307,9 @@ const verifyPassword = (req, res) => {
 // Forgot Password
 const forgotPassword = (req, res) => {
   const { email } = req.body;
-  const sql = "SELECT c_id FROM customer WHERE c_email = ? AND c_status = 'ACTIVE'";
-  
+  const sql =
+    "SELECT c_id FROM customer WHERE c_email = ? AND c_status = 'ACTIVE'";
+
   conn.query(sql, [email], (err, result) => {
     if (err) {
       console.error("Database query error: ", err);
@@ -309,8 +340,9 @@ const resetPassword = async (req, res) => {
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-  const updateSql = "UPDATE customer SET c_password = ? WHERE c_email = ? AND c_status = 'ACTIVE'";
-  
+  const updateSql =
+    "UPDATE customer SET c_password = ? WHERE c_email = ? AND c_status = 'ACTIVE'";
+
   conn.query(updateSql, [hashedPassword, email], (err) => {
     if (err) {
       console.error("Error updating password: ", err);
@@ -318,14 +350,15 @@ const resetPassword = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Password reset successful! Please log in with your new password.",
+      message:
+        "Password reset successful! Please log in with your new password.",
     });
   });
 };
 // Controller function to delete a user
 const deleteUser = async (req, res) => {
   try {
-    const id  = req.session.userId;
+    const id = req.session.userId;
 
     // Check if the user exists
     const checkUserSql = "SELECT * FROM customer WHERE c_id = ?";
@@ -337,19 +370,24 @@ const deleteUser = async (req, res) => {
       }
 
       // Set the user's status to INACTIVE
-      const updateUserStatusSql = "UPDATE customer SET c_status = 'INACTIVE' WHERE c_id = ?";
+      const updateUserStatusSql =
+        "UPDATE customer SET c_status = 'INACTIVE' WHERE c_id = ?";
       conn.query(updateUserStatusSql, [id], (err, updateResult) => {
         if (err) throw err;
 
         if (updateResult.affectedRows > 0) {
-          res.status(200).json({ message: "User status updated to INACTIVE successfully." });
+          res
+            .status(200)
+            .json({ message: "User status updated to INACTIVE successfully." });
         } else {
           res.status(500).json({ error: "Failed to update user status." });
         }
       });
     });
   } catch (error) {
-    res.status(500).json({ error: "Error updating user status: " + error.message });
+    res
+      .status(500)
+      .json({ error: "Error updating user status: " + error.message });
   }
 };
 module.exports = {

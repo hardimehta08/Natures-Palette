@@ -161,9 +161,7 @@ exports.confirmQRCodePayment = (req, res) => {
               (err) => {
                 if (err)
                   return db.rollback(() =>
-                    res
-                      .status(500)
-                      .json({ error: "Order update failed" })
+                    res.status(500).json({ error: "Order update failed" })
                   );
 
                 // Fetch order details
@@ -198,9 +196,7 @@ exports.confirmQRCodePayment = (req, res) => {
                   db.query(viewsQuery, (err, viewsResult) => {
                     if (err || viewsResult.length === 0)
                       return db.rollback(() =>
-                        res
-                          .status(500)
-                          .json({ error: "Failed to fetch views" })
+                        res.status(500).json({ error: "Failed to fetch views" })
                       );
 
                     for (let item of orderResult) {
@@ -230,7 +226,10 @@ exports.confirmQRCodePayment = (req, res) => {
                                     return db.rollback(() =>
                                       res
                                         .status(500)
-                                        .json({ error: "Failed to fetch product details" })
+                                        .json({
+                                          error:
+                                            "Failed to fetch product details",
+                                        })
                                     );
 
                                   productDetails.push({
@@ -250,7 +249,10 @@ exports.confirmQRCodePayment = (req, res) => {
                                         return db.rollback(() =>
                                           res
                                             .status(500)
-                                            .json({ error: "Failed to delete cart item" })
+                                            .json({
+                                              error:
+                                                "Failed to delete cart item",
+                                            })
                                         );
                                     }
                                   );
@@ -263,7 +265,10 @@ exports.confirmQRCodePayment = (req, res) => {
                                         return db.rollback(() =>
                                           res
                                             .status(500)
-                                            .json({ error: "Transaction commit failed" })
+                                            .json({
+                                              error:
+                                                "Transaction commit failed",
+                                            })
                                         );
 
                                       // Generate PDF bill and send final response
@@ -536,6 +541,12 @@ function generatePDFBill(
   const filePath = `bill_${order.O_ID}.pdf`;
 
   doc.pipe(fs.createWriteStream(filePath));
+  const name = customerName;
+  const capitalized = name
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+  customerName = capitalized;
 
   doc.fontSize(20).text("Invoice", { align: "center" });
   doc.text(`Date: ${new Date(order.O_DATE).toLocaleDateString("en-GB")}`);
@@ -561,7 +572,7 @@ function generatePDFBill(
 
   try {
     console.log("✅ Starting invoice generation...");
-    sendInvoiceEmail(order,customerEmail, filePath, res);
+    sendInvoiceEmail(order, customerEmail, filePath, res);
 
     console.log("✅ Committing transaction...");
     db.commit((err) => {
@@ -582,7 +593,7 @@ function generatePDFBill(
 }
 
 // ✅ Function to Send Invoice via Email
-function sendInvoiceEmail(order,customerEmail, filePath, res) {
+function sendInvoiceEmail(order, customerEmail, filePath, res) {
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
@@ -599,13 +610,13 @@ function sendInvoiceEmail(order,customerEmail, filePath, res) {
 
   transporter.sendMail(mailOptions, (emailErr) => {
     if (emailErr) return res.status(500).json({ error: "Email Sending Error" });
-    
+
     db.query(
       "UPDATE ORDER_MASTER SET O_STATUS = 'PROCESSING' WHERE O_ID = ?",
       [order.O_ID],
       (err) => {
         if (err) return res.status(500).json({ error: "Order Update Error" });
-        
+
         db.commit((err) => {
           if (err)
             return res.status(500).json({ error: "Transaction Commit Error" });

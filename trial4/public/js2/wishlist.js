@@ -13,7 +13,7 @@ function fetchWishlist() {
     })
     .then((data) => {
       const wishlistContainer = document.getElementById("wishlist-container");
-      if(data.length === 0){
+      if (data.length === 0) {
         const messageElement = document.getElementById("message");
         messageElement.innerHTML = "No items in wishlist";
       }
@@ -30,8 +30,8 @@ function fetchWishlist() {
                     <tr data-wishlist-id="${item.w_id}">
                         <td><img src="${item.image}" alt="${item.name}" width="50"></td>
                         <td><a href="/product.html?product=${item.name}">${item.name}</a></td>
-                        <td>${item.price}</td>
-                        <td><button onclick="removeFromWishlist('${item.w_id}');updateCartAndWishlistCounts();">Remove</button></td>
+                        <td>&#8377; ${item.price}</td>
+                        <td><button class="add-btn" onclick="removeFromWishlist('${item.w_id}');updateCartAndWishlistCounts();">Remove</button></td>
                         <td><button class="add-btn" onclick="addToCart('${item.w_id}','1');updateCartAndWishlistCounts();">Add to Cart</button></td>
                     </tr>
                 `;

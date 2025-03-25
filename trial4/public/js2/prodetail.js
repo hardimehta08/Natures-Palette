@@ -125,11 +125,12 @@ const displayNewArrivals = (data) => {
 
   if (data && data.forEach) {
     data.forEach((item) => {
+      const formattedName = item.P_NAME.replace(/_/g, " ");
       const productHTML = `
           <div class="product-card">
             <a href="/product.html?product=${item.P_NAME}">
-              <img src="../${item.PATH1}" alt="${item.P_NAME}">
-              <h3 class="product-name">${item.P_NAME}</h3>
+              <img src="../${item.PATH1}" alt="${formattedName}">
+              <h3 class="product-name">${formattedName}</h3>
               <p class="product-price">₹${item.P_PRICE}</p>
             </a>
           </div>
@@ -140,12 +141,12 @@ const displayNewArrivals = (data) => {
     console.error("Error: new arrivals is not an array or undefined");
   }
 };
-
 document.getElementById("write-review").addEventListener("click", () => {
   const feedbackContainer = document.getElementById("feedback-container");
   const feedbackForm = `
     <div class="card">
       <div class="card-header">
+        <button class="close-btn" id="close-feedback">&times;</button>
       </div>
       <div class="card-body">
         <div class="stars" id="star-container">
@@ -161,6 +162,11 @@ document.getElementById("write-review").addEventListener("click", () => {
     </div>
   `;
   feedbackContainer.innerHTML = feedbackForm;
+
+  // Close button functionality
+  document.getElementById("close-feedback").addEventListener("click", () => {
+    feedbackContainer.innerHTML = ""; // Clear the feedback form
+  });
 
   let starRating = 0;
   const stars = document.querySelectorAll(".stars i");
@@ -206,28 +212,10 @@ document.getElementById("write-review").addEventListener("click", () => {
         messageElement.innerHTML = errorObj.error;
       });
   });
-
-  // Prevent invalid key input for quantity field
-  document.getElementById("quantity").addEventListener("keydown", function (e) {
-    // Allow arrow keys (left, up, right, down)
-    if (
-      e.key === "ArrowUp" ||
-      e.key === "ArrowDown" ||
-      e.key === "ArrowLeft" ||
-      e.key === "ArrowRight"
-    ) {
-      return;
-    }
-    // Prevent other keys
-    e.preventDefault();
-  });
-
-  const card = document.querySelector(".card");
-
-  // Mouseover functionality for stars
-  stars.forEach((star) => {
-    star.addEventListener("mouseover", function () {
-      card.className = `card ${this.id}`;
-    });
-  });
 });
+function maxqty() {
+  var i = document.getElementById("quantity").value;
+  if (i == 10) {
+    alert("Cannot add more than 10 items");
+  }
+}

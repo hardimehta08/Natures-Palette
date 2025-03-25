@@ -22,6 +22,17 @@ fetch("/user/profile")
       fetch("/order/customer/orders")
         .then((response) => response.json())
         .then((data) => {
+          if (data.message == "Order not found") {
+            document.getElementById("order_name").innerHTML =
+              "No orders placed yet!";
+
+            // Hide other elements
+            document.getElementById("order_image").style.display = "none";
+            document.getElementById("order_price").style.display = "none";
+            document.getElementById("order_id").style.display = "none";
+            document.getElementById("order_date").style.display = "none";
+            document.getElementById("order_status").style.display = "none";
+          }
           document.getElementById("order_image").src = "../" + data.image;
           document.getElementById("order_name").innerHTML = data.name.replace(
             /_/g,
@@ -58,7 +69,7 @@ function logout() {
       return response.text(); // Parse the response as plain text
     })
     .then((data) => {
-      alert("Logout successful: " + data);
+      alert("Logout successful!");
       window.location.href = "/";
     })
     .catch((error) => {
@@ -148,8 +159,11 @@ function changepass() {
 fetch("/feedback/customer")
   .then((response) => response.json())
   .then((data) => {
-    console.log(data);
+    // console.log(data);
     const feedbackContainer = document.getElementById("f_container");
+    if (data.error == "No feedback data found.") {
+      feedbackContainer.innerHTML = "<h3>No feedbacks found!</h3>";
+    }
 
     data.forEach((item) => {
       // Create a new div for each feedback item

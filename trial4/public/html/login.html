@@ -6,13 +6,6 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
     />
-    <!-- Google Font link -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@1,400..700&family=Roboto+Condensed:ital@0;1&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" type="text/css" href="../css/style.css" />
     <link rel="stylesheet" type="text/css" href="../css/login.css" />
   </head>
@@ -46,14 +39,17 @@
               required
             />
             <div id="error_message_email"></div>
-            <input
-              type="password"
-              class="input-field"
-              placeholder="Password"
-              name="password"
-              id="cpassword"
-              required
-            />
+            <div id="password-container">
+              <input
+                type="password"
+                class="input-field"
+                placeholder="Password"
+                name="password"
+                id="cpassword"
+                required
+              />
+              <button type="button" id="toggle-password">Show</button>
+            </div>
             <button type="submit" class="submit-btn">Login</button><br />
             <div class="forgot">
               <a href="/forgot">Forgot Password ?</a>

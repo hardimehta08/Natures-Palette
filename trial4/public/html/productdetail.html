@@ -9,149 +9,10 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
     />
-    <!-- Google Font link -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@1,400..700&family=Roboto+Condensed:ital@0;1&display=swap"
-      rel="stylesheet"
-    />
 
     <!-- custom css link -->
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../css/style copy.css" />
-    <style>
-      #message {
-        margin-bottom: 10px;
-        font-size: large;
-        color: rgb(18, 137, 40);
-      }
-      #product-description {
-        font-family: QuickSand, sans-serif;
-        margin-bottom: 15px;
-        font-size: large;
-        text-align: justify;
-        letter-spacing: 4px;
-        word-spacing: 15px;
-        line-height: 25px;
-      }
-      .review {
-        background: linear-gradient(
-          to left,
-          rgb(205, 230, 239),
-          rgb(222, 241, 255)
-        );
-        border: 2px solid black;
-        padding: 20px;
-        margin: 10px;
-      }
-      .ul-wrapper > li:hover {
-        padding-left: 5px;
-        padding-right: 5px;
-        background-color: skyblue;
-      }
-      .card {
-        width: 95%;
-        border-radius: 12px;
-        overflow: hidden;
-      }
-
-      .card-header {
-        text-align: center;
-        padding: 24px 32px;
-      }
-
-      .card-header {
-        font-size: 1.8em;
-        font-weight: bold;
-      }
-
-      .card-body {
-        height: 300px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 32px 64px;
-      }
-
-      .stars {
-        margin-bottom: 10px;
-      }
-
-      .stars i {
-        font-size: 2.6em;
-        margin: 8px;
-        cursor: pointer;
-        color: #292f3d;
-        transition: color 0.5s;
-      }
-
-      .card.one .stars i:nth-child(-n + 1) {
-        color: #ffcf87;
-      }
-
-      .card.two .stars i:nth-child(-n + 2) {
-        color: #ffcf87;
-      }
-
-      .card.three .stars i:nth-child(-n + 3) {
-        color: #ffcf87;
-      }
-
-      .card.four .stars i:nth-child(-n + 4) {
-        color: #ffcf87;
-      }
-
-      .card.five .stars i:nth-child(-n + 5) {
-        color: #ffcf87;
-      }
-
-      textarea {
-        width: 100%;
-        background-color: azure;
-        border: 2px solid salmon;
-        border-radius: 8px;
-        padding: 16px;
-        resize: none;
-        font-size: 1.4em;
-        outline: none;
-      }
-
-      button.cta {
-        width: 80%;
-        cursor: pointer;
-        outline: none;
-        border: none;
-        border-radius: 6px;
-        padding: 16px;
-        margin-top: 32px;
-        background: #fde021ab;
-        background-size: 300% 100%;
-        font-size: 1.4em;
-        transition: background-position 0.7s;
-      }
-
-      button.cta:hover {
-        background-color: #ffdd00;
-      }
-
-      .credit a {
-        text-decoration: none;
-        color: #21d4fd;
-      }
-      #write-review {
-        margin-bottom: 15px;
-        background-color: #fde021;
-        color: black;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
-        margin-top: 10px;
-      }
-    </style>
   </head>
   <body>
     <div id="nav"></div>
@@ -172,9 +33,16 @@
         <div class="product-info">
           <h3 id="product-title"></h3>
           <h5 id="product-price">Price :&nbsp;&nbsp;&#8377;</h5>
-          <h4 for="quantity">Quantity:</h4>
+          <h4 style="font-size: 20px" for="quantity">Quantity:</h4>
           <div class="product__quantity">
-            <input type="number" id="quantity" min="1" placeholder="1" />
+            <input
+              type="number"
+              id="quantity"
+              min="1"
+              placeholder="1"
+              max="10"
+              onclick="maxqty();"
+            />
           </div>
           <br /><br />
           <div id="message"></div>

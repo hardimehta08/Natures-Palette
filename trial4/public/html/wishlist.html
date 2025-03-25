@@ -12,6 +12,7 @@
         width: 100%;
         border-collapse: collapse;
         margin-top: 20px;
+        font-size: large;
       }
 
       table,
@@ -22,7 +23,7 @@
 
       th,
       td {
-        padding: 15px;
+        padding: 20px;
         text-align: center;
       }
 
@@ -105,14 +106,15 @@
         margin-left: 20px;
         color: rgba(255, 0, 0, 0.555);
       }
+      .add-btn:hover {
+        color: blue;
+        text-decoration: underline blue;
+      }
     </style>
   </head>
 
   <body>
-    <!-- Header section starts -->
     <div id="nav"></div>
-    <!-- Header section ends -->
-    <!-- Whishlsit section starts -->
     <section id="wishlist-items" class="wishlist-items conatiner">
       <h1 id="message">Your Whishlist:</h1>
       <table>
@@ -126,15 +128,10 @@
           </tr>
         </thead>
         <tbody id="wishlist-container"></tbody>
-        <!-- ✅ Now inside <table> -->
       </table>
-      <!-- Cart items will be dynamically loaded here -->
     </section>
-    <!-- whishlist section ends -->
     <br /><br />
-    <!-- Footer section  starts-->
     <div id="footer"></div>
-    <!-- Footer section  ends-->
     <button id="btnScrollToTop">
       <i class="fa-solid fa-arrow-up"></i>
     </button>
@@ -155,7 +152,6 @@
           console.log("Navigation loaded successfully");
         } catch (error) {
           console.error("Error loading navigation:", error);
-          // Optionally, you can show an error message to the user
           document.getElementById("nav").innerHTML =
             "<p>Failed to load navigation.</p>";
         }
@@ -171,7 +167,6 @@
           console.log("Footer loaded successfully");
         } catch (error) {
           console.error("Error loading footer:", error);
-          // Optionally, you can show an error message to the user
           document.getElementById("footer").innerHTML =
             "<p>Failed to load footer.</p>";
         }
