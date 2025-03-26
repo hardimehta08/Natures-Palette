@@ -769,7 +769,7 @@
                 <div id="assignDeliveryModal" class="modal">
                   <div class="modal-content">
                     <h2>Assign Delivery</h2>
-                    <span class="modal-close" onclick="closeAssignDeliveryModal()">×</span>
+                    <span class="close" onclick="closeAssignDeliveryModal()">×</span>
                     <form id="assignDeliveryForm">
                       <input type="hidden" id="assign-order-id">
                       <div class="form-group">
@@ -843,9 +843,9 @@
                                 </select>
                                 <div id="customerCustomDateRange" style="display: none;">
                                     <label for="customerStartDate">Start Date:</label>
-                                    <input type="date" id="customerStartDate" min="2020-01-01">
+                                    <input type="date" id="customerStartDate" min="2024-01-01">
                                     <label for="customerEndDate">End Date:</label>
-                                    <input type="date" id="customerEndDate" min="2020-01-01">
+                                    <input type="date" id="customerEndDate" min="2024-01-01">
                                     <button onclick="fetchCustomerReport()">Apply</button>
                                 </div>
                             </div>
@@ -886,20 +886,6 @@
                                 <strong>Warning:</strong> <span id="criticalStockMessage"></span>
                                 <!-- <button class="btn alert-btn" onclick="sendRestockAlert()">Send Restock Alert</button> -->
                             </div>
-                            <h5>Low Stock Products (Stock ≤ 5)</h5>
-                            <table id="lowStockTable">
-                                <thead>
-                                    <tr>
-                                        <th>Product ID</th>
-                                        <th>Product Name</th>
-                                        <th>Category (ID - Name)</th>
-                                        <th>Stock</th>
-                                        <!-- <th>Action</th> -->
-                                        <!-- <th>Action</th> -->
-                                    </tr>
-                                </thead>
-                                <tbody id="lowStockProducts"></tbody>
-                            </table>
                             <h5>Out of Stock Products (Stock = 0)</h5>
                             <table id="outOfStockTable">
                                 <thead>
@@ -912,6 +898,43 @@
                                 </thead>
                                 <tbody id="outOfStockProducts"></tbody>
                             </table>
+                            <div id="updateStockModal" class="modal" style="display: none;">
+                                <div class="modal-content">
+                                  <span class="close" onclick="closeStockModal()">×</span>
+                                  <h2>Update Stock</h2>
+                                  <form id="updateStockForm">
+                                    <input type="hidden" id="update-product-id">
+                                    <input type="hidden" id="update-category">
+                                    <div class="form-group">
+                                      <label for="update-product-name">Product Name:</label>
+                                      <input type="text" id="update-product-name" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                      <label for="update-current-stock">Current Stock:</label>
+                                      <input type="number" id="update-current-stock" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                      <label for="update-new-stock">New Stock:</label>
+                                      <input type="number" id="update-new-stock" min="0" required>
+                                    </div>
+                                    <button type="submit" class="btn primary">Update Stock</button>
+                                    <button type="button" class="btn-cancel" onclick="closeStockModal()">Cancel</button>
+                                  </form>
+                                </div>
+                              </div>
+                            <h5>Low Stock Products (Stock ≤ 5)</h5>
+                            <table id="lowStockTable">
+                                <thead>
+                                    <tr>
+                                        <th>Product ID</th>
+                                        <th>Product Name</th>
+                                        <th>Category (ID - Name)</th>
+                                        <th>Stock</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lowStockProducts"></tbody>
+                            </table>                     
                             <h5>Inventory Turnover</h5>
                             <table id="inventoryTurnoverTable">
                                 <thead>
@@ -926,19 +949,6 @@
                                 <tbody id="inventoryTurnover"></tbody>
                             </table>
                             <div id="turnoverPagination" style="margin-top: 10px;"></div> <!-- Pagination controls -->
-                            <!-- <h5>Slow Moving Products (Total Sold ≤ 5)</h5>
-                            <table id="slowMovingTable">
-                                <thead>
-                                    <tr>
-                                        <th>Product ID</th>
-                                        <th>Product Name</th>
-                                        <th>Category</th>
-                                        <th>Stock</th>
-                                        <th>Total Sold</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="slowMovingProducts"></tbody>
-                            </table> -->
                         </div>
                     </div>
             
@@ -949,7 +959,7 @@
                       
                           <h4>Order Summary</h4>
                           <div class="stats">
-                            <div class="stat-card">Total Orders: <span id="totalOrders">0</span></div>
+                            <!-- <div class="stat-card">Total Orders: <span id="totalOrders">0</span></div> -->
                             <div class="stat-card">Total Order Count: <span id="totalOrderCount">0</span></div>
                             <div class="stat-card">Total Revenue: <span id="totalRevenue">0</span></div>
                             <div class="stat-card">Average Order Value: <span id="avgOrderValue">0</span></div>
@@ -957,8 +967,8 @@
                             <div class="stat-card">Placed Orders: <span id="placedOrders">0</span></div>
                             <div class="stat-card">Processing Orders: <span id="pendingOrders">0</span></div>
                             <div class="stat-card">Delivered Orders: <span id="deliveredOrders">0</span></div>
-                            <div class="stat-card">Completed Orders: <span id="completedOrders">0</span></div>
                             <div class="stat-card">Canceled Orders: <span id="canceledOrders">0</span></div>
+                            <div class="stat-card">Completed Orders: <span id="completedOrders">0</span></div>
                           </div>
                       
                           <div class="filter-container">
@@ -978,7 +988,7 @@
                             </div>
                             <select id="compareDateRange" onchange="handleCompareDateRangeChange()">
                                 <option value="none">No Comparison</option>
-                                <option value="previousPeriod">Previous Period</option>
+                                <!-- <option value="previousPeriod">Previous Period</option> -->
                                 <option value="custom">Custom</option>
                               </select>
                               <div id="customCompareDates" style="display: none;">

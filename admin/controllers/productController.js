@@ -428,7 +428,7 @@ function generateProductId(lastId, primaryKey) {
 
 // Update product details
 const updateProduct = (req, res) => {
-  let { tableName, productId, productData, images } = req.body;
+  let { tableName, productId, productData, images, stock } = req.body;
   tableName = tableName + "_table";
   if (
     !tableName ||
@@ -473,6 +473,7 @@ const updateProduct = (req, res) => {
             product_name: null,
             description: null,
             price: null,
+            stock: null,
           };
 
           columns.forEach((col) => {
@@ -480,6 +481,7 @@ const updateProduct = (req, res) => {
             if (field.includes("name")) columnMap.product_name = col.Field;
             else if (field.includes("desc")) columnMap.description = col.Field;
             else if (field.includes("price")) columnMap.price = col.Field;
+            else if (field.includes("stock")) columnMap.stock = col.Field;
           });
 
           // Check if required columns exist
@@ -498,6 +500,8 @@ const updateProduct = (req, res) => {
             updatedProductData[columnMap.description] = productData.description;
           if (productData.price)
             updatedProductData[columnMap.price] = productData.price;
+          if (productData.stock)
+            updatedProductData[columnMap.stock] = productData.stock;
 
           // Remove fields that shouldn't be updated (e.g., primary key, category ID)
           delete updatedProductData[primaryKey];

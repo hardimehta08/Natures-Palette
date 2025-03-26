@@ -4,13 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchDeliveryPersons() {
   try {
-    console.log('Fetching delivery persons...');
     const response = await fetch('/admin/deliverypersons', { credentials: 'include' });
-    console.log('Response status:', response.status);
     if (!response.ok) throw new Error(`Failed to fetch delivery persons: ${response.statusText}`);
     const deliveryPersons = await response.json();
-    console.log('Fetched delivery persons:', deliveryPersons);
-
+    
     const list = document.getElementById('delivery-persons-list');
     list.innerHTML = '';
     if (!deliveryPersons || deliveryPersons.length === 0) {
@@ -161,16 +158,39 @@ async function fetchOrders1(statusFilter = "") {
 async function openAssignDeliveryModal(orderId) {
   document.getElementById("assign-order-id").value = orderId;
 
-  const response = await fetch('/admin/delivery-persons');
-  const persons = await response.json();
-  const deliverySelect = document.getElementById("delivery-person");
+  try {
+    const response = await fetch('/admin/delivery-persons');
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
 
-  deliverySelect.innerHTML = `<option value="">Select Delivery Person</option>`;
-  persons.forEach((person) => {
-    deliverySelect.innerHTML += `<option value="${person.d_id}">${person.d_name}</option>`;
-  });
+    const persons = await response.json();
+    const deliverySelect = document.getElementById("delivery-person");
 
-  document.getElementById("assignDeliveryModal").style.display = "block";
+    // Check if the response is successful and has data
+    if (!persons.success) {
+      console.error("Failed to fetch delivery persons:", persons.message);
+      deliverySelect.innerHTML = `<option value="">No delivery persons available</option>`;
+      document.getElementById("assignDeliveryModal").style.display = "block";
+      return;
+    }
+
+    // Use persons.data (the array of delivery persons)
+    const deliveryPersons = persons.data || [];
+
+    // Populate the dropdown
+    deliverySelect.innerHTML = `<option value="">Select Delivery Person</option>`;
+    deliveryPersons.forEach((person) => {
+      deliverySelect.innerHTML += `<option value="${person.D_id}">${person.D_NAME}</option>`;
+    });
+
+    document.getElementById("assignDeliveryModal").style.display = "block";
+  } catch (error) {
+    console.error("Error fetching delivery persons:", error);
+    const deliverySelect = document.getElementById("delivery-person");
+    deliverySelect.innerHTML = `<option value="">Error loading delivery persons</option>`;
+    document.getElementById("assignDeliveryModal").style.display = "block";
+  }
 }
 
 // Close Assign Delivery Modal

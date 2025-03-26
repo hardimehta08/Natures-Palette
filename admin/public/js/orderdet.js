@@ -92,7 +92,6 @@ function fetchOrders(statusFilter = "", searchName = "") {
       return response.json();
     })
     .then((data) => {
-      console.log("Fetched Orders:", data);
       const tableBody = document.querySelector("#orders-table tbody");
       tableBody.innerHTML = "";
 

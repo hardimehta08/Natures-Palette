@@ -15,7 +15,6 @@ function fetchInventoryCategories1() {
       return response.json();
     })
     .then((data) => {
-      console.log("Categories received:", data);
       const categoryFilter = document.getElementById("inventoryCategoryFilter");
       const bestSellersCategoryFilter = document.getElementById(
         "bestSellersCategoryFilter"
@@ -246,7 +245,6 @@ function fetchDashboardData() {
       updateBestSellersChart();
 
       // Order Status Distribution Chart
-      console.log("Order Status Data:", data.charts.orderStatus);
       if (orderStatusChart) orderStatusChart.destroy();
       const orderStatusCtx = document
         .getElementById("orderStatusChart")
@@ -304,88 +302,88 @@ function fetchDashboardData() {
 
       // Recent Activity Log with Clickable Links
       const activityLog = document.getElementById("recentActivityLog");
-console.log("Raw Recent Activity Data:", data.recentActivity);
-activityLog.innerHTML = ""; // Clear existing entries
+      // console.log("Raw Recent Activity Data:", data.recentActivity);
+      activityLog.innerHTML = ""; // Clear existing entries
 
-const allActivities = [
-  ...(data.recentActivity || []),
-  ...(window.recentActivity || [])
-].filter(activity => activity && activity.activityType);
+      const allActivities = [
+        ...(data.recentActivity || []),
+        ...(window.recentActivity || [])
+      ].filter(activity => activity && activity.activityType);
 
-const seenIdentifiers = new Set();
-const uniqueActivities = allActivities.filter(activity => {
-  const key = `${activity.activityType}-${activity.identifier}`;
-  if (seenIdentifiers.has(key)) {
-    console.warn(`Duplicate activity detected: ${key}`);
-    return false;
-  }
-  seenIdentifiers.add(key);
-  return true;
-}).sort((a, b) => new Date(b.activityDate) - new Date(a.activityDate)).slice(0, 5);
+      const seenIdentifiers = new Set();
+      const uniqueActivities = allActivities.filter(activity => {
+        const key = `${activity.activityType}-${activity.identifier}`;
+        if (seenIdentifiers.has(key)) {
+          console.warn(`Duplicate activity detected: ${key}`);
+          return false;
+        }
+        seenIdentifiers.add(key);
+        return true;
+      }).sort((a, b) => new Date(b.activityDate) - new Date(a.activityDate)).slice(0, 5);
 
-console.log("Deduplicated Activities after merge:", uniqueActivities);
-activityLog.innerHTML = "";
+      // console.log("Deduplicated Activities after merge:", uniqueActivities);
+      activityLog.innerHTML = "";
 
-uniqueActivities.forEach((activity) => {
-  const li = document.createElement("li");
-  const link = document.createElement("a");
-  link.href = "#";
-  link.textContent = `${activity.activityType} at ${new Date(activity.activityDate).toLocaleString()}`;
-  link.style.cursor = "pointer";
-  link.style.color = "#7380ec";
-  link.style.textDecoration = "none";
+      uniqueActivities.forEach((activity) => {
+        const li = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = "#";
+        link.textContent = `${activity.activityType} at ${new Date(activity.activityDate).toLocaleString()}`;
+        link.style.cursor = "pointer";
+        link.style.color = "#7380ec";
+        link.style.textDecoration = "none";
 
-  // Add click handlers based on activity type
-  switch (activity.activityType) {
-    case "New Order":
-      link.onclick = () => {
-        console.log(`Navigating to Orders and highlighting orderId: ${activity.identifier}`);
-        showSection("orders");
-        setTimeout(() => {
-          if (typeof window.showOrderDetails === "function") {
-            window.showOrderDetails(activity.identifier);
-          } else {
-            console.error("showOrderDetails is not defined");
-          }
-        }, 100); // Delay to ensure Orders section is rendered
-      };
-      break;
+        // Add click handlers based on activity type
+        switch (activity.activityType) {
+          case "New Order":
+            link.onclick = () => {
+              console.log(`Navigating to Orders and highlighting orderId: ${activity.identifier}`);
+              showSection("orders");
+              setTimeout(() => {
+                if (typeof window.showOrderDetails === "function") {
+                  window.showOrderDetails(activity.identifier);
+                } else {
+                  console.error("showOrderDetails is not defined");
+                }
+              }, 100); // Delay to ensure Orders section is rendered
+            };
+            break;
 
-    case "New Customer":
-      link.onclick = () => {
-        console.log(`Navigating to Customers with customerId: ${activity.identifier}`);
-        showSection("customer");
-        setTimeout(() => {
-          if (typeof window.highlightCustomer === "function") {
-            window.highlightCustomer(activity.identifier);
-          } else {
-            console.error("highlightCustomer is not defined");
-          }
-        }, 100);
-      };
-      break;
+          case "New Customer":
+            link.onclick = () => {
+              console.log(`Navigating to Customers with customerId: ${activity.identifier}`);
+              showSection("customer");
+              setTimeout(() => {
+                if (typeof window.highlightCustomer === "function") {
+                  window.highlightCustomer(activity.identifier);
+                } else {
+                  console.error("highlightCustomer is not defined");
+                }
+              }, 100);
+            };
+            break;
 
-      case "Low Stock Alert":
-        link.onclick = () => {
-          console.log(`Navigating to Inventory with productId: ${activity.identifier}`);
-          showSection("inventory-report");
-          setTimeout(() => {
-            if (typeof window.highlightLowStockProduct === "function") {
-              window.highlightLowStockProduct(activity.identifier);
-            } else {
-              console.error("highlightLowStockProduct is not defined");
-            }
-          }, 100);
-        };
-        break;
+            case "Low Stock Alert":
+              link.onclick = () => {
+                console.log(`Navigating to Inventory with productId: ${activity.identifier}`);
+                showSection("inventory-report");
+                setTimeout(() => {
+                  if (typeof window.highlightLowStockProduct === "function") {
+                    window.highlightLowStockProduct(activity.identifier);
+                  } else {
+                    console.error("highlightLowStockProduct is not defined");
+                  }
+                }, 100);
+              };
+              break;
 
-    default:
-      console.warn(`Unhandled activity type: ${activity.activityType}`);
-  }
+          default:
+            console.warn(`Unhandled activity type: ${activity.activityType}`);
+        }
 
-  li.appendChild(link);
-  activityLog.appendChild(li);
-});
+        li.appendChild(link);
+        activityLog.appendChild(li);
+      });
     })
     .catch((error) => {
       console.error("Error fetching dashboard data:", error);
@@ -877,7 +875,7 @@ function fetchCustomerReport() {
   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
   const maxDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
   const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // e.g., "2025-03-21"
-  const minDate = "2020-01-01";
+  const minDate = "2024-01-01";
 
   // Dynamically set max attributes for date inputs
   startDateElement.max = maxStartDate;
@@ -1127,7 +1125,7 @@ function exportCustomerReport(format) {
   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
   const maxDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
   const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // e.g., "2025-03-21"
-  const minDate = "2020-01-01";
+  const minDate = "2024-01-01";
 
   if (dateRange === "all") {
     startDate = minDate;
@@ -1282,6 +1280,58 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchInventoryReport();
 });
 
+
+function openStockModal(productId, productName, currentStock, category) {
+  const modal = document.getElementById("updateStockModal");
+  document.getElementById("update-product-id").value = productId;
+  document.getElementById("update-category").value = category;
+  document.getElementById("update-product-name").value = productName;
+  document.getElementById("update-current-stock").value = currentStock;
+  document.getElementById("update-new-stock").value = currentStock; // Pre-fill with current stock
+  modal.style.display = "flex";
+}
+
+function closeStockModal() {
+  const modal = document.getElementById("updateStockModal");
+  modal.style.display = "none";
+  document.getElementById("updateStockForm").reset();
+}
+
+// Handle form submission for stock update
+document.getElementById("updateStockForm").addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  const productId = document.getElementById("update-product-id").value;
+  const category = document.getElementById("update-category").value;
+  const newStock = document.getElementById("update-new-stock").value;
+
+  fetch("/update-stock", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      productId,
+      category,
+      newStock,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        alert("Stock updated successfully");
+        closeStockModal();
+        fetchInventoryReport(); // Refresh the inventory report
+      } else {
+        alert("Error updating stock: " + (data.message || "Unknown error"));
+      }
+    })
+    .catch((error) => {
+      console.error("Error updating stock:", error);
+      alert("Error updating stock. Please try again.");
+    });
+});
+
 function fetchInventoryReport(page = 1) {
   const category = document.getElementById("inventoryCategoryFilter").value;
   const itemsPerPage = 10; // Number of items per page for pagination
@@ -1291,43 +1341,60 @@ function fetchInventoryReport(page = 1) {
   fetch(`/report/inventory-report?${queryParams.toString()}`)
     .then((response) => response.json())
     .then((data) => {
-      console.log("Fetched data.stockLevels:", data.stockLevels);
-
       // Low Stock Products with Update Link
       const lowStockTbody = document.getElementById("lowStockProducts");
       lowStockTbody.innerHTML = "";
-      data.stockLevels.forEach((product) => {
-        const row = `
-          <tr class="${Number(product.stock) <= 2 ? "critical-stock" : "low-stock"}">
-            <td>${product.productId}</td>
-            <td>${product.productName}</td>
-            <td>${product.category}</td>
-            <td>${product.stock}</td>
+      if (data.stockLevels.length === 0) {
+        lowStockTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center;">No low stock products found.</td>
           </tr>
         `;
-        lowStockTbody.innerHTML += row;
-      });
-
+      } else {
+        data.stockLevels.forEach((product) => {
+          const row = `
+            <tr class="${Number(product.stock) <= 2 ? "critical-stock" : "low-stock"}">
+              <td>${product.productId}</td>
+              <td>${product.productName}</td>
+              <td>[${product.categoryId}]${product.categoryName}</td>
+              <td>${product.stock}</td>
+              <td>
+                <a class="update-link" onclick="openStockModal('${product.productId}', '${product.productName}', ${product.stock}, '${product.categoryName}')">Update</a>
+              </td>
+            </tr>
+          `;
+          lowStockTbody.innerHTML += row;
+        });
+     }
       // Out of Stock Products
       const outOfStockTbody = document.getElementById("outOfStockProducts");
       outOfStockTbody.innerHTML = "";
-      data.stockLevels
-        .filter((product) => Number(product.stock) === 0)
-        .forEach((product) => {
-          const row = `
-            <tr class="out-of-stock">
-              <td>${product.productId}</td>
-              <td>${product.productName}</td>
-              <td>${product.category}</td>
-              <td>${product.stock}</td>
-            </tr>
-          `;
-          outOfStockTbody.innerHTML += row;
-        });
-
+      if (outOfStockProducts.length === 0) {
+        outOfStockTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center;">No out of stock products found.</td>
+          </tr>
+        `;
+      } else {
+        data.stockLevels
+          .filter((product) => Number(product.stock) === 0)
+          .forEach((product) => {
+            const row = `
+              <tr class="out-of-stock">
+                <td>${product.productId}</td>
+                <td>${product.productName}</td>
+                <td>[${product.categoryId}]${product.categoryName}</td>
+                <td>${product.stock}</td>
+                <td>
+                    <a class="update-link" onclick="openStockModal('${product.productId}', '${product.productName}', ${product.stock}, '${product.categoryName}')">Update</a>
+                </td>
+              </tr>
+            `;
+            outOfStockTbody.innerHTML += row;
+          });
+      }
       // Critical Stock Alert and Notification Drawer
       const criticalStockData = data.stockLevels.filter((item) => Number(item.stock) <= 2);
-      console.log("criticalStockData:", criticalStockData);
       const alertBanner = document.getElementById("criticalStockAlert");
       const alertMessage = document.getElementById("criticalStockMessage");
       const bellIcon = document.getElementById("notificationBell");
@@ -1405,6 +1472,14 @@ function fetchInventoryReport(page = 1) {
       const paginationDiv = document.getElementById("turnoverPagination"); // Add this div in your HTML
       turnoverTbody.innerHTML = "";
 
+      if (data.turnover.length === 0) {
+        turnoverTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center;">No inventory turnover data found.</td>
+          </tr>
+        `;
+        if (paginationDiv) paginationDiv.innerHTML = ""; // Hide pagination controls
+      } else {
       const totalItems = data.turnover.length;
       const totalPages = Math.ceil(totalItems / itemsPerPage);
       const startIndex = (page - 1) * itemsPerPage;
@@ -1416,7 +1491,7 @@ function fetchInventoryReport(page = 1) {
           <tr>
             <td>${product.productId}</td>
             <td>${product.productName}</td>
-            <td>${product.category}</td>
+            <td>[${product.categoryId}]${product.categoryName}</td>
             <td>${product.stock}</td>
             <td>${product.totalSold}</td>
           </tr>
@@ -1428,13 +1503,13 @@ function fetchInventoryReport(page = 1) {
       if (paginationDiv) {
         paginationDiv.innerHTML = "";
         const prevButton = document.createElement("button");
-        prevButton.textContent = "Previous";
+        prevButton.textContent = "<";
         prevButton.disabled = page === 1;
         prevButton.onclick = () => fetchInventoryReport(page - 1);
         prevButton.style.marginRight = "10px";
 
         const nextButton = document.createElement("button");
-        nextButton.textContent = "Next";
+        nextButton.textContent = ">";
         nextButton.disabled = page === totalPages;
         nextButton.onclick = () => fetchInventoryReport(page + 1);
 
@@ -1446,22 +1521,7 @@ function fetchInventoryReport(page = 1) {
         paginationDiv.appendChild(pageInfo);
         paginationDiv.appendChild(nextButton);
       }
-
-      // Slow Moving Products
-      // const slowMovingTbody = document.getElementById("slowMovingProducts");
-      // slowMovingTbody.innerHTML = "";
-      // data.slowMoving.forEach((product) => {
-      //   const row = `
-      //     <tr>
-      //       <td>${product.productId}</td>
-      //       <td>${product.productName}</td>
-      //       <td>${product.category}</td>
-      //       <td>${product.stock}</td>
-      //       <td>${product.totalSold}</td>
-      //     </tr>
-      //   `;
-      //   slowMovingTbody.innerHTML += row;
-      // });
+    }
     })
     .catch((error) => console.error("Error fetching inventory report:", error));
 }
@@ -1648,15 +1708,7 @@ function fetchOrderReport() {
       return;
   }
 
-  if (compareDateRange === "previousPeriod") {
-    const daysDiff = (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24);
-    compareEndDate = new Date(startDate);
-    compareEndDate.setDate(compareEndDate.getDate() - 1);
-    compareEndDate = compareEndDate.toISOString().split("T")[0];
-    compareStartDate = new Date(compareEndDate);
-    compareStartDate.setDate(compareStartDate.getDate() - daysDiff);
-    compareStartDate = compareStartDate.toISOString().split("T")[0];
-  } else if (compareDateRange === "custom") {
+   if (compareDateRange === "custom") {
     compareStartDate = document.getElementById("compareStartDate").value;
     compareEndDate = document.getElementById("compareEndDate").value;
     if (!validateDates(compareStartDate, compareEndDate, minDate, maxDate, maxStartDate, "Comparison")) {
@@ -1680,12 +1732,9 @@ function fetchOrderReport() {
       return response.json();
     })
     .then((data) => {
-      console.log("Order Report Data:", data);
-      console.log("Status Summary:", data.statusSummary);
-
       const updateElement = (id, value) => {
         const element = document.getElementById(id);
-        console.log(`Updating ${id} with value: ${value}`);
+        // console.log(`Updating ${id} with value: ${value}`);
         if (element) element.textContent = value;
       };
 
@@ -1706,8 +1755,8 @@ function fetchOrderReport() {
 
       const orderCount = data.orderCount || 0;
       const totalRevenue = data.totalRevenue || 0;
-      updateElement("totalRevenue", totalRevenue);
-      updateElement("avgOrderValue", orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0);
+      updateElement("totalRevenue", `Rs. ${totalRevenue.toLocaleString()}`); 
+      updateElement("avgOrderValue", `Rs. ${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}`);
       updateElement("refundCount", data.statusSummary.find((item) => item.status === "CANCELLED")?.count || 0);
 
       let orderStatusChart = Chart.getChart("orderSummaryPieChart");
@@ -1884,18 +1933,23 @@ function formatDate(dateString) {
 
 function exportOrderReport(format) {
   const dateRange = document.getElementById("orderDateRange").value;
-  let startDate, endDate;
+  const compareDateRange = document.getElementById("compareDateRange").value;
+  let startDate, endDate, compareStartDate, compareEndDate;
 
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   const dayBeforeYesterday = new Date(yesterday);
   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
-  const maxDate = yesterday.toISOString().split("T")[0];
+  const maxDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-25"
   const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0];
   const minDate = "2024-01-01";
 
-  if (dateRange === "today") {
+  // Primary Date Range Logic
+  if (dateRange === "all") {
+    startDate = minDate; // January 1, 2024
+    endDate = maxDate; // Yesterday
+  } else if (dateRange === "today") {
     startDate = endDate = maxDate;
   } else if (dateRange === "last7days") {
     endDate = maxDate;
@@ -1943,9 +1997,82 @@ function exportOrderReport(format) {
     return;
   }
 
+  // Comparison Date Range Logic
+  if (compareDateRange !== "none") {
+    if (compareDateRange === "previousPeriod") {
+      // Calculate the duration of the primary date range
+      const primaryStart = new Date(startDate);
+      const primaryEnd = new Date(endDate);
+      const durationDays = Math.ceil((primaryEnd - primaryStart) / (1000 * 60 * 60 * 24)) + 1; // Include both start and end days
+
+      // Set the comparison period to the same duration before the primary start date
+      const compareEnd = new Date(primaryStart);
+      compareEnd.setDate(compareEnd.getDate() - 1); // Day before the primary start date
+      const compareStart = new Date(compareEnd);
+      compareStart.setDate(compareStart.getDate() - durationDays + 1); // Go back by the duration
+
+      compareStartDate = compareStart.toISOString().split("T")[0];
+      compareEndDate = compareEnd.toISOString().split("T")[0];
+
+      // Validate comparison dates using the existing variables
+      const min = new Date(minDate);
+      const max = new Date(maxDate);
+
+      if (compareStart < min) {
+        alert("Comparison start date cannot be before January 1, 2024. Adjusting to the earliest possible date.");
+        compareStartDate = minDate;
+        compareStart.setTime(min.getTime()); // Update compareStart to reflect the adjusted date
+
+        // Adjust compareEndDate if necessary to ensure it's not before compareStartDate
+        if (compareStart > compareEnd) {
+          compareEndDate = compareStartDate; // Set compareEndDate to compareStartDate
+          compareEnd.setTime(compareStart.getTime()); // Update compareEnd to match
+        }
+      }
+      if (compareEnd > max) {
+        alert(`Comparison end date cannot be after ${maxDate} (yesterday). Adjusting to the latest possible date.`);
+        compareEndDate = maxDate;
+        compareEnd.setTime(max.getTime()); // Update compareEnd to reflect the adjusted date
+      }
+      if (compareStart > compareEnd) {
+        alert("Comparison start date cannot be after comparison end date.");
+        return;
+      }
+    } else if (compareDateRange === "custom") {
+      compareStartDate = document.getElementById("compareStartDate").value;
+      compareEndDate = document.getElementById("compareEndDate").value;
+
+      if (!compareStartDate || !compareEndDate) {
+        alert("Please select both comparison start and end dates.");
+        return;
+      }
+
+      const compareStart = new Date(compareStartDate);
+      const compareEnd = new Date(compareEndDate);
+      const min = new Date(minDate);
+      const max = new Date(maxDate);
+
+      if (compareStart < min) {
+        alert("Comparison start date cannot be before January 1, 2024.");
+        return;
+      }
+      if (compareEnd > max) {
+        alert(`Comparison end date cannot be after ${maxDate} (yesterday).`);
+        return;
+      }
+      if (compareStart > compareEnd) {
+        alert("Comparison start date cannot be after comparison end date.");
+        return;
+      }
+    }
+  }
+
+  // Build query parameters
   const queryParams = new URLSearchParams();
   if (startDate) queryParams.append("startDate", startDate);
   if (endDate) queryParams.append("endDate", endDate);
+  if (compareStartDate) queryParams.append("compareStartDate", compareStartDate);
+  if (compareEndDate) queryParams.append("compareEndDate", compareEndDate);
 
   const endpoint =
     format === "csv"
@@ -2004,140 +2131,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
   fetchOrderReport();
 });
-// Export Order Report
-// function exportOrderReport(format) {
-//   const dateRange = document.getElementById("orderDateRange").value;
-//   let startDate, endDate;
 
-//   const today = new Date();
-//   const yesterday = new Date(today);
-//   yesterday.setDate(today.getDate() - 1);
-//   const dayBeforeYesterday = new Date(yesterday);
-//   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
-//   const maxDate = yesterday.toISOString().split("T")[0]; // "2025-03-22"
-//   const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // "2025-03-21"
-//   const minDate = "2020-01-01";
-
-//   if (dateRange === "today") {
-//     startDate = endDate = maxDate;
-//   } else if (dateRange === "last7days") {
-//     endDate = maxDate;
-//     startDate = new Date(yesterday.setDate(yesterday.getDate() - 7))
-//       .toISOString()
-//       .split("T")[0];
-//   } else if (dateRange === "last30days") {
-//     endDate = maxDate;
-//     startDate = new Date(yesterday.setDate(yesterday.getDate() - 30))
-//       .toISOString()
-//       .split("T")[0];
-//   } else if (dateRange === "custom") {
-//     startDate = document.getElementById("orderStartDate").value;
-//     endDate = document.getElementById("orderEndDate").value;
-
-//     if (!startDate || !endDate) {
-//       alert("Please select both start and end dates.");
-//       return;
-//     }
-
-//     const start = new Date(startDate);
-//     const end = new Date(endDate);
-//     const min = new Date(minDate);
-//     const max = new Date(maxDate);
-//     const maxStart = new Date(maxStartDate);
-
-//     if (start < min) {
-//       alert("Start date cannot be before January 1, 2020.");
-//       return;
-//     }
-//     if (start > maxStart) {
-//       alert(`Start date cannot be after ${maxStartDate} (day before yesterday).`);
-//       return;
-//     }
-//     if (end > max) {
-//       alert(`End date cannot be after ${maxDate} (yesterday).`);
-//       return;
-//     }
-//     if (start > end) {
-//       alert("Start date cannot be after end date.");
-//       return;
-//     }
-//   }
-
-//   const queryParams = new URLSearchParams();
-//   if (startDate) queryParams.append("startDate", startDate);
-//   if (endDate) queryParams.append("endDate", endDate);
-
-//   const endpoint =
-//     format === "csv"
-//       ? "/report/export-order-report-csv"
-//       : "/report/export-order-report-pdf";
-//   const fileName = `order_report.${format}`;
-
-//   fetch(`${endpoint}?${queryParams.toString()}`, {
-//     method: "GET",
-//     headers: { Accept: format === "csv" ? "text/csv" : "application/pdf" },
-//   })
-//     .then((response) => {
-//       if (!response.ok)
-//         throw new Error(`HTTP error! Status: ${response.status}`);
-//       return response.blob();
-//     })
-//     .then((blob) => {
-//       const url = window.URL.createObjectURL(blob);
-//       const a = document.createElement("a");
-//       a.href = url;
-//       a.download = fileName;
-//       document.body.appendChild(a);
-//       a.click();
-//       a.remove();
-//       window.URL.revokeObjectURL(url);
-
-//       alert(`Order report exported successfully as ${format.toUpperCase()}!`);
-//     })
-//     .catch((error) => {
-//       console.error(`Error exporting order report as ${format}:`, error);
-//       alert(`Failed to export order report as ${format.toUpperCase()}.`);
-//     });
-// }
-
-// CSV Report Generation (Optional)
-document
-  .getElementById("reportForm")
-  .addEventListener("submit", async function (event) {
-    event.preventDefault();
-
-    const startDate = document.getElementById("startDate").value;
-    const endDate = document.getElementById("endDate").value;
-
-    const queryParams = new URLSearchParams();
-    if (startDate) queryParams.append("startDate", startDate);
-    if (endDate) queryParams.append("endDate", endDate);
-
-    try {
-      const response = await fetch(
-        `/order/orderdets/report?${queryParams.toString()}`,
-        {
-          method: "GET",
-          headers: { Accept: "text/csv" },
-        }
-      );
-
-      if (!response.ok)
-        throw new Error(`HTTP error! Status: ${response.status}`);
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "orders_report.csv";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-
-      alert("Report generated successfully!");
-    } catch (error) {
-      console.error("Error generating report:", error);
-      alert("Failed to generate report.");
-    }
-  });

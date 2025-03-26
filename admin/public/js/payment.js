@@ -9,7 +9,6 @@ function fetchPayments() {
             return response.json();
         })
         .then(data => {
-            console.log('Fetched payments:', data); // Log data to verify
             const tbody = document.getElementById('payment-table-body');
             tbody.innerHTML = ''; // Clear existing rows
             if (data.length === 0) {

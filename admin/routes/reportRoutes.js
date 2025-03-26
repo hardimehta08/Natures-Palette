@@ -8,6 +8,7 @@ router.get('/inventory-categories1', reportController.getInventoryCategories);
 
 // Inventory Routes
 
+router.post("/update-stock", reportController.updateStock);
 router.get('/inventory-status', reportController.getInventoryStatus);
 router.get('/inventory-categories', reportController.getInventoryCategories);
 router.get('/inventory-report', reportController.getInventoryReport);
@@ -26,7 +27,6 @@ router.get('/export-customer-report-pdf', reportController.exportCustomerReportP
 
 // Order Report Routes
 router.get('/order-report', reportController.getOrderReport);
-
 router.get('/export-order-report-csv', reportController.exportOrderReportCSV);
 router.get('/export-order-report-pdf', reportController.exportOrderReportPDF);
 

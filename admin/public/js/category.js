@@ -1,15 +1,12 @@
 const fetchCategories = async () => {
   try {
-    console.log("Fetching categories...");
     const response = await fetch("/category/categories");
-    console.log("Response Status:", response.status);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const categories = await response.json();
-    console.log("Fetched Categories:", categories);
 
     const tableBody = document.getElementById("cat-list");
     tableBody.innerHTML = ""; // Clear existing data

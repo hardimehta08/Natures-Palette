@@ -2,15 +2,10 @@
 function fetchFeedback() {
     const rating = document.getElementById('reviewRatingFilter').value;
     const customerName = document.getElementById('reviewCustomerSearch').value;
-
-    console.log(`Fetching feedback with Rating: ${rating}, Customer: ${customerName}`);
-
     // Build query parameters
     const queryParams = new URLSearchParams();
     if (rating) queryParams.append('rating', rating);
     if (customerName) queryParams.append('customerName', customerName);
-
-    console.log(`Query URL: /feedback/feedback-report?${queryParams.toString()}`);
 
     // Fetch feedback data
     fetch(`/feedback/feedback-report?${queryParams.toString()}`)
@@ -21,7 +16,6 @@ function fetchFeedback() {
             return response.json();
         })
         .then(data => {
-            console.log("Feedback Report Data:", data);
 
             const tableBody = document.getElementById('review-table-body');
             tableBody.innerHTML = '';

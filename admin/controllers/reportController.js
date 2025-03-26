@@ -482,7 +482,7 @@ exports.getSalesReport = (req, res) => {
   const { startDate, endDate } = req.query;
 
   // Default date range if not provided
-  const defaultStartDate = "2020-01-01";
+  const defaultStartDate = "2024-01-01";
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
@@ -800,9 +800,9 @@ exports.getInventoryReport = (req, res) => {
           };
 
           columns.forEach((col) => {
+            console.log(col);
             const field = col.Field.toLowerCase();
-            if (field.includes("id") && !field.includes("cy_id"))
-              columnMap.id = col.Field;
+            if (field.includes("id") && !field.includes("category_id"))columnMap.id = col.Field;
             else if (field.includes("name")) columnMap.name = col.Field;
             else if (field.includes("stock")) columnMap.stock = col.Field;
             else if (field.includes("price")) columnMap.price = col.Field;
@@ -815,8 +815,10 @@ exports.getInventoryReport = (req, res) => {
               \`${tableName}\`.${columnMap.id} as productId, 
               \`${tableName}\`.${columnMap.name} as productName, 
               \`${tableName}\`.${columnMap.stock} as stock,
-              '${categoryName}' as category
+              c.cy_id as categoryId,
+              c.cy_name as categoryName 
             FROM \`${tableName}\` 
+            LEFT JOIN category c ON \`${tableName}\` .category_id = c.cy_id
             WHERE \`${tableName}\`.${columnMap.stock} <= ? AND \`${tableName}\`.${columnMap.stock} >= 0
           `);
           queryParams.push(lowStockThreshold);
@@ -827,8 +829,10 @@ exports.getInventoryReport = (req, res) => {
               \`${tableName}\`.${columnMap.name} as productName,
               \`${tableName}\`.${columnMap.stock} as stock,
               COALESCE(SUM(od.Odetails_Qty), 0) as totalSold,
-              '${categoryName}' as category
+              c.cy_id as categoryId,
+              c.cy_name as categoryName 
             FROM \`${tableName}\`
+             LEFT JOIN category c ON \`${tableName}\` .category_id = c.cy_id
             LEFT JOIN order_details od ON \`${tableName}\`.${columnMap.id} = od.Product_id
             LEFT JOIN order_master om ON od.O_id = om.O_id AND om.O_status = 'Delivered'
             GROUP BY \`${tableName}\`.${columnMap.id}, \`${tableName}\`.${columnMap.name}, \`${tableName}\`.${columnMap.stock}
@@ -875,6 +879,41 @@ exports.getInventoryReport = (req, res) => {
         });
     }, 1000);
   });
+};
+
+exports.updateStock= (req, res) => {
+    const { productId, category, newStock } = req.body;
+
+    // Validate input
+    if (!productId || !category || newStock === undefined) {
+      return res.status(400).json({ success: false, message: "Product ID, category, and new stock value are required" });
+    }
+
+    const stockValue = Number(newStock);
+    if (isNaN(stockValue) || stockValue < 0) {
+      return res.status(400).json({ success: false, message: "New stock value must be a non-negative number" });
+    }
+
+    const tableName = getTableNameFromCategory(category);
+
+    // Update the stock in the database
+    const query = `
+      UPDATE \`${tableName}\`
+      SET stock = ?
+      WHERE id = ?
+    `;
+    db.query(query, [stockValue, productId], (err, result) => {
+      if (err) {
+        console.error("Error updating stock:", err);
+        return res.status(500).json({ success: false, message: "Server error" });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, message: "Product not found" });
+      }
+
+      res.json({ success: true, message: "Stock updated successfully" });
+    });
 };
 
 // Order Report Data
@@ -1734,76 +1773,129 @@ exports.exportCustomerReportPDF = (req, res) => {
       })
     ),
   ])
-    .then(([demographics, purchaseHistory]) => {
-      const doc = new PDFDocument({ margin: 50 });
-      let buffers = [];
-      doc.on("data", buffers.push.bind(buffers));
-      doc.on("end", () => {
-        const pdfData = Buffer.concat(buffers);
-        res.writeHead(200, {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": 'attachment; filename="customer_report.pdf"',
-          "Content-Length": pdfData.length,
-        });
-        res.end(pdfData);
+  .then(([demographics, purchaseHistory]) => {
+    const doc = new PDFDocument({ margin: 10 });
+    let buffers = [];
+    doc.on("data", buffers.push.bind(buffers));
+    doc.on("end", () => {
+      const pdfData = Buffer.concat(buffers);
+      res.writeHead(200, {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'attachment; filename="customer_report.pdf"',
+        "Content-Length": pdfData.length,
       });
-
-      // Track page numbers dynamically
-      let pageNumber = 1;
-      doc.on("pageAdded", () => {
-        pageNumber++;
-      });
-
-      // Function to add page numbers to all pages
-    
-
-      // Header
-      doc.fontSize(20).text("Customer Report", { align: "center" });
-      doc.moveDown(0.5);
-      doc.fontSize(12).text(` Date: ${downloadDate}`, { align: "center" });
-      doc.moveDown(0.5);
-      doc.fontSize(12).text(`Between: ${startDate || "N/A"} to ${endDate || "N/A"}`, { align: "center" });
-      doc.moveDown(0.8); // Reduced spacing to ensure content starts on the first page
-
-      // Customer Demographics Section
-      doc.fontSize(14).text("Customer Demographics", { underline: true });
-      doc.moveDown(0.5);
-
-      demographics.forEach((item) => {
-        doc.fontSize(12).text(`Area ID: ${item.areaId || "N/A"}`);
-        doc.moveDown(0.2);
-        doc.fontSize(12).text(`Customer Count: ${item.customerCount || 0}`);
-        doc.moveDown(1); // Blank line after each entry
-      });
-
-      doc.moveDown(0.8); // Reduced spacing between sections
-
-      // Purchase History Section
-      doc.fontSize(14).text("Purchase History", { underline: true });
-      doc.moveDown(0.5);
-
-      purchaseHistory.forEach((item) => {
-        doc.fontSize(12).text(`Customer: ${capitalizeName(item.customername)}`);
-        doc.moveDown(0.2);
-        doc.fontSize(12).text(`Customer ID: ${item.C_id || "N/A"}`);
-        doc.moveDown(0.2);
-        doc.fontSize(12).text(`Total Orders: ${item.totalOrders || 0}`);
-        doc.moveDown(0.2);
-        doc.fontSize(12).text(
-          `Total Spent: ${
-            item.totalSpent
-              ? `Rs. ${item.totalSpent.toLocaleString("en-IN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}`
-              : "Rs. 0.00"
-          }`
-        );
-        doc.moveDown(1); // Blank line after each entry
-      });
-
-      doc.end();
-    })
+      res.end(pdfData);
+    });
+  
+    // Track page numbers dynamically
+    let pageNumber = 1;
+  
+    // Define header dimensions
+    const leftMargin = 50; // Match the document margin
+    const rightMargin = 50;
+    const logoPath = path.join(__dirname, "../public/ad-images/logo/logo.png");
+    const logoWidth = 100;
+    const logoHeight = 100;
+    const logoX = leftMargin; // Start at the left margin
+    const logoY = 30; // Start at the top margin
+    const textX = logoX + logoWidth + 20; // 20 units padding between logo and text
+    const textY = logoY + (logoHeight / 2) - 10; // Center vertically relative to the logo
+    const headerHeight = logoY + logoHeight + 20; // Total height of the header
+  
+    // Function to add the header (logo and "Nature’s Palette") on a page
+    const addHeader = () => {
+      try {
+        doc.image(logoPath, logoX, logoY, { width: logoWidth, height: logoHeight });
+      } catch (err) {
+        console.error("Error adding logo to PDF:", err);
+        doc.fontSize(12).fillColor("red").text("Logo not found", logoX, logoY, { width: logoWidth, align: "center" });
+      }
+      doc.fontSize(24).fillColor("#2E7D32").text("Nature’s Palette", textX, textY);
+    };
+  
+    // Add page numbers to the footer and header on every page
+    doc.on("pageAdded", () => {
+      pageNumber++;
+      addHeader(); // Add the header on the new page
+      doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - rightMargin - 50, doc.page.height - 50, rightMargin, doc.y,{ align: "right" });
+      doc.y = headerHeight; // Reset the cursor position below the header
+    });
+  
+    // Add the header and page number to the first page
+    addHeader();
+    doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - rightMargin - 50, doc.page.height - 50, rightMargin, doc.y,{ align: "right" });
+    doc.y = headerHeight; // Move the cursor below the header
+  
+    // Subheader: Customer Report and Details
+    doc.fillColor("black");
+    doc.fontSize(20).text("Customer Report", leftMargin, doc.y, { align: "center" });
+    doc.moveDown(0.5);
+    doc.fontSize(12).text(`Date: ${downloadDate}`, leftMargin, doc.y, { align: "center" });
+    doc.moveDown(0.5);
+    doc.fontSize(12).text(`Between: ${startDate || "N/A"} to ${endDate || "N/A"}`, leftMargin, doc.y, { align: "center" });
+    doc.moveDown(0.8);
+  
+    // Customer Demographics Section
+    doc.fontSize(14).text("Customer Demographics", leftMargin, doc.y, { underline: true });
+    doc.moveDown(0.5);
+  
+    demographics.forEach((item) => {
+      // Estimate the height of the demographics block
+      const lineHeight = 15; // Approximate height per line
+      const lines = 2; // Two lines (Area ID, Customer Count)
+      const blockHeight = lines * lineHeight;
+  
+      // Check if the block will fit on the page
+      if (doc.y + blockHeight > doc.page.height - 50) {
+        doc.addPage(); // Add a new page if the block won't fit
+      }
+  
+      doc.fontSize(12).text(`Area ID: ${item.areaId || "N/A"}`, leftMargin, doc.y);
+      doc.moveDown(0.2);
+      doc.fontSize(12).text(`Customer Count: ${item.customerCount || 0}`, leftMargin, doc.y);
+      doc.moveDown(1); // Blank line after each entry
+    });
+  
+    doc.moveDown(0.8);
+  
+    // Purchase History Section
+    doc.fontSize(14).text("Purchase History", leftMargin, doc.y, { underline: true });
+    doc.moveDown(0.5);
+  
+    purchaseHistory.forEach((item) => {
+      // Estimate the height of the purchase history block
+      const lineHeight = 15; // Approximate height per line
+      const lines = 4; // Four lines (Customer, Customer ID, Total Orders, Total Spent)
+      const blockHeight = lines * lineHeight;
+  
+      // Check if the block will fit on the page
+      if (doc.y + blockHeight > doc.page.height - 50) {
+        doc.addPage(); // Add a new page if the block won't fit
+      }
+  
+      doc.fontSize(12).text(`Customer: ${capitalizeName(item.customername)}`, leftMargin, doc.y);
+      doc.moveDown(0.2);
+      doc.fontSize(12).text(`Customer ID: ${item.C_id || "N/A"}`, leftMargin, doc.y);
+      doc.moveDown(0.2);
+      doc.fontSize(12).text(`Total Orders: ${item.totalOrders || 0}`, leftMargin, doc.y);
+      doc.moveDown(0.2);
+      doc.fontSize(12).text(
+        `Total Spent: ${
+          item.totalSpent
+            ? `Rs. ${item.totalSpent.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
+            : "Rs. 0.00"
+        }`,
+        leftMargin,
+        doc.y
+      );
+      doc.moveDown(1); // Blank line after each entry
+    });
+  
+    doc.end();
+  })
     .catch((err) => {
       console.error("Error exporting customer report as PDF:", err);
       res.status(500).json({ error: "Database error", details: err.message });
@@ -2145,7 +2237,7 @@ exports.exportInventoryReportPDF = (req, res) => {
   });
 };
 
-// Export Order Report as CSV
+
 exports.exportOrderReportCSV = (req, res) => {
   let { startDate, endDate, status, compareStartDate, compareEndDate } = req.query;
 
@@ -2156,7 +2248,7 @@ exports.exportOrderReportCSV = (req, res) => {
   yesterday.setDate(today.getDate() - 1);
   const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-25"
 
-  // Set effective dates
+  // Set effective dates (for "all" selection, use defaultStartDate and defaultEndDate)
   const effectiveStartDate = startDate || defaultStartDate;
   const effectiveEndDate = endDate || defaultEndDate;
 
@@ -2225,7 +2317,6 @@ exports.exportOrderReportCSV = (req, res) => {
 
   // Define all queries
   const queries = {
-    // Query 1: Status summary
     statusSummary: {
       sql: `
         SELECT 
@@ -2237,8 +2328,6 @@ exports.exportOrderReportCSV = (req, res) => {
       `,
       params: queryParams,
     },
-
-    // Query 2: Shipping details
     shippingDetails: {
       sql: `
         SELECT 
@@ -2262,8 +2351,6 @@ exports.exportOrderReportCSV = (req, res) => {
       `,
       params: queryParams,
     },
-
-    // Query 3: Order count (current period)
     orderCount: {
       sql: `
         SELECT 
@@ -2273,8 +2360,6 @@ exports.exportOrderReportCSV = (req, res) => {
       `,
       params: queryParams,
     },
-
-    // Query 4: Total revenue
     totalRevenue: {
       sql: `
         SELECT 
@@ -2285,8 +2370,6 @@ exports.exportOrderReportCSV = (req, res) => {
       `,
       params: queryParams,
     },
-
-    // Query 5: Orders over time (current period)
     ordersOverTime: {
       sql: `
         SELECT 
@@ -2299,8 +2382,6 @@ exports.exportOrderReportCSV = (req, res) => {
       `,
       params: queryParams,
     },
-
-    // Query 6: Orders over time (comparison period)
     compareOrdersOverTime: {
       sql: `
         SELECT 
@@ -2313,8 +2394,6 @@ exports.exportOrderReportCSV = (req, res) => {
       `,
       params: compareQueryParams,
     },
-
-    // Query 7: Order count (comparison period)
     compareOrderCount: {
       sql: `
         SELECT 
@@ -2356,10 +2435,11 @@ exports.exportOrderReportCSV = (req, res) => {
         const year = date.getFullYear();
         return `${day}-${month}-${year}`; // Format as DD-MM-YYYY
       };
+
       // Header
       csvContent.push("Nature’s Palette");
       csvContent.push("Order Report");
-      csvContent.push(`"Downloaded on: ${currentDate}"`); // Updated to "Downloaded on"
+      csvContent.push(`"Downloaded on: ${currentDate}"`);
       csvContent.push(`"Period: ${effectiveStartDate} to ${effectiveEndDate}"`);
       if (compareStartDate && compareEndDate) {
         csvContent.push(`"Comparison Period: ${compareStartDate} to ${compareEndDate}"`);
@@ -2386,7 +2466,8 @@ exports.exportOrderReportCSV = (req, res) => {
       csvContent.push("Orders Over Time (Current Period)");
       csvContent.push("Date,Order Count");
       ordersOverTime.forEach((item) => {
-        csvContent.push(`"${item.orderDate}","${item.orderCount}"`);
+        let formattedDate = formatDate(item.orderDate);
+        csvContent.push(`"${formattedDate}","${item.orderCount}"`);
       });
       csvContent.push(""); // Empty row for spacing
 
@@ -2395,7 +2476,8 @@ exports.exportOrderReportCSV = (req, res) => {
         csvContent.push("Orders Over Time (Comparison Period)");
         csvContent.push("Date,Order Count");
         compareOrdersOverTime.forEach((item) => {
-          csvContent.push(`"${item.orderDate}","${item.orderCount}"`);
+          let formattedDate = formatDate(item.orderDate);
+          csvContent.push(`"${formattedDate}","${item.orderCount}"`);
         });
         csvContent.push(""); // Empty row for spacing
       }
@@ -2404,9 +2486,9 @@ exports.exportOrderReportCSV = (req, res) => {
       csvContent.push("Shipping Details");
       csvContent.push("Order ID,Order Date,Customer Name,Phone,Address,Pincode,Delivery Person,Payment Status,Status");
       shippingDetails.forEach((item) => {
-        let formattDate=formatDate(item.O_date);
+        let formattedDate = formatDate(item.O_date);
         csvContent.push(
-          `"${item.O_id}","${formattDate}","${item.customerName.replace(/"/g, '""')}","${item.customerphone || "N/A"}","${item.customerAddress.replace(/"/g, '""')}","${item.customerPincode || "N/A"}","${item.deliveryPerson || "N/A"}","${item.paymentstatus || "N/A"}","${item.status || "N/A"}"`
+          `"${item.O_id}","${formattedDate}","${item.customerName.replace(/"/g, '""')}","${item.customerphone || "N/A"}","${item.customerAddress.replace(/"/g, '""')}","${item.customerPincode || "N/A"}","${item.deliveryPerson || "N/A"}","${item.paymentstatus || "N/A"}","${item.status || "N/A"}"`
         );
       });
 
@@ -2416,7 +2498,7 @@ exports.exportOrderReportCSV = (req, res) => {
       res.header("Content-Type", "text/csv");
       res.header(
         "Content-Disposition",
-        `attachment; filename="order_report_${currentDate}.csv"` // Updated to use currentDate
+        `attachment; filename="order_report_${currentDate}.csv"`
       );
       res.send(csv);
     })
@@ -2436,7 +2518,7 @@ exports.exportOrderReportPDF = (req, res) => {
   yesterday.setDate(today.getDate() - 1);
   const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-25"
 
-  // Set effective dates
+  // Set effective dates (for "all" selection, use defaultStartDate and defaultEndDate)
   const effectiveStartDate = startDate || defaultStartDate;
   const effectiveEndDate = endDate || defaultEndDate;
 
@@ -2459,6 +2541,55 @@ exports.exportOrderReportPDF = (req, res) => {
       return res.status(400).json({
         success: false,
         message: `Invalid date format for ${date}. Must be YYYY-MM-DD`,
+      });
+    }
+  }
+
+  const minDate = new Date("2024-01-01");
+  const maxDate = yesterday;
+
+  // Validate primary date range
+  const start = new Date(effectiveStartDate);
+  const end = new Date(effectiveEndDate);
+  if (start > end) {
+    return res.status(400).json({
+      success: false,
+      message: "Start date cannot be after end date.",
+    });
+  }
+  if (start < minDate) {
+    return res.status(400).json({
+      success: false,
+      message: "Start date cannot be before January 1, 2024.",
+    });
+  }
+  if (end > maxDate) {
+    return res.status(400).json({
+      success: false,
+      message: `End date cannot be after ${defaultEndDate} (yesterday).`,
+    });
+  }
+
+  // Validate comparison date range (if provided)
+  if (compareStartDate && compareEndDate) {
+    const compareStart = new Date(compareStartDate);
+    const compareEnd = new Date(compareEndDate);
+    if (compareStart > compareEnd) {
+      return res.status(400).json({
+        success: false,
+        message: "Comparison start date cannot be after comparison end date.",
+      });
+    }
+    if (compareStart < minDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Comparison start date cannot be before January 1, 2024.",
+      });
+    }
+    if (compareEnd > maxDate) {
+      return res.status(400).json({
+        success: false,
+        message: `Comparison end date cannot be after ${defaultEndDate} (yesterday).`,
       });
     }
   }
@@ -2623,7 +2754,7 @@ exports.exportOrderReportPDF = (req, res) => {
       const compareOrderCount = compareOrderCountResult[0]?.compareOrderCount || 0;
       const refundCount = statusSummary.find((item) => item.status === "CANCELLED")?.count || 0;
 
-      const doc = new PDFDocument({ margin: 30 });
+      const doc = new PDFDocument({ margin: 10 });
       let buffers = [];
       doc.on("data", buffers.push.bind(buffers));
       doc.on("end", () => {
@@ -2641,6 +2772,8 @@ exports.exportOrderReportPDF = (req, res) => {
       let isShippingDetailsSection = false; // Flag to track if we're in the Shipping Details section
 
       // Define header dimensions
+      const leftMargin = 20; // Left margin for all content
+      const rightMargin = 10;
       const logoPath = path.join(__dirname, "../public/ad-images/logo/logo.png");
       const logoWidth = 100;
       const logoHeight = 100;
@@ -2665,11 +2798,11 @@ exports.exportOrderReportPDF = (req, res) => {
       doc.on("pageAdded", () => {
         pageNumber++;
         addHeader(); // Add the header on the new page
-        doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, { align: "right" });
+        doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, rightMargin, doc.y,{ align: "right" });
         doc.y = headerHeight; // Reset the cursor position below the header
         // If we're in the Shipping Details section, re-add the section header
         if (isShippingDetailsSection) {
-          doc.fontSize(16).fillColor("#2E7D32").text("Shipping Details (continued)", { underline: true });
+          doc.fontSize(16).fillColor("#2E7D32").text("Shipping Details", leftMargin, doc.y, { underline: true });
           doc.moveDown(0.5);
           doc.fillColor("black").fontSize(10);
         }
@@ -2677,64 +2810,64 @@ exports.exportOrderReportPDF = (req, res) => {
 
       // Add the header and page number to the first page
       addHeader();
-      doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, { align: "right" });
+      doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50 ,rightMargin, doc.y, { align: "right" });
       doc.y = headerHeight; // Move the cursor below the header
 
       // Subheader: Order Report and Details
       doc.fillColor("black");
-      doc.fontSize(16).text("Order Report", { align: "center" });
-      doc.fontSize(12).text(`Downloaded on: ${currentDate}`, { align: "center" });
-      doc.fontSize(12).text(`Period: ${effectiveStartDate} to ${effectiveEndDate}`, { align: "center" });
+      doc.fontSize(16).text("Order Report", leftMargin, doc.y, { align: "center" });
+      doc.fontSize(12).text(`Downloaded on: ${currentDate}`, leftMargin, doc.y, { align: "center" });
+      doc.fontSize(12).text(`Period: ${effectiveStartDate} to ${effectiveEndDate}`, leftMargin, doc.y, { align: "center" });
       if (compareStartDate && compareEndDate) {
-        doc.fontSize(12).text(`Comparison Period: ${compareStartDate} to ${compareEndDate}`, { align: "center" });
+        doc.fontSize(12).text(`Comparison Period: ${compareStartDate} to ${compareEndDate}`, leftMargin, doc.y, { align: "center" });
       }
       doc.moveDown(2);
 
       // Order Summary Report Section
-      doc.fontSize(16).fillColor("#2E7D32").text("Order Summary Report", { underline: true });
-      doc.moveDown(0.5);
+      doc.fontSize(16).fillColor("#2E7D32").text("Order Summary Report", leftMargin, doc.y, { underline: true });
+      doc.moveDown(1);
       doc.fillColor("black").fontSize(12);
-      doc.text(`Order Count: ${orderCount}`);
-      doc.text(`Total Revenue: Rs. ${totalRevenue.toLocaleString()}`);
-      doc.text(`Average Order Value: Rs. ${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}`);
-      doc.text(`Refunds: ${refundCount}`);
-      doc.text(`Comparison Order Count: ${compareOrderCount}`);
-      doc.moveDown(1.5);
+      doc.text(`Order Count: ${orderCount}`,leftMargin, doc.y);
+      doc.text(`Total Revenue: Rs. ${totalRevenue.toLocaleString()}`,leftMargin, doc.y);
+      doc.text(`Average Order Value: Rs. ${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}`,leftMargin, doc.y);
+      doc.text(`Refunds: ${refundCount}`,leftMargin, doc.y);
+      doc.text(`Comparison Order Count: ${compareOrderCount}`,leftMargin, doc.y);
+      doc.moveDown(2.5);
 
       // Order Status Summary Section
-      doc.fontSize(16).fillColor("#2E7D32").text("Order Status Summary", { underline: true });
-      doc.moveDown(0.5);
+      doc.fontSize(16).fillColor("#2E7D32").text("Order Status Summary", leftMargin, doc.y,{ underline: true });
+      doc.moveDown(1);
       doc.fillColor("black").fontSize(12);
       statusSummary.forEach(item => {
-        doc.text(`- ${item.status}: ${item.count}`);
+        doc.text(`${item.status}: ${item.count}`,leftMargin, doc.y);
       });
-      doc.moveDown(1.5);
+      doc.moveDown(2.5);
 
       // Orders Over Time (Current Period)
-      doc.fontSize(16).fillColor("#2E7D32").text("Orders Over Time (Current Period)", { underline: true });
-      doc.moveDown(0.5);
+      doc.fontSize(16).fillColor("#2E7D32").text("Orders Over Time (Current Period)", leftMargin, doc.y,{ underline: true });
+      doc.moveDown(1);
       doc.fillColor("black").fontSize(12);
       ordersOverTime.forEach(item => {
         let formattedDate = formatDate(item.orderDate);
-        doc.text(`- ${formattedDate}: ${item.orderCount} orders`);
+        doc.text(`${formattedDate}: ${item.orderCount} orders`,leftMargin, doc.y);
       });
-      doc.moveDown(1.5);
+      doc.moveDown(2.5);
 
       // Orders Over Time (Comparison Period)
       if (compareStartDate && compareEndDate) {
-        doc.fontSize(16).fillColor("#2E7D32").text("Orders Over Time (Comparison Period)", { underline: true });
-        doc.moveDown(0.5);
+        doc.fontSize(16).fillColor("#2E7D32").text("Orders Over Time (Comparison Period)",leftMargin, doc.y, { underline: true });
+        doc.moveDown(1);
         doc.fillColor("black").fontSize(12);
         compareOrdersOverTime.forEach(item => {
           let formattedDate = formatDate(item.orderDate);
-          doc.text(`- ${formattedDate}: ${item.orderCount} orders`);
+          doc.text(` ${formattedDate}: ${item.orderCount} orders`,leftMargin, doc.y);
         });
-        doc.moveDown(1.5);
+        doc.moveDown(2.5);
       }
 
       // Shipping Details Section
       isShippingDetailsSection = true; // Set the flag
-      doc.fontSize(16).fillColor("#2E7D32").text("Shipping Details", { underline: true });
+      doc.fontSize(16).fillColor("#2E7D32").text("Shipping Details", 30, doc.y,leftMargin, doc.y, { underline: true });
       doc.moveDown(0.5);
       doc.fillColor("black").fontSize(10);
 
@@ -2754,23 +2887,23 @@ exports.exportOrderReportPDF = (req, res) => {
         }
 
         let formattedDate = formatDate(item.O_date);
-        doc.text(`Order ID: ${item.O_id}`);
+        doc.text(`Order ID: ${item.O_id}`, 30, doc.y);
         doc.moveDown(0.2);
-        doc.text(`Order Date: ${formattedDate}`);
+        doc.text(`Order Date: ${formattedDate}`, 30, doc.y);
         doc.moveDown(0.2);
-        doc.text(`Customer Name: ${item.customerName}`);
+        doc.text(`Customer Name: ${item.customerName}`, 30, doc.y);
         doc.moveDown(0.2);
-        doc.text(`Phone: ${item.customerphone || "N/A"}`);
+        doc.text(`Phone: ${item.customerphone || "N/A"}`, 30, doc.y);
         doc.moveDown(0.2);
-        doc.text(`Address: ${item.customerAddress}`, { width: doc.page.width - 60 }); // Allow wrapping
+        doc.text(`Address: ${item.customerAddress}`, 30, doc.y, { width: doc.page.width - 60 }); // Allow wrapping
         doc.moveDown(0.2);
-        doc.text(`Pincode: ${item.customerPincode || "N/A"}`);
+        doc.text(`Pincode: ${item.customerPincode || "N/A"}`, 30, doc.y);
         doc.moveDown(0.2);
-        doc.text(`Delivery Person: ${item.deliveryPerson || "N/A"}`);
+        doc.text(`Delivery Person: ${item.deliveryPerson || "N/A"}`, 30, doc.y);
         doc.moveDown(0.2);
-        doc.text(`Payment Status: ${item.paymentstatus || "N/A"}`);
+        doc.text(`Payment Status: ${item.paymentstatus || "N/A"}`, 30, doc.y);
         doc.moveDown(0.2);
-        doc.text(`Status: ${item.status || "N/A"}`);
+        doc.text(`Status: ${item.status || "N/A"}`, 30, doc.y);
         doc.moveDown(0.2);
 
         // Add a separator line between orders (except for the last one)

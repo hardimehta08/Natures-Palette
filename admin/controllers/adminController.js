@@ -85,12 +85,26 @@ exports.getOrders = (req, res) => {
 
 // ✅ Fetch Available Delivery Persons
 exports.getDeliveryPersons = (req, res) => {
-  db.query("SELECT d_id, d_name FROM delivery_persons", (err, results) => {
+  const query = "SELECT D_id, D_NAME FROM delivery_persons WHERE d_status = ?";
+  const params = ["active"];
+
+  db.query(query, params, (err, results) => {
     if (err) {
       console.error("Error fetching delivery persons:", err);
-      return res.status(500).json({ error: "Database error" });
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err.message,
+      });
     }
-    res.json(results);
+
+    // Log the results for debugging
+    console.log("Delivery Persons:", results);
+
+    res.json({
+      success: true,
+      data: results,
+    });
   });
 };
 
