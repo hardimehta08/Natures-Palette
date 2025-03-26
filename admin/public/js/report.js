@@ -1466,28 +1466,6 @@ function fetchInventoryReport(page = 1) {
     .catch((error) => console.error("Error fetching inventory report:", error));
 }
 
-const paginationDiv = document.getElementById("turnoverPagination");
-if (paginationDiv) {
-  paginationDiv.innerHTML = "";
-  const prevButton = document.createElement("button");
-  prevButton.textContent = "Previous";
-  prevButton.disabled = page === 1;
-  prevButton.onclick = () => fetchInventoryReport(page - 1);
-  prevButton.style.marginRight = "10px";
-
-  const nextButton = document.createElement("button");
-  nextButton.textContent = "Next";
-  nextButton.disabled = page === totalPages;
-  nextButton.onclick = () => fetchInventoryReport(page + 1);
-
-  const pageInfo = document.createElement("span");
-  pageInfo.textContent = `Page ${page} of ${totalPages}`;
-  pageInfo.style.margin = "0 10px";
-
-  paginationDiv.appendChild(prevButton);
-  paginationDiv.appendChild(pageInfo);
-  paginationDiv.appendChild(nextButton);
-}
 // Function to clear all notifications and update the bell count
 function clearNotifications() {
   const notificationList = document.getElementById("notificationList");
@@ -1880,6 +1858,7 @@ function fetchOrderReport() {
               <td>${item.customerName}</td>
               <td>${item.customerphone || "N/A"}</td>
               <td>${formattedDate}</td>
+                <td>${item.paymentstatus}</td>
               <td>${item.customerAddress}</td>
               <td>${item.customerPincode}</td>
               <td>${item.deliveryPerson || "Not Assigned"}</td>
@@ -1913,22 +1892,20 @@ function exportOrderReport(format) {
   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
   const maxDate = yesterday.toISOString().split("T")[0];
   const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0];
-  const minDate = "2024-01-01"; // Updated to 2024-01-01 as per your requirement
+  const minDate = "2024-01-01";
 
   if (dateRange === "today") {
     startDate = endDate = maxDate;
   } else if (dateRange === "last7days") {
     endDate = maxDate;
     const last7DaysStart = new Date(yesterday);
-    startDate = last7DaysStart.setDate(last7DaysStart.getDate() - 7)
-      .toISOString()
-      .split("T")[0];
+    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+    startDate = last7DaysStart.toISOString().split("T")[0];
   } else if (dateRange === "last30days") {
     endDate = maxDate;
     const last30DaysStart = new Date(yesterday);
-    startDate = last30DaysStart.setDate(last30DaysStart.getDate() - 30)
-      .toISOString()
-      .split("T")[0];
+    last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+    startDate = last30DaysStart.toISOString().split("T")[0];
   } else if (dateRange === "custom") {
     startDate = document.getElementById("orderStartDate").value;
     endDate = document.getElementById("orderEndDate").value;
@@ -1960,6 +1937,9 @@ function exportOrderReport(format) {
       alert("Start date cannot be after end date.");
       return;
     }
+  } else {
+    alert("Please select a valid date range.");
+    return;
   }
 
   const queryParams = new URLSearchParams();
@@ -1977,8 +1957,16 @@ function exportOrderReport(format) {
     headers: { Accept: format === "csv" ? "text/csv" : "application/pdf" },
   })
     .then((response) => {
-      if (!response.ok)
-        throw new Error(`HTTP error! Status: ${response.status}`);
+      if (!response.ok) {
+        return response.text().then((text) => {
+          try {
+            const errorData = JSON.parse(text);
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorData.details || errorData.error || text}`);
+          } catch (e) {
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${text || "Unknown error"}`);
+          }
+        });
+      }
       return response.blob();
     })
     .then((blob) => {
@@ -1995,7 +1983,7 @@ function exportOrderReport(format) {
     })
     .catch((error) => {
       console.error(`Error exporting order report as ${format}:`, error);
-      alert(`Failed to export order report as ${format.toUpperCase()}.`);
+      alert(`Failed to export order report as ${format.toUpperCase()}: ${error.message}`);
     });
 }
 
