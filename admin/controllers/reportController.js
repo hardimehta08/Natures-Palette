@@ -1,5 +1,6 @@
 const mysql = require("mysql");
 const { Parser } = require("json2csv");
+const path = require("path");
 const PDFDocument = require("pdfkit");
 
 // Database connection
@@ -973,10 +974,13 @@ exports.getOrderReport = (req, res) => {
           c.c_mobile as customerphone,
           c.C_address as customerAddress,
           c.C_pincode as customerPincode,
-          dp.D_NAME as deliveryPerson
+          py.py_status as paymentstatus,
+          dp.D_NAME as deliveryPerson,
+          om.O_status as orderstatus
         FROM order_master om
         LEFT JOIN customer c ON om.C_id = c.C_id
         LEFT JOIN deliveries d ON om.O_id = d.O_id
+         LEFT JOIN payment py ON om.O_id = py.O_id
         LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
         ${whereClause}
         ORDER BY om.O_date DESC
@@ -2143,112 +2147,232 @@ exports.exportInventoryReportPDF = (req, res) => {
 
 // Export Order Report as CSV
 exports.exportOrderReportCSV = (req, res) => {
-  const { startDate, endDate, status } = req.query;
+  let { startDate, endDate, status, compareStartDate, compareEndDate } = req.query;
 
-  let statusQuery = `
-    SELECT 
-      O_status as status,
-      COUNT(*) as count
-    FROM order_master om
-  `;
-  let shippingDetailsQuery = `
-    SELECT 
-      om.O_id,
-      om.C_id,
-      c.C_address as customerAddress,
-      c.C_pincode as customerPincode,
-      dp.D_NAME as deliveryPerson
-    FROM order_master om
-    JOIN customer c ON om.C_id = c.C_id
-    LEFT JOIN deliveries d ON om.O_id = d.O_id
-    LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
-  `;
-  let orderCountQuery = `
-    SELECT 
-      COUNT(DISTINCT om.O_id) as orderCount
-    FROM order_master om
-  `;
-  let totalRevenueQuery = `
-    SELECT 
-      SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
-    FROM order_master om
-    JOIN order_details od ON om.O_id = od.O_id
-  `;
+  // Define default dates
+  const defaultStartDate = "2024-01-01";
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-25"
 
+  // Set effective dates
+  const effectiveStartDate = startDate || defaultStartDate;
+  const effectiveEndDate = endDate || defaultEndDate;
+
+  // Current date for "Downloaded on"
+  const currentDate = today.toISOString().split("T")[0]; // e.g., "2025-03-26"
+
+  // Input validation
+  if (status && !["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid status value. Must be one of: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED",
+    });
+  }
+
+  // Validate date formats (basic check for YYYY-MM-DD)
+  const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
+  const datesToValidate = [effectiveStartDate, effectiveEndDate, compareStartDate, compareEndDate].filter(Boolean);
+  for (const date of datesToValidate) {
+    if (!dateFormatRegex.test(date)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid date format for ${date}. Must be YYYY-MM-DD`,
+      });
+    }
+  }
+
+  // Base query parameters and WHERE clauses
   const queryParams = [];
-  let whereClauses = [];
+  const compareQueryParams = [];
+  const whereClauses = [];
+  const compareWhereClauses = [];
 
-  if (startDate) {
-    whereClauses.push("O_date >= ?");
-    queryParams.push(startDate);
+  // Build WHERE clauses for current period
+  if (effectiveStartDate) {
+    whereClauses.push("om.O_date >= ?");
+    queryParams.push(effectiveStartDate);
   }
-  if (endDate) {
-    whereClauses.push("O_date <= ?");
-    queryParams.push(endDate);
+  if (effectiveEndDate) {
+    whereClauses.push("om.O_date <= ?");
+    queryParams.push(effectiveEndDate);
   }
-  if (
-    status &&
-    ["PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)
-  ) {
-    whereClauses.push("O_status = ?");
+  if (status) {
+    whereClauses.push("om.O_status = ?");
     queryParams.push(status);
   }
 
-  if (whereClauses.length > 0) {
-    const whereClause = ` WHERE ${whereClauses.join(" AND ")}`;
-    statusQuery += whereClause;
-    shippingDetailsQuery += whereClause;
-    orderCountQuery += whereClause;
-    totalRevenueQuery += whereClause;
+  // Build WHERE clauses for comparison period
+  if (compareStartDate) {
+    compareWhereClauses.push("om.O_date >= ?");
+    compareQueryParams.push(compareStartDate);
+  }
+  if (compareEndDate) {
+    compareWhereClauses.push("om.O_date <= ?");
+    compareQueryParams.push(compareEndDate);
   }
 
-  statusQuery += ` GROUP BY O_status`;
-  shippingDetailsQuery += ` LIMIT 10`;
+  // Add the "not cancelled" condition to queries that need it
+  const notCancelledClause = "om.O_status != 'CANCELLED'";
+  const whereClausesWithNotCancelled = [...whereClauses, notCancelledClause];
+  const compareWhereClausesWithNotCancelled = [...compareWhereClauses, notCancelledClause];
 
-  Promise.all([
-    new Promise((resolve, reject) =>
-      db.query(statusQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(shippingDetailsQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(orderCountQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(totalRevenueQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-  ])
-    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult]) => {
+  // Construct WHERE clause strings
+  const whereClause = whereClauses.length > 0 ? " WHERE " + whereClauses.join(" AND ") : "";
+  const whereClauseWithNotCancelled = whereClausesWithNotCancelled.length > 0 ? " WHERE " + whereClausesWithNotCancelled.join(" AND ") : "";
+  const compareWhereClauseWithNotCancelled = compareWhereClausesWithNotCancelled.length > 0 ? " WHERE " + compareWhereClausesWithNotCancelled.join(" AND ") : "";
+
+  // Define all queries
+  const queries = {
+    // Query 1: Status summary
+    statusSummary: {
+      sql: `
+        SELECT 
+          O_status as status,
+          COUNT(*) as count
+        FROM order_master om
+        ${whereClause}
+        GROUP BY O_status
+      `,
+      params: queryParams,
+    },
+
+    // Query 2: Shipping details
+    shippingDetails: {
+      sql: `
+        SELECT 
+          om.O_id,
+          om.O_date,
+          om.C_id,
+          COALESCE(c.C_username, 'Anonymous') as customerName,
+          c.c_mobile as customerphone,
+          c.C_address as customerAddress,
+          c.C_pincode as customerPincode,
+          dp.D_NAME as deliveryPerson,
+          py.py_status as paymentstatus,
+          om.O_status as status
+        FROM order_master om
+        LEFT JOIN customer c ON om.C_id = c.C_id
+        LEFT JOIN deliveries d ON om.O_id = d.O_id
+        LEFT JOIN payment py ON om.O_id = py.O_id
+        LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
+        ${whereClause}
+        ORDER BY om.O_date DESC
+      `,
+      params: queryParams,
+    },
+
+    // Query 3: Order count (current period)
+    orderCount: {
+      sql: `
+        SELECT 
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${whereClause}
+      `,
+      params: queryParams,
+    },
+
+    // Query 4: Total revenue
+    totalRevenue: {
+      sql: `
+        SELECT 
+          SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
+        FROM order_master om
+        JOIN order_details od ON om.O_id = od.O_id
+        ${whereClause}
+      `,
+      params: queryParams,
+    },
+
+    // Query 5: Orders over time (current period)
+    ordersOverTime: {
+      sql: `
+        SELECT 
+          DATE(om.O_date) as orderDate,
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${whereClauseWithNotCancelled}
+        GROUP BY DATE(om.O_date)
+        ORDER BY DATE(om.O_date)
+      `,
+      params: queryParams,
+    },
+
+    // Query 6: Orders over time (comparison period)
+    compareOrdersOverTime: {
+      sql: `
+        SELECT 
+          DATE(om.O_date) as orderDate,
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${compareWhereClauseWithNotCancelled}
+        GROUP BY DATE(om.O_date)
+        ORDER BY DATE(om.O_date)
+      `,
+      params: compareQueryParams,
+    },
+
+    // Query 7: Order count (comparison period)
+    compareOrderCount: {
+      sql: `
+        SELECT 
+          COUNT(DISTINCT om.O_id) as compareOrderCount
+        FROM order_master om
+        ${compareWhereClauseWithNotCancelled}
+      `,
+      params: compareQueryParams,
+    },
+  };
+
+  // Execute all queries in parallel
+  Promise.all(
+    Object.entries(queries).map(([key, { sql, params }]) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, result) => {
+          if (err) {
+            console.error(`Error executing ${key} query:`, err);
+            reject(new Error(`Failed to execute ${key} query: ${err.sqlMessage || err.message}`));
+          } else {
+            resolve(result);
+          }
+        });
+      })
+    )
+  )
+    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult, ordersOverTime, compareOrdersOverTime, compareOrderCountResult]) => {
       const orderCount = orderCountResult[0]?.orderCount || 0;
       const totalRevenue = totalRevenueResult[0]?.totalRevenue || 0;
+      const compareOrderCount = compareOrderCountResult[0]?.compareOrderCount || 0;
       const refundCount = statusSummary.find((item) => item.status === "CANCELLED")?.count || 0;
-      const downloadDate = new Date().toISOString().split("T")[0]; // e.g., "2025-03-23"
 
       // Initialize the CSV content as an array of strings
       let csvContent = [];
-
+      const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`; // Format as DD-MM-YYYY
+      };
       // Header
+      csvContent.push("Nature’s Palette");
       csvContent.push("Order Report");
-      csvContent.push(`"Date: ${downloadDate}"`);
+      csvContent.push(`"Downloaded on: ${currentDate}"`); // Updated to "Downloaded on"
+      csvContent.push(`"Period: ${effectiveStartDate} to ${effectiveEndDate}"`);
+      if (compareStartDate && compareEndDate) {
+        csvContent.push(`"Comparison Period: ${compareStartDate} to ${compareEndDate}"`);
+      }
       csvContent.push(""); // Empty row for spacing
 
       // Order Summary Report Section
       csvContent.push("Order Summary Report");
-      csvContent.push("Order Count,Total Revenue,Average Order Value,Refunds");
+      csvContent.push("Order Count,Total Revenue,Average Order Value,Refunds,Comparison Order Count");
       csvContent.push(
-        `"${orderCount}","${totalRevenue}","${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}","${refundCount}"`
+        `"${orderCount}","${totalRevenue.toLocaleString()}","${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}","${refundCount}","${compareOrderCount}"`
       );
       csvContent.push(""); // Empty row for spacing
-      csvContent.push(""); // Additional empty row for separation
 
       // Order Status Summary Section
       csvContent.push("Order Status Summary");
@@ -2257,14 +2381,32 @@ exports.exportOrderReportCSV = (req, res) => {
         csvContent.push(`"${item.status}","${item.count}"`);
       });
       csvContent.push(""); // Empty row for spacing
-      csvContent.push(""); // Additional empty row for separation
+
+      // Orders Over Time (Current Period)
+      csvContent.push("Orders Over Time (Current Period)");
+      csvContent.push("Date,Order Count");
+      ordersOverTime.forEach((item) => {
+        csvContent.push(`"${item.orderDate}","${item.orderCount}"`);
+      });
+      csvContent.push(""); // Empty row for spacing
+
+      // Orders Over Time (Comparison Period)
+      if (compareStartDate && compareEndDate) {
+        csvContent.push("Orders Over Time (Comparison Period)");
+        csvContent.push("Date,Order Count");
+        compareOrdersOverTime.forEach((item) => {
+          csvContent.push(`"${item.orderDate}","${item.orderCount}"`);
+        });
+        csvContent.push(""); // Empty row for spacing
+      }
 
       // Shipping Details Section
       csvContent.push("Shipping Details");
-      csvContent.push("Order ID,Customer ID,Address,Pincode,Delivery Person");
+      csvContent.push("Order ID,Order Date,Customer Name,Phone,Address,Pincode,Delivery Person,Payment Status,Status");
       shippingDetails.forEach((item) => {
+        let formattDate=formatDate(item.O_date);
         csvContent.push(
-          `"${item.O_id}","${item.C_id}","${item.customerAddress.replace(/"/g, '""')}",${item.customerPincode},"${item.deliveryPerson || "N/A"}"`
+          `"${item.O_id}","${formattDate}","${item.customerName.replace(/"/g, '""')}","${item.customerphone || "N/A"}","${item.customerAddress.replace(/"/g, '""')}","${item.customerPincode || "N/A"}","${item.deliveryPerson || "N/A"}","${item.paymentstatus || "N/A"}","${item.status || "N/A"}"`
         );
       });
 
@@ -2274,7 +2416,7 @@ exports.exportOrderReportCSV = (req, res) => {
       res.header("Content-Type", "text/csv");
       res.header(
         "Content-Disposition",
-        'attachment; filename="order_report.csv"'
+        `attachment; filename="order_report_${currentDate}.csv"` // Updated to use currentDate
       );
       res.send(csv);
     })
@@ -2284,151 +2426,369 @@ exports.exportOrderReportCSV = (req, res) => {
     });
 };
 
-// Export Order Report as PDF
 exports.exportOrderReportPDF = (req, res) => {
-  const { startDate, endDate, status } = req.query;
+  let { startDate, endDate, status, compareStartDate, compareEndDate } = req.query;
 
-  let statusQuery = `
-    SELECT 
-      O_status as status,
-      COUNT(*) as count
-    FROM order_master om
-  `;
-  let shippingDetailsQuery = `
-    SELECT 
-      om.O_id,
-      om.C_id,
-      c.C_address as customerAddress,
-      c.C_pincode as customerPincode,
-      dp.D_NAME as deliveryPerson
-    FROM order_master om
-    JOIN customer c ON om.C_id = c.C_id
-    LEFT JOIN deliveries d ON om.O_id = d.O_id
-    LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
-  `;
-  let orderCountQuery = `
-    SELECT 
-      COUNT(DISTINCT om.O_id) as orderCount
-    FROM order_master om
-  `;
-  let totalRevenueQuery = `
-    SELECT 
-      SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
-    FROM order_master om
-    JOIN order_details od ON om.O_id = od.O_id
-  `;
+  // Define default dates
+  const defaultStartDate = "2024-01-01";
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-25"
 
+  // Set effective dates
+  const effectiveStartDate = startDate || defaultStartDate;
+  const effectiveEndDate = endDate || defaultEndDate;
+
+  // Current date for "Downloaded on"
+  const currentDate = today.toISOString().split("T")[0]; // e.g., "2025-03-26"
+
+  // Input validation
+  if (status && !["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid status value. Must be one of: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED",
+    });
+  }
+
+  // Validate date formats (basic check for YYYY-MM-DD)
+  const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
+  const datesToValidate = [effectiveStartDate, effectiveEndDate, compareStartDate, compareEndDate].filter(Boolean);
+  for (const date of datesToValidate) {
+    if (!dateFormatRegex.test(date)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid date format for ${date}. Must be YYYY-MM-DD`,
+      });
+    }
+  }
+
+  // Base query parameters and WHERE clauses
   const queryParams = [];
-  let whereClauses = [];
+  const compareQueryParams = [];
+  const whereClauses = [];
+  const compareWhereClauses = [];
 
-  if (startDate) {
-    whereClauses.push("O_date >= ?");
-    queryParams.push(startDate);
+  // Build WHERE clauses for current period
+  if (effectiveStartDate) {
+    whereClauses.push("om.O_date >= ?");
+    queryParams.push(effectiveStartDate);
   }
-  if (endDate) {
-    whereClauses.push("O_date <= ?");
-    queryParams.push(endDate);
+  if (effectiveEndDate) {
+    whereClauses.push("om.O_date <= ?");
+    queryParams.push(effectiveEndDate);
   }
-  if (
-    status &&
-    ["PLACED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)
-  ) {
-    whereClauses.push("O_status = ?");
+  if (status) {
+    whereClauses.push("om.O_status = ?");
     queryParams.push(status);
   }
 
-  if (whereClauses.length > 0) {
-    const whereClause = ` WHERE ${whereClauses.join(" AND ")}`;
-    statusQuery += whereClause;
-    shippingDetailsQuery += whereClause;
-    orderCountQuery += whereClause;
-    totalRevenueQuery += whereClause;
+  // Build WHERE clauses for comparison period
+  if (compareStartDate) {
+    compareWhereClauses.push("om.O_date >= ?");
+    compareQueryParams.push(compareStartDate);
+  }
+  if (compareEndDate) {
+    compareWhereClauses.push("om.O_date <= ?");
+    compareQueryParams.push(compareEndDate);
   }
 
-  statusQuery += ` GROUP BY O_status`;
-  shippingDetailsQuery += ` LIMIT 10`;
+  // Add the "not cancelled" condition to queries that need it
+  const notCancelledClause = "om.O_status != 'CANCELLED'";
+  const whereClausesWithNotCancelled = [...whereClauses, notCancelledClause];
+  const compareWhereClausesWithNotCancelled = [...compareWhereClauses, notCancelledClause];
 
-  Promise.all([
-    new Promise((resolve, reject) =>
-      db.query(statusQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(shippingDetailsQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(orderCountQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(totalRevenueQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-  ])
-    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult]) => {
+  // Construct WHERE clause strings
+  const whereClause = whereClauses.length > 0 ? " WHERE " + whereClauses.join(" AND ") : "";
+  const whereClauseWithNotCancelled = whereClausesWithNotCancelled.length > 0 ? " WHERE " + whereClausesWithNotCancelled.join(" AND ") : "";
+  const compareWhereClauseWithNotCancelled = compareWhereClausesWithNotCancelled.length > 0 ? " WHERE " + compareWhereClausesWithNotCancelled.join(" AND ") : "";
+
+  // Define all queries
+  const queries = {
+    statusSummary: {
+      sql: `
+        SELECT 
+          O_status as status,
+          COUNT(*) as count
+        FROM order_master om
+        ${whereClause}
+        GROUP BY O_status
+      `,
+      params: queryParams,
+    },
+    shippingDetails: {
+      sql: `
+        SELECT 
+          om.O_id,
+          om.O_date,
+          om.C_id,
+          COALESCE(c.C_username, 'Anonymous') as customerName,
+          c.c_mobile as customerphone,
+          c.C_address as customerAddress,
+          c.C_pincode as customerPincode,
+          dp.D_NAME as deliveryPerson,
+          py.py_status as paymentstatus,
+          om.O_status as status
+        FROM order_master om
+        LEFT JOIN customer c ON om.C_id = c.C_id
+        LEFT JOIN deliveries d ON om.O_id = d.O_id
+        LEFT JOIN payment py ON om.O_id = py.O_id
+        LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
+        ${whereClause}
+        ORDER BY om.O_date DESC
+      `,
+      params: queryParams,
+    },
+    orderCount: {
+      sql: `
+        SELECT 
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${whereClause}
+      `,
+      params: queryParams,
+    },
+    totalRevenue: {
+      sql: `
+        SELECT 
+          SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
+        FROM order_master om
+        JOIN order_details od ON om.O_id = od.O_id
+        ${whereClause}
+      `,
+      params: queryParams,
+    },
+    ordersOverTime: {
+      sql: `
+        SELECT 
+          DATE(om.O_date) as orderDate,
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${whereClauseWithNotCancelled}
+        GROUP BY DATE(om.O_date)
+        ORDER BY DATE(om.O_date)
+      `,
+      params: queryParams,
+    },
+    compareOrdersOverTime: {
+      sql: `
+        SELECT 
+          DATE(om.O_date) as orderDate,
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${compareWhereClauseWithNotCancelled}
+        GROUP BY DATE(om.O_date)
+        ORDER BY DATE(om.O_date)
+      `,
+      params: compareQueryParams,
+    },
+    compareOrderCount: {
+      sql: `
+        SELECT 
+          COUNT(DISTINCT om.O_id) as compareOrderCount
+        FROM order_master om
+        ${compareWhereClauseWithNotCancelled}
+      `,
+      params: compareQueryParams,
+    },
+  };
+
+  // Define the formatDate function
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`; // Format as DD-MM-YYYY
+  };
+
+  // Execute all queries in parallel
+  Promise.all(
+    Object.entries(queries).map(([key, { sql, params }]) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, result) => {
+          if (err) {
+            console.error(`Error executing ${key} query:`, err);
+            reject(new Error(`Failed to execute ${key} query: ${err.sqlMessage || err.message}`));
+          } else {
+            resolve(result);
+          }
+        });
+      })
+    )
+  )
+    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult, ordersOverTime, compareOrdersOverTime, compareOrderCountResult]) => {
       const orderCount = orderCountResult[0]?.orderCount || 0;
       const totalRevenue = totalRevenueResult[0]?.totalRevenue || 0;
+      const compareOrderCount = compareOrderCountResult[0]?.compareOrderCount || 0;
       const refundCount = statusSummary.find((item) => item.status === "CANCELLED")?.count || 0;
 
-      const doc = new PDFDocument({ margin: 50 });
+      const doc = new PDFDocument({ margin: 30 });
       let buffers = [];
       doc.on("data", buffers.push.bind(buffers));
       doc.on("end", () => {
         const pdfData = Buffer.concat(buffers);
         res.writeHead(200, {
           "Content-Type": "application/pdf",
-          "Content-Disposition": 'attachment; filename="order_report.pdf"',
+          "Content-Disposition": `attachment; filename="order_report_${currentDate}.pdf"`,
           "Content-Length": pdfData.length,
         });
         res.end(pdfData);
       });
 
-      // Header
-      doc.fontSize(20).text("Order Report", { align: "center" });
-      doc.fontSize(12).text(`Date: ${new Date().toISOString().split("T")[0]}`, { align: "center" });
-      doc.moveDown(2);
+      // Track the current page number
+      let pageNumber = 1;
+      let isShippingDetailsSection = false; // Flag to track if we're in the Shipping Details section
 
-      // Order Summary Report Section
-      doc.fontSize(16).text("Order Summary Report", { underline: true });
-      doc.moveDown(0.5);
-      doc.fontSize(12).text(`Order Count: ${orderCount}`, { indent: 20 });
-      doc.fontSize(12).text(`Total Revenue: $${totalRevenue.toLocaleString()}`, { indent: 20 });
-      doc.fontSize(12).text(`Average Order Value: $${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}`, { indent: 20 });
-      doc.fontSize(12).text(`Refunds: ${refundCount}`, { indent: 20 });
-      doc.moveDown(1.5);
+      // Define header dimensions
+      const logoPath = path.join(__dirname, "../public/ad-images/logo/logo.png");
+      const logoWidth = 100;
+      const logoHeight = 100;
+      const logoX = 30; // Start at the left margin
+      const logoY = 30; // Start at the top margin
+      const textX = logoX + logoWidth + 20; // 20 units padding between logo and text
+      const textY = logoY + (logoHeight / 2) - 10; // Center vertically relative to the logo
+      const headerHeight = logoY + logoHeight + 20; // Total height of the header
 
-      // Order Status Summary Section
-      doc.fontSize(16).text("Order Status Summary", { underline: true });
-      doc.moveDown(0.5);
-      statusSummary.forEach((item) => {
-        doc.fontSize(12).text(`Status: ${item.status}, Count: ${item.count}`, { indent: 20 });
-      });
-      doc.moveDown(1.5);
+      // Function to add the header (logo and "Nature’s Palette") on a page
+      const addHeader = () => {
+        try {
+          doc.image(logoPath, logoX, logoY, { width: logoWidth, height: logoHeight });
+        } catch (err) {
+          console.error("Error adding logo to PDF:", err);
+          doc.fontSize(12).fillColor("red").text("Logo not found", logoX, logoY, { width: logoWidth, align: "center" });
+        }
+        doc.fontSize(24).fillColor("#2E7D32").text("Nature’s Palette", textX, textY);
+      };
 
-      // Shipping Details Section
-      doc.fontSize(16).text("Shipping Details", { underline: true });
-      doc.moveDown(0.5);
-      shippingDetails.forEach((item, index) => {
-        doc.fontSize(12).text(`Order ID: ${item.O_id}`, { indent: 20 });
-        doc.fontSize(12).text(`Customer ID: ${item.C_id}`, { indent: 20 });
-        doc.fontSize(12).text(`Address: ${item.customerAddress}`, { indent: 20 });
-        doc.fontSize(12).text(`Pincode: ${item.customerPincode}`, { indent: 20 });
-        doc.fontSize(12).text(`Delivery Person: ${item.deliveryPerson || "N/A"}`, { indent: 20 });
-        // Add space after each record, but not after the last one
-        if (index < shippingDetails.length - 1) {
-          doc.moveDown(1); // Adds an empty line between records
+      // Add page numbers to the footer and header on every page
+      doc.on("pageAdded", () => {
+        pageNumber++;
+        addHeader(); // Add the header on the new page
+        doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, { align: "right" });
+        doc.y = headerHeight; // Reset the cursor position below the header
+        // If we're in the Shipping Details section, re-add the section header
+        if (isShippingDetailsSection) {
+          doc.fontSize(16).fillColor("#2E7D32").text("Shipping Details (continued)", { underline: true });
+          doc.moveDown(0.5);
+          doc.fillColor("black").fontSize(10);
         }
       });
 
+      // Add the header and page number to the first page
+      addHeader();
+      doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, { align: "right" });
+      doc.y = headerHeight; // Move the cursor below the header
+
+      // Subheader: Order Report and Details
+      doc.fillColor("black");
+      doc.fontSize(16).text("Order Report", { align: "center" });
+      doc.fontSize(12).text(`Downloaded on: ${currentDate}`, { align: "center" });
+      doc.fontSize(12).text(`Period: ${effectiveStartDate} to ${effectiveEndDate}`, { align: "center" });
+      if (compareStartDate && compareEndDate) {
+        doc.fontSize(12).text(`Comparison Period: ${compareStartDate} to ${compareEndDate}`, { align: "center" });
+      }
+      doc.moveDown(2);
+
+      // Order Summary Report Section
+      doc.fontSize(16).fillColor("#2E7D32").text("Order Summary Report", { underline: true });
+      doc.moveDown(0.5);
+      doc.fillColor("black").fontSize(12);
+      doc.text(`Order Count: ${orderCount}`);
+      doc.text(`Total Revenue: Rs. ${totalRevenue.toLocaleString()}`);
+      doc.text(`Average Order Value: Rs. ${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0}`);
+      doc.text(`Refunds: ${refundCount}`);
+      doc.text(`Comparison Order Count: ${compareOrderCount}`);
+      doc.moveDown(1.5);
+
+      // Order Status Summary Section
+      doc.fontSize(16).fillColor("#2E7D32").text("Order Status Summary", { underline: true });
+      doc.moveDown(0.5);
+      doc.fillColor("black").fontSize(12);
+      statusSummary.forEach(item => {
+        doc.text(`- ${item.status}: ${item.count}`);
+      });
+      doc.moveDown(1.5);
+
+      // Orders Over Time (Current Period)
+      doc.fontSize(16).fillColor("#2E7D32").text("Orders Over Time (Current Period)", { underline: true });
+      doc.moveDown(0.5);
+      doc.fillColor("black").fontSize(12);
+      ordersOverTime.forEach(item => {
+        let formattedDate = formatDate(item.orderDate);
+        doc.text(`- ${formattedDate}: ${item.orderCount} orders`);
+      });
+      doc.moveDown(1.5);
+
+      // Orders Over Time (Comparison Period)
+      if (compareStartDate && compareEndDate) {
+        doc.fontSize(16).fillColor("#2E7D32").text("Orders Over Time (Comparison Period)", { underline: true });
+        doc.moveDown(0.5);
+        doc.fillColor("black").fontSize(12);
+        compareOrdersOverTime.forEach(item => {
+          let formattedDate = formatDate(item.orderDate);
+          doc.text(`- ${formattedDate}: ${item.orderCount} orders`);
+        });
+        doc.moveDown(1.5);
+      }
+
+      // Shipping Details Section
+      isShippingDetailsSection = true; // Set the flag
+      doc.fontSize(16).fillColor("#2E7D32").text("Shipping Details", { underline: true });
+      doc.moveDown(0.5);
+      doc.fillColor("black").fontSize(10);
+
+      shippingDetails.forEach((item, index) => {
+        // Estimate the height of the shipping detail block
+        const lineHeight = 15; // Approximate height per line (including spacing)
+        const lines = 9; // Base number of lines (Order ID, Order Date, etc.)
+        // Account for potential text wrapping in the address field
+        const addressLines = doc.heightOfString(`Address: ${item.customerAddress}`, { width: doc.page.width - 60 }) / lineHeight;
+        const totalLines = lines + Math.max(0, addressLines - 1); // Add extra lines for wrapping
+        const blockHeight = totalLines * lineHeight; // Total height of the block
+        const sectionHeaderHeight = 30; // Height of the "Shipping Details" header (approximate)
+
+        // Check if the current block will fit on the page
+        if (doc.y + blockHeight + (index === 0 ? sectionHeaderHeight : 0) > doc.page.height - 50) {
+          doc.addPage(); // Add a new page if the block won't fit
+        }
+
+        let formattedDate = formatDate(item.O_date);
+        doc.text(`Order ID: ${item.O_id}`);
+        doc.moveDown(0.2);
+        doc.text(`Order Date: ${formattedDate}`);
+        doc.moveDown(0.2);
+        doc.text(`Customer Name: ${item.customerName}`);
+        doc.moveDown(0.2);
+        doc.text(`Phone: ${item.customerphone || "N/A"}`);
+        doc.moveDown(0.2);
+        doc.text(`Address: ${item.customerAddress}`, { width: doc.page.width - 60 }); // Allow wrapping
+        doc.moveDown(0.2);
+        doc.text(`Pincode: ${item.customerPincode || "N/A"}`);
+        doc.moveDown(0.2);
+        doc.text(`Delivery Person: ${item.deliveryPerson || "N/A"}`);
+        doc.moveDown(0.2);
+        doc.text(`Payment Status: ${item.paymentstatus || "N/A"}`);
+        doc.moveDown(0.2);
+        doc.text(`Status: ${item.status || "N/A"}`);
+        doc.moveDown(0.2);
+
+        // Add a separator line between orders (except for the last one)
+        if (index < shippingDetails.length - 1) {
+          doc.moveDown(0.5);
+          doc.moveTo(30, doc.y).lineTo(doc.page.width - 30, doc.y).stroke();
+          doc.moveDown(0.5);
+        }
+
+        // Debug: Log the cursor position and page number
+        console.log(`Shipping Detail ${index + 1}: doc.y = ${doc.y}, Page = ${pageNumber}`);
+      });
+
+      isShippingDetailsSection = false; // Reset the flag
       doc.end();
     })
     .catch((err) => {
       console.error("Error exporting order report as PDF:", err);
-      res.status(500).json({ error: "Database error", details: err.message });
+      res.status(500).json({ error: "Failed to export PDF", details: err.message });
     });
 };

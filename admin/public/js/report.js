@@ -1858,7 +1858,8 @@ function fetchOrderReport() {
               <td>${item.customerName}</td>
               <td>${item.customerphone || "N/A"}</td>
               <td>${formattedDate}</td>
-                <td>${item.paymentstatus}</td>
+              <td>${item.paymentstatus}</td>
+              <td>${item.orderstatus}</td>
               <td>${item.customerAddress}</td>
               <td>${item.customerPincode}</td>
               <td>${item.deliveryPerson || "Not Assigned"}</td>
