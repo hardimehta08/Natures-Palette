@@ -36,15 +36,13 @@ app.use(express.static(path.join(__dirname, "public", "html")));
 app.use(bodyParser.json({ limit: "100mb" }));
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
 
+
 app.use(
   session({
-    secret: "your_secret_key",
+    secret: "your_secret_key", // Change this to a secure secret key
     resave: false,
     saveUninitialized: true,
-    cookie: { 
-      secure: false, // Set to true in production with HTTPS
-      httpOnly: true // Prevents client-side access to the cookie
-  }
+    cookie: { secure: false }, // Set 'true' if using HTTPS
   })
 );
 

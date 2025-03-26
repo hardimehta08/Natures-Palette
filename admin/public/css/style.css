@@ -1887,3 +1887,8 @@ table {
   font-weight: 400;
   color: #555;
 }
+
+.chart-wrapper1 {
+  width: 300px;
+  height: 300px;
+}

@@ -25,19 +25,19 @@ exports.getDashboardData = (req, res) => {
         SELECT SUM(od.Odetails_price * od.Odetails_Qty) as totalSales
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
-        WHERE om.O_status = 'Delivered' AND om.O_date >= ?
+        WHERE om.O_status = 'DELIVERED' AND om.O_date >= ?
     `;
   const weeklySalesQuery = `
         SELECT SUM(od.Odetails_price * od.Odetails_Qty) as totalSales
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
-        WHERE om.O_status = 'Delivered' AND om.O_date >= ?
+        WHERE om.O_status = 'DELIVERED' AND om.O_date >= ?
     `;
   const monthlySalesQuery = `
         SELECT SUM(od.Odetails_price * od.Odetails_Qty) as totalSales
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
-        WHERE om.O_status = 'Delivered' AND om.O_date >= ?
+        WHERE om.O_status = 'DELIVERED' AND om.O_date >= ?
     `;
   const totalOrdersQuery = `
         SELECT COUNT(*) as totalOrders
@@ -170,15 +170,15 @@ exports.getDashboardData = (req, res) => {
             }
             const query = `
                     SELECT 
-    od.Product_id,
-    ${tableName}.name as productName,
-    '${tableName}' as category,
-    od.Odetails_Qty as totalSold,
-    (od.Odetails_price * od.Odetails_Qty) as totalRevenue
-FROM order_details od
-JOIN order_master om ON od.O_id = om.O_id
-LEFT JOIN ${tableName} ON od.Product_id = ${tableName}.id
-WHERE om.O_status = 'Delivered'
+                  od.Product_id,
+                  ${tableName}.name as productName,
+                  '${tableName}' as category,
+                  od.Odetails_Qty as totalSold,
+                  (od.Odetails_price * od.Odetails_Qty) as totalRevenue
+              FROM order_details od
+              JOIN order_master om ON od.O_id = om.O_id
+              LEFT JOIN ${tableName} ON od.Product_id = ${tableName}.id
+              WHERE om.O_status = 'Delivered'
                 `;
             db.query(query, (err, result) => {
               if (err) {
@@ -878,49 +878,42 @@ exports.getInventoryReport = (req, res) => {
 
 // Order Report Data
 exports.getOrderReport = (req, res) => {
-  const { startDate, endDate, status } = req.query;
+  const { startDate, endDate, status, compareStartDate, compareEndDate } = req.query;
 
-  // Query for status summary (already exists)
-  let statusQuery = `
-    SELECT 
-      O_status as status,
-      COUNT(*) as count
-    FROM order_master om
-  `;
+  // Input validation
+  if (!startDate || !endDate) {
+    return res.status(400).json({
+      success: false,
+      message: "Start date and end date are required",
+    });
+  }
 
-  // Query for shipping details (already exists)
-  let shippingDetailsQuery = `
-    SELECT 
-      om.O_id,
-      om.C_id,
-      c.C_address as customerAddress,
-      c.C_pincode as customerPincode,
-      dp.D_NAME as deliveryPerson
-    FROM order_master om
-    JOIN customer c ON om.C_id = c.C_id
-    LEFT JOIN deliveries d ON om.O_id = d.O_id
-    LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
-  `;
+  if (status && !["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid status value. Must be one of: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED",
+    });
+  }
 
-  // New query for order count
-  let orderCountQuery = `
-    SELECT 
-      COUNT(DISTINCT om.O_id) as orderCount
-    FROM order_master om
-  `;
+  // Validate date formats (basic check for YYYY-MM-DD)
+  const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
+  const datesToValidate = [startDate, endDate, compareStartDate, compareEndDate].filter(Boolean);
+  for (const date of datesToValidate) {
+    if (!dateFormatRegex.test(date)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid date format for ${date}. Must be YYYY-MM-DD`,
+      });
+    }
+  }
 
-  // New query for total revenue
-  let totalRevenueQuery = `
-    SELECT 
-      SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
-    FROM order_master om
-    JOIN order_details od ON om.O_id = od.O_id
-  `;
-
+  // Base query parameters and WHERE clauses
   const queryParams = [];
-  let whereClauses = [];
+  const compareQueryParams = [];
+  const whereClauses = [];
+  const compareWhereClauses = [];
 
-  // Build WHERE clauses for all queries
+  // Build WHERE clauses for current period
   if (startDate) {
     whereClauses.push("om.O_date >= ?");
     queryParams.push(startDate);
@@ -929,72 +922,173 @@ exports.getOrderReport = (req, res) => {
     whereClauses.push("om.O_date <= ?");
     queryParams.push(endDate);
   }
-  if (
-    status &&
-    ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)
-  ) {
+  if (status) {
     whereClauses.push("om.O_status = ?");
     queryParams.push(status);
   }
 
-  // Append WHERE clauses to all queries
-  if (whereClauses.length > 0) {
-    const whereClause = " WHERE " + whereClauses.join(" AND ");
-    statusQuery += whereClause;
-    shippingDetailsQuery += whereClause;
-    orderCountQuery += whereClause;
-    totalRevenueQuery += whereClause;
+  // Build WHERE clauses for comparison period
+  if (compareStartDate) {
+    compareWhereClauses.push("om.O_date >= ?");
+    compareQueryParams.push(compareStartDate);
+  }
+  if (compareEndDate) {
+    compareWhereClauses.push("om.O_date <= ?");
+    compareQueryParams.push(compareEndDate);
   }
 
-  // Finalize queries
-  statusQuery += ` GROUP BY O_status`;
-  shippingDetailsQuery += ` LIMIT 10`;
+  // Add the "not cancelled" condition to queries that need it
+  const notCancelledClause = "om.O_status != 'CANCELLED'";
+  const whereClausesWithNotCancelled = [...whereClauses, notCancelledClause];
+  const compareWhereClausesWithNotCancelled = [...compareWhereClauses, notCancelledClause];
 
-  console.log("statusQuery:", statusQuery, queryParams);
-  console.log("shippingDetailsQuery:", shippingDetailsQuery, queryParams);
-  console.log("orderCountQuery:", orderCountQuery, queryParams);
-  console.log("totalRevenueQuery:", totalRevenueQuery, queryParams);
+  // Construct WHERE clause strings
+  const whereClause = whereClauses.length > 0 ? " WHERE " + whereClauses.join(" AND ") : "";
+  const whereClauseWithNotCancelled = whereClausesWithNotCancelled.length > 0 ? " WHERE " + whereClausesWithNotCancelled.join(" AND ") : "";
+  const compareWhereClauseWithNotCancelled = compareWhereClausesWithNotCancelled.length > 0 ? " WHERE " + compareWhereClausesWithNotCancelled.join(" AND ") : "";
+
+  // Define all queries
+  const queries = {
+    // Query 1: Status summary
+    statusSummary: {
+      sql: `
+        SELECT 
+          O_status as status,
+          COUNT(*) as count
+        FROM order_master om
+        ${whereClause}
+        GROUP BY O_status
+      `,
+      params: queryParams,
+    },
+
+    // Query 2: Shipping details
+    shippingDetails: {
+      sql: `
+        SELECT 
+          om.O_id,
+          om.O_date,
+          om.C_id,
+          COALESCE(c.C_username, 'Anonymous') as customerName,
+          c.c_mobile as customerphone,
+          c.C_address as customerAddress,
+          c.C_pincode as customerPincode,
+          dp.D_NAME as deliveryPerson
+        FROM order_master om
+        LEFT JOIN customer c ON om.C_id = c.C_id
+        LEFT JOIN deliveries d ON om.O_id = d.O_id
+        LEFT JOIN delivery_persons dp ON d.D_id = dp.D_id
+        ${whereClause}
+        ORDER BY om.O_date DESC
+      `,
+      params: queryParams,
+    },
+
+    // Query 3: Order count (current period)
+    orderCount: {
+      sql: `
+        SELECT 
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${whereClause}
+      `,
+      params: queryParams,
+    },
+
+    // Query 4: Total revenue
+    totalRevenue: {
+      sql: `
+        SELECT 
+          SUM(od.ODETAILS_PRICE * od.ODETAILS_QTY) as totalRevenue
+        FROM order_master om
+        JOIN order_details od ON om.O_id = od.O_id
+        ${whereClause}
+      `,
+      params: queryParams,
+    },
+
+    // Query 5: Orders over time (current period)
+    ordersOverTime: {
+      sql: `
+        SELECT 
+          DATE(om.O_date) as orderDate,
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${whereClauseWithNotCancelled}
+        GROUP BY DATE(om.O_date)
+        ORDER BY DATE(om.O_date)
+      `,
+      params: queryParams,
+    },
+
+    // Query 6: Orders over time (comparison period)
+    compareOrdersOverTime: {
+      sql: `
+        SELECT 
+          DATE(om.O_date) as orderDate,
+          COUNT(DISTINCT om.O_id) as orderCount
+        FROM order_master om
+        ${compareWhereClauseWithNotCancelled}
+        GROUP BY DATE(om.O_date)
+        ORDER BY DATE(om.O_date)
+      `,
+      params: compareQueryParams,
+    },
+
+    // Query 7: Order count (comparison period)
+    compareOrderCount: {
+      sql: `
+        SELECT 
+          COUNT(DISTINCT om.O_id) as compareOrderCount
+        FROM order_master om
+        ${compareWhereClauseWithNotCancelled}
+      `,
+      params: compareQueryParams,
+    },
+  };
+
+  // Log queries for debugging
+  Object.entries(queries).forEach(([key, { sql, params }]) => {
+    console.log(`${key} Query:`, sql);
+    console.log(`${key} Params:`, params);
+  });
 
   // Execute all queries in parallel
-  Promise.all([
-    new Promise((resolve, reject) =>
-      db.query(statusQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(shippingDetailsQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(orderCountQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-    new Promise((resolve, reject) =>
-      db.query(totalRevenueQuery, queryParams, (err, result) =>
-        err ? reject(err) : resolve(result)
-      )
-    ),
-  ])
-    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult]) => {
-      // Extract orderCount and totalRevenue from results
-      const orderCount = orderCountResult[0]?.orderCount || 0;
-      const totalRevenue = totalRevenueResult[0]?.totalRevenue || 0;
-
-      res.json({
+  Promise.all(
+    Object.entries(queries).map(([key, { sql, params }]) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, result) => {
+          if (err) {
+            console.error(`Error executing ${key} query:`, err);
+            reject(new Error(`Failed to execute ${key} query: ${err.sqlMessage || err.message}`));
+          } else {
+            resolve(result);
+          }
+        });
+      })
+    )
+  )
+    .then(([statusSummary, shippingDetails, orderCountResult, totalRevenueResult, ordersOverTime, compareOrdersOverTime, compareOrderCountResult]) => {
+      // Process results
+      const response = {
+        success: true,
         statusSummary: statusSummary || [],
         shippingDetails: shippingDetails || [],
-        orderCount: orderCount,
-        totalRevenue: totalRevenue,
-      });
+        orderCount: orderCountResult[0]?.orderCount || 0,
+        totalRevenue: totalRevenueResult[0]?.totalRevenue || 0,
+        ordersOverTime: ordersOverTime || [],
+        compareOrdersOverTime: compareOrdersOverTime || [],
+        compareOrderCount: compareOrderCountResult[0]?.compareOrderCount || 0,
+      };
+
+      res.json(response);
     })
     .catch((err) => {
       console.error("Error fetching order report:", err);
       res.status(500).json({
-        error: "Database error",
-        details: err.sqlMessage || err.message,
+        success: false,
+        message: "Failed to fetch order report",
+        error: err.message,
       });
     });
 };

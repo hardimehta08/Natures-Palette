@@ -894,7 +894,7 @@
                                         <th>Product Name</th>
                                         <th>Category (ID - Name)</th>
                                         <th>Stock</th>
-                                        <th>Action</th>
+                                        <!-- <th>Action</th> -->
                                         <!-- <th>Action</th> -->
                                     </tr>
                                 </thead>
@@ -942,66 +942,88 @@
                         </div>
                     </div>
             
-            
+                    
                     <div id="order-report" class="report-subsection hidden">
                         <div class="report-section">
-                            <h1>Order Report</h4>
-                            
-                            <h4>Order Summary</h4>
-                            <div class="stats">
-                                <!-- Order Summary Report Metrics -->
-                                <div class="stat-card">Order Count: <span id="totalOrderCount">0</span></div>
-                                <div class="stat-card">Total Revenue: <span id="totalRevenue">0</span></div>
-                                <div class="stat-card">Average Order Value: <span id="avgOrderValue">0</span></div>
-                                <div class="stat-card">Refunds: <span id="refundCount">0</span></div>
-                                <!-- Order Summary Metrics -->
-                                <div class="stat-card">Placed Orders: <span id="placedOrders">0</span></div>
-                                <div class="stat-card">Processing Orders: <span id="pendingOrders">0</span></div>
-                                <div class="stat-card">Delivered Orders: <span id="deliveredOrders">0</span></div>
-                                <div class="stat-card">Canceled Orders: <span id="canceledOrders">0</span></div>
+                          <h1>Order Report</h1>
+                      
+                          <h4>Order Summary</h4>
+                          <div class="stats">
+                            <div class="stat-card">Total Orders: <span id="totalOrders">0</span></div>
+                            <div class="stat-card">Total Order Count: <span id="totalOrderCount">0</span></div>
+                            <div class="stat-card">Total Revenue: <span id="totalRevenue">0</span></div>
+                            <div class="stat-card">Average Order Value: <span id="avgOrderValue">0</span></div>
+                            <div class="stat-card">Refunds: <span id="refundCount">0</span></div>
+                            <div class="stat-card">Placed Orders: <span id="placedOrders">0</span></div>
+                            <div class="stat-card">Processing Orders: <span id="pendingOrders">0</span></div>
+                            <div class="stat-card">Delivered Orders: <span id="deliveredOrders">0</span></div>
+                            <div class="stat-card">Completed Orders: <span id="completedOrders">0</span></div>
+                            <div class="stat-card">Canceled Orders: <span id="canceledOrders">0</span></div>
+                          </div>
+                      
+                          <div class="filter-container">
+                            <label for="orderDateRange">Date Range:</label>
+                            <select id="orderDateRange" onchange="handleDateRangeChangeOrder()">
+                              <option value="all">All Dates</option>
+                              <option value="today">Today</option>
+                              <option value="last7days">Last 7 Days</option>
+                              <option value="last30days">Last 30 Days</option>
+                              <option value="custom">Custom Range</option>
+                            </select>
+                            <div id="customDateRange" style="display: none;">
+                              <label for="orderStartDate">Start Date:</label>
+                              <input type="date" id="orderStartDate" min="2024-01-01">
+                              <label for="orderEndDate">End Date:</label>
+                              <input type="date" id="orderEndDate" min="2024-01-01">
                             </div>
-                              <div class="filter-container">
-                                <label for="orderDateRange">Date Range:</label>
-                                <select id="orderDateRange" onchange="handleDateRangeChangeOrder()">
-                                    <option value="all">All Dates</option>
-                                    <option value="today">Today</option>
-                                    <option value="last7days">Last 7 Days</option>
-                                    <option value="last30days">Last 30 Days</option>
-                                    <option value="custom">Custom Range</option>
-                                </select>
-                                <div id="customDateRange" style="display: none;">
-                                    <label for="orderStartDate">Start Date:</label>
-                                    <input type="date" id="orderStartDate" min="2020-01-01">
-                                    <label for="orderEndDate">End Date:</label>
-                                    <input type="date" id="orderEndDate" min="2020-01-01">
-                                    <button onclick="fetchOrderReport()">Apply</button>
-                                </div>
+                            <select id="compareDateRange" onchange="handleCompareDateRangeChange()">
+                                <option value="none">No Comparison</option>
+                                <option value="previousPeriod">Previous Period</option>
+                                <option value="custom">Custom</option>
+                              </select>
+                              <div id="customCompareDates" style="display: none;">
+                                <label for="compareStartDate">Compare Start Date:</label>
+                                <input type="date" id="compareStartDate" name="compareStartDate">
+                                <label for="compareEndDate">Compare End Date:</label>
+                                <input type="date" id="compareEndDate" name="compareEndDate">
+                              </div>
+                            <button onclick="fetchOrderReport()">Apply</button>
+                          </div>
+                      
+                          <div class="export-buttons">
+                            <button class="btn primary" onclick="exportOrderReport('csv')">Export as CSV</button>
+                            <button class="btn primary" onclick="exportOrderReport('pdf')">Export as PDF</button>
+                          </div>
+                      
+                          <div class="charts-container" style="display: flex; justify-content: space-evenly;">
+                            <div class="chart-wrapper1">
+                              <h5>Order Status Summary</h5>
+                              <canvas id="orderSummaryPieChart" width="400" height="400" style="box-sizing: border-box; display: block; height: 300px; width: 300px;"></canvas>
                             </div>
-                            <div class="export-buttons">
-                                <button class="btn primary" onclick="exportOrderReport('csv')">Export as CSV</button>
-                                <button class="btn primary" onclick="exportOrderReport('pdf')">Export as PDF</button>
-                            </div>
-                            <div class="charts-container">
-                                <div class="chart-wrapper">
-                                    <h5>Order Status Summary</h5>
-                                    <canvas id="orderSummaryPieChart" width="300" height="300" style="box-sizing: border-box; display: block; height: 300px; width: 300px;"></canvas>
-                                </div>
-                            </div>
-                            <h5>Order Shipping Details</h5>
-                            <table id="shippingDetailsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Order ID</th>
-                                        <th>Customer ID</th>
-                                        <th>Address</th>
-                                        <th>Pincode</th>
-                                        <th>Delivery Person</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="shippingDetails"></tbody>
-                            </table>
+                            <div class="chart-wrapper2">
+                                <h5>Orders Over Time</h5>
+                                <div id="ordersOverTimeSummary"></div>
+                                <canvas id="ordersOverTimeChart" width="400" height="300"></canvas>
+                              </div>
+                          </div>
+                      
+                          <h5>Order Shipping Details</h5>
+                          <table id="shippingDetailsTable">
+                            <thead>
+                              <tr>
+                                <th>Order ID</th>
+                                <th>Customer Name</th>
+                                <th>Contact Number</th>
+                                <th>Order Date</th>
+                                <th>Address</th>
+                                <th>Pincode</th>
+                                <th>Delivery Person</th>
+                              </tr>
+                            </thead>
+                            <tbody id="shippingDetails"></tbody>
+                          </table>
+                          <div id="shippingPagination" style="margin-top: 10px;"></div>
                         </div>
-                        
                     </div>
                 </div>
             </div> 
@@ -1103,7 +1125,8 @@
     <script src="../js/delivery.js"></script>
     <script src="../js/review.js"></script>
     <script src="../js/payment.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     showSection('dashboard'); // Show dashboard by default

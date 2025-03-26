@@ -125,7 +125,7 @@ function updateBestSellersChart() {
       },
       maintainAspectRatio: false, // Allow the chart to adjust its height
     },
-    height: 400, // Set the height of the chart
+    height:400, // Set the height of the chart
   });
 
   const popup = document.getElementById("popup");
@@ -418,7 +418,7 @@ let salesByProductChart = null;
 let salesByCategoryChart = null;
 let customerDemographicsChart = null;
 let customerPurchaseHistoryChart = null;
-
+let ordersOverTimeChart=null;
 // let currentReportType = 'order-report';
 
 // Initialize on page load
@@ -1303,9 +1303,6 @@ function fetchInventoryReport(page = 1) {
             <td>${product.productName}</td>
             <td>${product.category}</td>
             <td>${product.stock}</td>
-            <td>
-              <a href="/update-stock?productId=${product.productId}&category=${encodeURIComponent(product.category)}" class="update-link">Update</a>
-            </td>
           </tr>
         `;
         lowStockTbody.innerHTML += row;
@@ -1550,88 +1547,141 @@ function exportInventoryReport(format) {
 }
 
 function handleDateRangeChangeOrder() {
-  const dateRange = document.getElementById('orderDateRange').value;
-  const customDateRange = document.getElementById('customDateRange');
-  const startDateInput = document.getElementById('orderStartDate');
-  const endDateInput = document.getElementById('orderEndDate');
+  const dateRange = document.getElementById("orderDateRange").value;
+  const customDateRange = document.getElementById("customDateRange");
+  const startDateInput = document.getElementById("orderStartDate");
+  const endDateInput = document.getElementById("orderEndDate");
 
-  // Set yesterday's date as the max for end date
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  const maxDate = yesterday.toISOString().split('T')[0];
-  endDateInput.setAttribute('max', maxDate);
+  const maxDate = yesterday.toISOString().split("T")[0];
+  endDateInput.setAttribute("max", maxDate);
+  startDateInput.setAttribute("max", maxDate);
 
-  if (dateRange === 'custom') {
-      customDateRange.style.display = 'block';
-      // Set default values for custom range
-      startDateInput.value = '2020-01-01'; // Default start date
-      endDateInput.value = maxDate; // Default end date (yesterday)
+  if (dateRange === "custom") {
+    customDateRange.style.display = "block";
+    startDateInput.value = "2024-01-01"; // Updated to 2024-01-01 as per your requirement
+    endDateInput.value = maxDate;
   } else {
-      customDateRange.style.display = 'none';
-      // Fetch feedback immediately for non-custom ranges
-      fetchOrderReport();
+    customDateRange.style.display = "none";
+    fetchOrderReport();
   }
 }
-// Fetch Order Report
+
+function handleCompareDateRangeChange() {
+  const compareDateRange = document.getElementById("compareDateRange").value;
+  const customCompareDates = document.getElementById("customCompareDates");
+  const compareStartDate = document.getElementById("compareStartDate");
+  const compareEndDate = document.getElementById("compareEndDate");
+
+  if (!customCompareDates) {
+    console.warn("Element with ID 'customCompareDates' not found in the DOM.");
+    return;
+  }
+
+  if (compareDateRange === "custom") {
+    customCompareDates.style.display = "block";
+    compareStartDate.style.border = "";
+    compareEndDate.style.border = "";
+    if (!compareStartDate.value || !compareEndDate.value) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      compareEndDate.value = yesterday.toISOString().split("T")[0];
+      compareStartDate.value = "2024-01-01";
+    }
+  } else {
+    customCompareDates.style.display = "none";
+  }
+}
+
 function fetchOrderReport() {
   const dateRange = document.getElementById("orderDateRange").value;
-  let startDate, endDate;
+  const compareDateRange = document.getElementById("compareDateRange")?.value || "none";
+  let startDate, endDate, compareStartDate, compareEndDate;
 
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   const dayBeforeYesterday = new Date(yesterday);
   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
-  const maxDate = yesterday.toISOString().split("T")[0]; // "2025-03-22"
-  const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // "2025-03-21"
-  const minDate = "2020-01-01";
+  const maxDate = yesterday.toISOString().split("T")[0];
+  const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0];
+  const minDate = "2024-01-01";
 
-  // Dynamically set max attributes for date inputs
   document.getElementById("orderStartDate").max = maxStartDate;
   document.getElementById("orderEndDate").max = maxDate;
+  document.getElementById("compareStartDate").max = maxStartDate;
+  document.getElementById("compareEndDate").max = maxDate;
 
-  if (dateRange === "today") {
-    startDate = endDate = maxDate;
-  } else if (dateRange === "last7days") {
-    endDate = maxDate;
-    startDate = new Date(yesterday.setDate(yesterday.getDate() - 7))
-      .toISOString()
-      .split("T")[0];
-  } else if (dateRange === "last30days") {
-    endDate = maxDate;
-    startDate = new Date(yesterday.setDate(yesterday.getDate() - 30))
-      .toISOString()
-      .split("T")[0];
-  } else if (dateRange === "custom") {
-    startDate = document.getElementById("orderStartDate").value;
-    endDate = document.getElementById("orderEndDate").value;
+  const validateDates = (start, end, min, max, maxStart, type = "Order") => {
+    const startDateObj = new Date(start);
+    const endDateObj = new Date(end);
+    if (!start || !end) {
+      alert(`Please select both ${type} start and end dates.`);
+      return false;
+    }
+    if (startDateObj < new Date(min)) {
+      alert(`${type} start date cannot be before January 1, 2024.`);
+      return false;
+    }
+    if (startDateObj > new Date(maxStart)) {
+      alert(`${type} start date cannot be after ${maxStart} (day before yesterday).`);
+      return false;
+    }
+    if (endDateObj > new Date(max)) {
+      alert(`${type} end date cannot be after ${max} (yesterday).`);
+      return false;
+    }
+    if (startDateObj > endDateObj) {
+      alert(`${type} start date cannot be after end date.`);
+      return false;
+    }
+    return true;
+  };
 
-    if (!startDate || !endDate) {
-      alert("Please select both start and end dates.");
+  switch (dateRange) {
+    case "all":
+      startDate = minDate;
+      endDate = maxDate;
+      break;
+    case "today":
+      startDate = endDate = maxDate;
+      break;
+    case "last7days":
+      endDate = maxDate;
+      endDate = maxDate;
+      startDate = new Date(yesterday.setDate(yesterday.getDate() - 7)).toISOString().split("T")[0];
+      break;
+    case "last30days":
+      endDate = maxDate;
+      endDate = maxDate;
+    startDate = new Date(yesterday.setDate(yesterday.getDate() - 30)).toISOString().split("T")[0];
+      break;
+    case "custom":
+      startDate = document.getElementById("orderStartDate").value;
+      endDate = document.getElementById("orderEndDate").value;
+      if (!validateDates(startDate, endDate, minDate, maxDate, maxStartDate)) {
+        return;
+      }
+      break;
+    default:
+      console.warn("Invalid date range selected:", dateRange);
       return;
-    }
+  }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const min = new Date(minDate);
-    const max = new Date(maxDate);
-    const maxStart = new Date(maxStartDate);
-
-    if (start < min) {
-      alert("Start date cannot be before January 1, 2020.");
-      return;
-    }
-    if (start > maxStart) {
-      alert(`Start date cannot be after ${maxStartDate} (day before yesterday).`);
-      return;
-    }
-    if (end > max) {
-      alert(`End date cannot be after ${maxDate} (yesterday).`);
-      return;
-    }
-    if (start > end) {
-      alert("Start date cannot be after end date.");
+  if (compareDateRange === "previousPeriod") {
+    const daysDiff = (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24);
+    compareEndDate = new Date(startDate);
+    compareEndDate.setDate(compareEndDate.getDate() - 1);
+    compareEndDate = compareEndDate.toISOString().split("T")[0];
+    compareStartDate = new Date(compareEndDate);
+    compareStartDate.setDate(compareStartDate.getDate() - daysDiff);
+    compareStartDate = compareStartDate.toISOString().split("T")[0];
+  } else if (compareDateRange === "custom") {
+    compareStartDate = document.getElementById("compareStartDate").value;
+    compareEndDate = document.getElementById("compareEndDate").value;
+    if (!validateDates(compareStartDate, compareEndDate, minDate, maxDate, maxStartDate, "Comparison")) {
       return;
     }
   }
@@ -1639,26 +1689,54 @@ function fetchOrderReport() {
   const queryParams = new URLSearchParams();
   if (startDate) queryParams.append("startDate", startDate);
   if (endDate) queryParams.append("endDate", endDate);
+  if (compareStartDate) queryParams.append("compareStartDate", compareStartDate);
+  if (compareEndDate) queryParams.append("compareEndDate", compareEndDate);
 
-  fetch(`/report/order-report?${queryParams.toString()}`)
-    .then((response) => response.json())
+  fetch(`/report/order-report?${queryParams.toString()}`, {
+    credentials: "include",
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch order report: ${response.status}`);
+      }
+      return response.json();
+    })
     .then((data) => {
       console.log("Order Report Data:", data);
+      console.log("Status Summary:", data.statusSummary);
 
-      // Existing Order Summary Metrics
-      document.getElementById("placedOrders").textContent =
-        data.statusSummary.find((item) => item.status === "PLACED")?.count || 0;
-      document.getElementById("pendingOrders").textContent =
-        data.statusSummary.find((item) => item.status === "PROCESSING")?.count || 0;
-      document.getElementById("deliveredOrders").textContent =
-        data.statusSummary.find((item) => item.status === "DELIVERED")?.count || 0;
-      document.getElementById("canceledOrders").textContent =
-        data.statusSummary.find((item) => item.status === "CANCELLED")?.count || 0;
+      const updateElement = (id, value) => {
+        const element = document.getElementById(id);
+        console.log(`Updating ${id} with value: ${value}`);
+        if (element) element.textContent = value;
+      };
 
-      // Order Status Chart
+      if (data.orderCount === 0) {
+        const summaryContainer = document.getElementById("statusSummaryContainer");
+        if (summaryContainer) {
+          summaryContainer.innerHTML = "<p>No orders found for the selected date range.</p>";
+        }
+      }
+
+      updateElement("totalOrders", data.orderCount || 0);
+      updateElement("totalOrderCount", data.orderCount || 0);
+      updateElement("pendingOrders", data.statusSummary.find((item) => item.status === "PROCESSING")?.count || 0);
+      updateElement("completedOrders", data.statusSummary.find((item) => item.status === "DELIVERED")?.count || 0);
+      updateElement("deliveredOrders", data.statusSummary.find((item) => item.status === "DELIVERED")?.count || 0);
+      updateElement("canceledOrders", data.statusSummary.find((item) => item.status === "CANCELLED")?.count || 0);
+      updateElement("placedOrders", data.statusSummary.find((item) => item.status === "PLACED")?.count || 0);
+
+      const orderCount = data.orderCount || 0;
+      const totalRevenue = data.totalRevenue || 0;
+      updateElement("totalRevenue", totalRevenue);
+      updateElement("avgOrderValue", orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0);
+      updateElement("refundCount", data.statusSummary.find((item) => item.status === "CANCELLED")?.count || 0);
+
+      let orderStatusChart = Chart.getChart("orderSummaryPieChart");
       if (orderStatusChart) orderStatusChart.destroy();
+
       const statusCtx = document.getElementById("orderSummaryPieChart").getContext("2d");
-      orderStatusChart = new Chart(statusCtx, {
+      new Chart(statusCtx, {
         type: "pie",
         data: {
           labels: data.statusSummary.map((item) => item.status),
@@ -1672,46 +1750,158 @@ function fetchOrderReport() {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: true,
         },
       });
 
-      // Shipping Details Table
-      const shippingTbody = document.getElementById("shippingDetails");
-      shippingTbody.innerHTML = "";
-      data.shippingDetails.forEach((item) => {
-        const row = `
-          <tr>
-            <td>${item.O_id}</td>
-            <td>${item.C_id}</td>
-            <td>${item.customerAddress}</td>
-            <td>${item.customerPincode}</td>
-            <td>${item.deliveryPerson || "Not Assigned"}</td>
-          </tr>
+      let existingOrdersOverTimeChart = Chart.getChart("ordersOverTimeChart");
+      if (existingOrdersOverTimeChart) existingOrdersOverTimeChart.destroy();
+
+      const ordersOverTimeCtx = document.getElementById("ordersOverTimeChart").getContext("2d");
+      const currentOrderCount = data.orderCount || 0;
+      const compareOrderCount = data.compareOrderCount || 0;
+      let percentageChange = 0;
+      let changeDirection = "";
+      if (compareOrderCount > 0) {
+        percentageChange = ((currentOrderCount - compareOrderCount) / compareOrderCount * 100).toFixed(2);
+        changeDirection = percentageChange >= 0 ? "↑" : "↓";
+        percentageChange = Math.abs(percentageChange);
+      }
+
+      const ordersOverTimeSummary = document.getElementById("ordersOverTimeSummary");
+      if (ordersOverTimeSummary) {
+        ordersOverTimeSummary.innerHTML = `
+          <div style="font-size: 24px; font-weight: bold;">${currentOrderCount}</div>
+          <div style="color: ${changeDirection === '↑' ? 'green' : 'red'};">
+            ${changeDirection} ${percentageChange}% from ${compareOrderCount}
+          </div>
         `;
-        shippingTbody.innerHTML += row;
+      }
+
+      const currentLabel = `${new Date(startDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })} - ${new Date(endDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })}, ${new Date(endDate).getFullYear()}`;
+      const compareLabel =
+        compareStartDate && compareEndDate
+          ? `${new Date(compareStartDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })} - ${new Date(compareEndDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}, ${new Date(compareEndDate).getFullYear()}`
+          : "No Comparison";
+
+      const validateChartData = (items) =>
+        Array.isArray(items)
+          ? items
+              .filter(
+                (item) =>
+                  item &&
+                  typeof item.orderDate === "string" &&
+                  !isNaN(new Date(item.orderDate).getTime()) &&
+                  typeof item.orderCount === "number" &&
+                  !isNaN(item.orderCount)
+              )
+              .map((item) => ({
+                x: item.orderDate,
+                y: item.orderCount,
+              }))
+          : [];
+
+      const currentData = validateChartData(data.ordersOverTime);
+      const compareData = validateChartData(data.compareOrdersOverTime);
+
+      new Chart(ordersOverTimeCtx, {
+        type: "line",
+        data: {
+          datasets: [
+            {
+              label: compareLabel,
+              data: compareData,
+              borderColor: "#ff6384",
+              backgroundColor: "rgba(255, 99, 132, 0.2)",
+              borderWidth: 2,
+              fill: true,
+              tension: 0.2,
+              hidden: compareData.length === 0,
+              point: { radius: 4, hitRadius: 10, hoverRadius: 6 },
+            },
+            {
+              label: currentLabel,
+              data: currentData,
+              borderColor: "#36a2eb",
+              backgroundColor: "rgba(54, 162, 235, 0.2)",
+              borderWidth: 2,
+              fill: true,
+              tension: 0.2,
+              point: { radius: 4, hitRadius: 10, hoverRadius: 6 },
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              type: "time",
+              time: {
+                unit: "day",
+                displayFormats: { day: "MMM d" },
+              },
+              title: { display: true, text: "Date" },
+            },
+            y: {
+              title: { display: true, text: "Order Count" },
+              beginAtZero: true,
+            },
+          },
+          plugins: {
+            legend: { display: true, position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: (context) => `${context.dataset.label}: ${context.parsed.y} orders`,
+              },
+            },
+          },
+        },
       });
 
-      // New Order Summary Report Metrics
-      // Order Count: Total orders in the date range
-      const orderCount = data.orderCount || 0;
-      document.getElementById("totalOrderCount").textContent = orderCount;
-
-      // Total Revenue: Sum of (price * quantity) for all order details
-      const totalRevenue = data.totalRevenue || 0;
-      document.getElementById("totalRevenue").textContent = totalRevenue;
-
-      // Average Order Value: Total revenue / order count
-      const avgOrderValue = orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : 0;
-      document.getElementById("avgOrderValue").textContent = avgOrderValue;
-
-      // Refunds: Count of orders with status 'CANCELLED'
-      const refundCount = data.statusSummary.find((item) => item.status === "CANCELLED")?.count || 0;
-      document.getElementById("refundCount").textContent = refundCount;
+      const shippingTbody = document.getElementById("shippingDetails");
+      shippingTbody.innerHTML = data.shippingDetails
+        .map((item) => {
+          const formattedDate = formatDate(item.O_date);
+          return `
+            <tr>
+              <td>${item.O_id}</td>
+              <td>${item.customerName}</td>
+              <td>${item.customerphone || "N/A"}</td>
+              <td>${formattedDate}</td>
+              <td>${item.customerAddress}</td>
+              <td>${item.customerPincode}</td>
+              <td>${item.deliveryPerson || "Not Assigned"}</td>
+            </tr>
+          `;
+        })
+        .join("");
     })
-    .catch((error) => console.error("Error fetching order report:", error));
+    .catch((error) => {
+      console.error("Error fetching order report:", error);
+      alert("Failed to fetch order report. Please try again later.");
+    });
 }
 
-// Export Order Report
+function formatDate(dateString) {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function exportOrderReport(format) {
   const dateRange = document.getElementById("orderDateRange").value;
   let startDate, endDate;
@@ -1721,20 +1911,22 @@ function exportOrderReport(format) {
   yesterday.setDate(today.getDate() - 1);
   const dayBeforeYesterday = new Date(yesterday);
   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
-  const maxDate = yesterday.toISOString().split("T")[0]; // "2025-03-22"
-  const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // "2025-03-21"
-  const minDate = "2020-01-01";
+  const maxDate = yesterday.toISOString().split("T")[0];
+  const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0];
+  const minDate = "2024-01-01"; // Updated to 2024-01-01 as per your requirement
 
   if (dateRange === "today") {
     startDate = endDate = maxDate;
   } else if (dateRange === "last7days") {
     endDate = maxDate;
-    startDate = new Date(yesterday.setDate(yesterday.getDate() - 7))
+    const last7DaysStart = new Date(yesterday);
+    startDate = last7DaysStart.setDate(last7DaysStart.getDate() - 7)
       .toISOString()
       .split("T")[0];
   } else if (dateRange === "last30days") {
     endDate = maxDate;
-    startDate = new Date(yesterday.setDate(yesterday.getDate() - 30))
+    const last30DaysStart = new Date(yesterday);
+    startDate = last30DaysStart.setDate(last30DaysStart.getDate() - 30)
       .toISOString()
       .split("T")[0];
   } else if (dateRange === "custom") {
@@ -1753,7 +1945,7 @@ function exportOrderReport(format) {
     const maxStart = new Date(maxStartDate);
 
     if (start < min) {
-      alert("Start date cannot be before January 1, 2020.");
+      alert("Start date cannot be before January 1, 2024.");
       return;
     }
     if (start > maxStart) {
@@ -1806,6 +1998,118 @@ function exportOrderReport(format) {
       alert(`Failed to export order report as ${format.toUpperCase()}.`);
     });
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const orderDateRangeSelect = document.getElementById("orderDateRange");
+  const compareDateRangeSelect = document.getElementById("compareDateRange");
+
+  if (orderDateRangeSelect) {
+    orderDateRangeSelect.addEventListener("change", handleDateRangeChangeOrder);
+    handleDateRangeChangeOrder();
+  }
+
+  if (compareDateRangeSelect) {
+    compareDateRangeSelect.addEventListener("change", handleCompareDateRangeChange);
+    handleCompareDateRangeChange();
+  }
+
+  fetchOrderReport();
+});
+// Export Order Report
+// function exportOrderReport(format) {
+//   const dateRange = document.getElementById("orderDateRange").value;
+//   let startDate, endDate;
+
+//   const today = new Date();
+//   const yesterday = new Date(today);
+//   yesterday.setDate(today.getDate() - 1);
+//   const dayBeforeYesterday = new Date(yesterday);
+//   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
+//   const maxDate = yesterday.toISOString().split("T")[0]; // "2025-03-22"
+//   const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // "2025-03-21"
+//   const minDate = "2020-01-01";
+
+//   if (dateRange === "today") {
+//     startDate = endDate = maxDate;
+//   } else if (dateRange === "last7days") {
+//     endDate = maxDate;
+//     startDate = new Date(yesterday.setDate(yesterday.getDate() - 7))
+//       .toISOString()
+//       .split("T")[0];
+//   } else if (dateRange === "last30days") {
+//     endDate = maxDate;
+//     startDate = new Date(yesterday.setDate(yesterday.getDate() - 30))
+//       .toISOString()
+//       .split("T")[0];
+//   } else if (dateRange === "custom") {
+//     startDate = document.getElementById("orderStartDate").value;
+//     endDate = document.getElementById("orderEndDate").value;
+
+//     if (!startDate || !endDate) {
+//       alert("Please select both start and end dates.");
+//       return;
+//     }
+
+//     const start = new Date(startDate);
+//     const end = new Date(endDate);
+//     const min = new Date(minDate);
+//     const max = new Date(maxDate);
+//     const maxStart = new Date(maxStartDate);
+
+//     if (start < min) {
+//       alert("Start date cannot be before January 1, 2020.");
+//       return;
+//     }
+//     if (start > maxStart) {
+//       alert(`Start date cannot be after ${maxStartDate} (day before yesterday).`);
+//       return;
+//     }
+//     if (end > max) {
+//       alert(`End date cannot be after ${maxDate} (yesterday).`);
+//       return;
+//     }
+//     if (start > end) {
+//       alert("Start date cannot be after end date.");
+//       return;
+//     }
+//   }
+
+//   const queryParams = new URLSearchParams();
+//   if (startDate) queryParams.append("startDate", startDate);
+//   if (endDate) queryParams.append("endDate", endDate);
+
+//   const endpoint =
+//     format === "csv"
+//       ? "/report/export-order-report-csv"
+//       : "/report/export-order-report-pdf";
+//   const fileName = `order_report.${format}`;
+
+//   fetch(`${endpoint}?${queryParams.toString()}`, {
+//     method: "GET",
+//     headers: { Accept: format === "csv" ? "text/csv" : "application/pdf" },
+//   })
+//     .then((response) => {
+//       if (!response.ok)
+//         throw new Error(`HTTP error! Status: ${response.status}`);
+//       return response.blob();
+//     })
+//     .then((blob) => {
+//       const url = window.URL.createObjectURL(blob);
+//       const a = document.createElement("a");
+//       a.href = url;
+//       a.download = fileName;
+//       document.body.appendChild(a);
+//       a.click();
+//       a.remove();
+//       window.URL.revokeObjectURL(url);
+
+//       alert(`Order report exported successfully as ${format.toUpperCase()}!`);
+//     })
+//     .catch((error) => {
+//       console.error(`Error exporting order report as ${format}:`, error);
+//       alert(`Failed to export order report as ${format.toUpperCase()}.`);
+//     });
+// }
 
 // CSV Report Generation (Optional)
 document
