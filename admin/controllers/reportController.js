@@ -13,6 +13,8 @@ const db = mysql.createConnection({
 
 // Dashboard Data
 exports.getDashboardData = (req, res) => {
+  console.log("Starting getDashboardData...");
+
   const today = new Date();
   const startOfDay = today.toISOString().split("T")[0];
   const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()))
@@ -26,19 +28,19 @@ exports.getDashboardData = (req, res) => {
         SELECT SUM(od.Odetails_price * od.Odetails_Qty) as totalSales
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
-        WHERE om.O_status = 'DELIVERED' AND om.O_date >= ?
+        WHERE om.O_status = 'Delivered' AND om.O_date >= ?
     `;
   const weeklySalesQuery = `
         SELECT SUM(od.Odetails_price * od.Odetails_Qty) as totalSales
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
-        WHERE om.O_status = 'DELIVERED' AND om.O_date >= ?
+        WHERE om.O_status = 'Delivered' AND om.O_date >= ?
     `;
   const monthlySalesQuery = `
         SELECT SUM(od.Odetails_price * od.Odetails_Qty) as totalSales
         FROM order_details od
         JOIN order_master om ON od.O_id = om.O_id
-        WHERE om.O_status = 'DELIVERED' AND om.O_date >= ?
+        WHERE om.O_status = 'Delivered' AND om.O_date >= ?
     `;
   const totalOrdersQuery = `
         SELECT COUNT(*) as totalOrders
@@ -101,8 +103,6 @@ exports.getDashboardData = (req, res) => {
       ])
     );
 
-    // console.log("Category Table Map:", Array.from(categoryTableMap.entries()));
-
     // Dynamic Total Inventory
     const inventoryPromises = [];
     for (const [categoryName, tableName] of categoryTableMap) {
@@ -110,6 +110,7 @@ exports.getDashboardData = (req, res) => {
         new Promise((resolve, reject) => {
           db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
             if (err) {
+              console.error(`Error checking table ${tableName}:`, err);
               reject(err);
               return;
             }
@@ -123,6 +124,7 @@ exports.getDashboardData = (req, res) => {
               `SHOW COLUMNS FROM \`${tableName}\` LIKE '%stock%'`,
               (err, columns) => {
                 if (err) {
+                  console.error(`Error fetching columns for table ${tableName}:`, err);
                   reject(err);
                   return;
                 }
@@ -139,6 +141,7 @@ exports.getDashboardData = (req, res) => {
                             `;
                 db.query(query, (err, result) => {
                   if (err) {
+                    console.error(`Error calculating total stock for table ${tableName}:`, err);
                     reject(err);
                     return;
                   }
@@ -157,10 +160,12 @@ exports.getDashboardData = (req, res) => {
     // Dynamic Best Sellers with Category Name
     const bestSellersPromises = [];
     for (const [categoryName, tableName] of categoryTableMap) {
+      console.log(`Processing best sellers for category: ${categoryName} (table: ${tableName})`);
       bestSellersPromises.push(
         new Promise((resolve, reject) => {
           db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
             if (err) {
+              console.error(`Error checking table ${tableName}:`, err);
               reject(err);
               return;
             }
@@ -169,46 +174,51 @@ exports.getDashboardData = (req, res) => {
               resolve([]);
               return;
             }
-            const query = `
-                    SELECT 
-                  od.Product_id,
-                  ${tableName}.name as productName,
-                  '${tableName}' as category,
-                  od.Odetails_Qty as totalSold,
-                  (od.Odetails_price * od.Odetails_Qty) as totalRevenue
-              FROM order_details od
-              JOIN order_master om ON od.O_id = om.O_id
-              LEFT JOIN ${tableName} ON od.Product_id = ${tableName}.id
-              WHERE om.O_status = 'Delivered'
-                `;
-            db.query(query, (err, result) => {
+
+            // Fetch column names to ensure 'id' and 'name' exist
+            db.query(`SHOW COLUMNS FROM \`${tableName}\``, (err, columns) => {
               if (err) {
+                console.error(`Error fetching columns for table ${tableName}:`, err);
                 reject(err);
                 return;
               }
-              resolve(result);
+
+              const idColumn = columns.find((col) => col.Field.toLowerCase().includes("id") && !col.Field.toLowerCase().includes("category_id"))?.Field;
+              const nameColumn = columns.find((col) => col.Field.toLowerCase().includes("name"))?.Field;
+
+              if (!idColumn || !nameColumn) {
+                console.warn(`Table ${tableName} does not have required columns (id or name). Skipping...`);
+                resolve([]);
+                return;
+              }
+
+              const query = `
+                    SELECT 
+                        od.Product_id,
+                        \`${tableName}\`.\`${nameColumn}\` as productName,
+                        '${categoryName}' as category,
+                        SUM(od.Odetails_Qty) as totalSold,
+                        SUM(od.Odetails_price * od.Odetails_Qty) as totalRevenue
+                    FROM order_details od
+                    JOIN order_master om ON od.O_id = om.O_id
+                    LEFT JOIN \`${tableName}\` ON od.Product_id = \`${tableName}\`.\`${idColumn}\`
+                    WHERE om.O_status = 'Delivered'
+                    GROUP BY od.Product_id, \`${tableName}\`.\`${nameColumn}\`
+                `;
+              db.query(query, (err, result) => {
+                if (err) {
+                  console.error(`Error fetching best sellers for table ${tableName}:`, err);
+                  reject(err);
+                  return;
+                }
+                console.log(`Best sellers for ${tableName}:`, result);
+                resolve(result);
+              });
             });
           });
         })
       );
     }
-
-    // Wait for all promises to resolve
-    Promise.all(bestSellersPromises)
-      .then((results) => {
-        // Consolidate the results from all categories
-        const consolidatedResults = results.flat();
-        const productsWithName = consolidatedResults.filter(
-          (item) => item.productName !== null
-        );
-        console.log("All best sellers:", productsWithName);
-        // Assuming you are sending this data to the frontend
-        // e.g., res.json(consolidatedResults);
-      })
-      .catch((err) => {
-        // Handle errors here
-        console.error("Error fetching best sellers:", err);
-      });
 
     // Wait for inventory and best-sellers queries to complete
     Promise.all([
@@ -216,6 +226,7 @@ exports.getDashboardData = (req, res) => {
       Promise.all(bestSellersPromises),
     ])
       .then(([inventoryResults, bestSellersResults]) => {
+
         const totalInventory = inventoryResults.reduce(
           (sum, item) => sum + (item.totalStock || 0),
           0
@@ -226,47 +237,92 @@ exports.getDashboardData = (req, res) => {
           .filter((item) => item.totalSold > 0)
           .sort((a, b) => b.totalSold - a.totalSold)
           .slice(0, 5);
+
         // Proceed with the rest of the queries
         Promise.all([
           new Promise((resolve, reject) =>
-            db.query(dailySalesQuery, [startOfDay], (err, result) =>
-              err ? reject(err) : resolve(result)
-            )
+            db.query(dailySalesQuery, [startOfDay], (err, result) => {
+              if (err) {
+                console.error("Error fetching daily sales:", err);
+                reject(err);
+              } else {
+                console.log("Daily sales:", result);
+                resolve(result);
+              }
+            })
           ),
           new Promise((resolve, reject) =>
-            db.query(weeklySalesQuery, [startOfWeek], (err, result) =>
-              err ? reject(err) : resolve(result)
-            )
+            db.query(weeklySalesQuery, [startOfWeek], (err, result) => {
+              if (err) {
+                console.error("Error fetching weekly sales:", err);
+                reject(err);
+              } else {
+                console.log("Weekly sales:", result);
+                resolve(result);
+              }
+            })
           ),
           new Promise((resolve, reject) =>
-            db.query(monthlySalesQuery, [startOfMonth], (err, result) =>
-              err ? reject(err) : resolve(result)
-            )
+            db.query(monthlySalesQuery, [startOfMonth], (err, result) => {
+              if (err) {
+                console.error("Error fetching monthly sales:", err);
+                reject(err);
+              } else {
+                console.log("Monthly sales:", result);
+                resolve(result);
+              }
+            })
           ),
           new Promise((resolve, reject) =>
-            db.query(totalOrdersQuery, (err, result) =>
-              err ? reject(err) : resolve(result)
-            )
+            db.query(totalOrdersQuery, (err, result) => {
+              if (err) {
+                console.error("Error fetching total orders:", err);
+                reject(err);
+              } else {
+                console.log("Total orders:", result);
+                resolve(result);
+              }
+            })
           ),
           new Promise((resolve, reject) =>
-            db.query(totalActiveCustomersQuery, (err, result) =>
-              err ? reject(err) : resolve(result)
-            )
+            db.query(totalActiveCustomersQuery, (err, result) => {
+              if (err) {
+                console.error("Error fetching total active customers:", err);
+                reject(err);
+              } else {
+                resolve(result);
+              }
+            })
           ),
           new Promise((resolve, reject) =>
-            db.query(salesTrendQuery, (err, result) =>
-              err ? reject(err) : resolve(result)
-            )
+            db.query(salesTrendQuery, (err, result) => {
+              if (err) {
+                console.error("Error fetching sales trend:", err);
+                reject(err);
+              } else {
+                resolve(result);
+              }
+            })
           ),
           new Promise((resolve, reject) =>
-            db.query(orderStatusQuery, (err, result) =>
-              err ? reject(err) : resolve(result)
-            )
+            db.query(orderStatusQuery, (err, result) => {
+              if (err) {
+                console.error("Error fetching order status:", err);
+                reject(err);
+              } else {
+                resolve(result);
+              }
+            })
           ),
           new Promise((resolve, reject) =>
-            db.query(recentActivityQuery, (err, result) =>
-              err ? reject(err) : resolve(result)
-            )
+            db.query(recentActivityQuery, (err, result) => {
+              if (err) {
+                console.error("Error fetching recent activity:", err);
+                reject(err);
+              } else {
+                resolve(result);
+              }
+            })
           ),
         ])
           .then(
