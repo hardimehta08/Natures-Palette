@@ -1281,10 +1281,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-function openStockModal(productId, productName, currentStock, category) {
+function openStockModal(productId, productName, currentStock, categoryName) {
   const modal = document.getElementById("updateStockModal");
   document.getElementById("update-product-id").value = productId;
-  document.getElementById("update-category").value = category;
+  document.getElementById("update-category-name").value = categoryName;
   document.getElementById("update-product-name").value = productName;
   document.getElementById("update-current-stock").value = currentStock;
   document.getElementById("update-new-stock").value = currentStock; // Pre-fill with current stock
@@ -1302,17 +1302,17 @@ document.getElementById("updateStockForm").addEventListener("submit", function (
   event.preventDefault();
 
   const productId = document.getElementById("update-product-id").value;
-  const category = document.getElementById("update-category").value;
+  const categoryName = document.getElementById("update-category-name").value;
   const newStock = document.getElementById("update-new-stock").value;
 
-  fetch("/update-stock", {
-    method: "POST",
+  fetch("/report/update-stock", {
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
       productId,
-      category,
+      categoryName,
       newStock,
     }),
   })
@@ -1394,6 +1394,7 @@ function fetchInventoryReport(page = 1) {
           });
       }
       // Critical Stock Alert and Notification Drawer
+      // Critical Stock Alert and Notification Drawer
       const criticalStockData = data.stockLevels.filter((item) => Number(item.stock) <= 2);
       const alertBanner = document.getElementById("criticalStockAlert");
       const alertMessage = document.getElementById("criticalStockMessage");
@@ -1464,7 +1465,7 @@ function fetchInventoryReport(page = 1) {
         const notificationCount = document.getElementById("drawerNotificationCount");
         if (notificationCount) notificationCount.style.display = "none";
         if (notificationList) notificationList.innerHTML = "";
-        console.log("No critical stock data found, skipping notification update");
+        console.log("No critical stock data found for category:", category);
       }
 
       // Inventory Turnover with Pagination
@@ -1494,6 +1495,7 @@ function fetchInventoryReport(page = 1) {
             <td>[${product.categoryId}]${product.categoryName}</td>
             <td>${product.stock}</td>
             <td>${product.totalSold}</td>
+            <td>${product.turnoverRatio.toFixed(2)}</td>
           </tr>
         `;
         turnoverTbody.innerHTML += row;
@@ -1546,6 +1548,13 @@ function clearNotifications() {
 // Export Inventory Report
 function exportInventoryReport(format) {
   const category = document.getElementById("inventoryCategoryFilter").value;
+
+  // Optional: Validate the category (remove the restrictive check if not needed)
+  if (category && !["PLANTS", "OTHER_CATEGORY"].includes(category.toUpperCase())) {
+    console.warn("Selected category might not be valid:", category);
+    // Proceed anyway to allow flexibility
+  }
+
   const queryParams = new URLSearchParams();
   if (category) queryParams.append("category", category);
 
@@ -1553,7 +1562,7 @@ function exportInventoryReport(format) {
     format === "csv"
       ? "/report/export-inventory-report-csv"
       : "/report/export-inventory-report-pdf";
-  const fileName = `inventory_report.${format}`;
+  const fileName = `inventory_report_${category || "all"}.${format}`; // Include category in filename
 
   fetch(`${endpoint}?${queryParams.toString()}`, {
     method: "GET",
@@ -1575,7 +1584,7 @@ function exportInventoryReport(format) {
       window.URL.revokeObjectURL(url);
 
       alert(
-        `Inventory report exported successfully as ${format.toUpperCase()}!`
+        `Inventory report for category "${category || "All Categories"}" exported successfully as ${format.toUpperCase()}!`
       );
     })
     .catch((error) => {

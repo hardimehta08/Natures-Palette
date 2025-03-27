@@ -8,7 +8,8 @@ router.get('/inventory-categories1', reportController.getInventoryCategories);
 
 // Inventory Routes
 
-router.post("/update-stock", reportController.updateStock);
+router.put("/update-stock", reportController.updateStock);
+// router.put("/update-stock", reportController.updateStock);
 router.get('/inventory-status', reportController.getInventoryStatus);
 router.get('/inventory-categories', reportController.getInventoryCategories);
 router.get('/inventory-report', reportController.getInventoryReport);

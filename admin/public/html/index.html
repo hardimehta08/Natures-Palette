@@ -894,6 +894,7 @@
                                         <th>Product Name</th>
                                         <th>Category (ID - Name)</th>
                                         <th>Stock</th>
+                                        <th>ACtion</th>
                                     </tr>
                                 </thead>
                                 <tbody id="outOfStockProducts"></tbody>
@@ -904,7 +905,7 @@
                                   <h2>Update Stock</h2>
                                   <form id="updateStockForm">
                                     <input type="hidden" id="update-product-id">
-                                    <input type="hidden" id="update-category">
+                                    <input type="hidden" id="update-category-name">
                                     <div class="form-group">
                                       <label for="update-product-name">Product Name:</label>
                                       <input type="text" id="update-product-name" readonly>
@@ -921,7 +922,7 @@
                                     <button type="button" class="btn-cancel" onclick="closeStockModal()">Cancel</button>
                                   </form>
                                 </div>
-                              </div>
+                            </div>
                             <h5>Low Stock Products (Stock ≤ 5)</h5>
                             <table id="lowStockTable">
                                 <thead>
@@ -944,6 +945,7 @@
                                         <th>Category (ID - Name)</th>
                                         <th>Stock</th>
                                         <th>Total Sold</th>
+                                        <th>Turnover Ratio</th>
                                     </tr>
                                 </thead>
                                 <tbody id="inventoryTurnover"></tbody>

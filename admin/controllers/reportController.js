@@ -725,10 +725,6 @@ exports.getCustomerReport = (req, res) => {
     LIMIT 10
   `;
 
-  // Logging for debugging
-  console.log("demographicsQuery:", demographicsQuery);
-  console.log("purchaseHistoryQuery:", purchaseHistoryQuery, queryParams);
-
   // Execute queries in parallel
   Promise.all([
     new Promise((resolve, reject) =>
@@ -743,8 +739,6 @@ exports.getCustomerReport = (req, res) => {
     ),
   ])
     .then(([demographics, purchaseHistory]) => {
-      console.log("Demographics Data:", demographics);
-      console.log("Purchase History Data:", purchaseHistory);
       res.json({
         demographics: demographics || [],
         purchaseHistory: purchaseHistory || [],
@@ -830,12 +824,19 @@ exports.getInventoryReport = (req, res) => {
               \`${tableName}\`.${columnMap.stock} as stock,
               COALESCE(SUM(od.Odetails_Qty), 0) as totalSold,
               c.cy_id as categoryId,
-              c.cy_name as categoryName 
+              c.cy_name as categoryName,
+              CASE 
+                WHEN \`${tableName}\`.${columnMap.stock} = 0 THEN 0
+                ELSE COALESCE(SUM(od.Odetails_Qty), 0) / \`${tableName}\`.${columnMap.stock}
+              END as turnoverRatio
             FROM \`${tableName}\`
-             LEFT JOIN category c ON \`${tableName}\` .category_id = c.cy_id
+            LEFT JOIN category c ON \`${tableName}\`.category_id = c.cy_id
             LEFT JOIN order_details od ON \`${tableName}\`.${columnMap.id} = od.Product_id
-            LEFT JOIN order_master om ON od.O_id = om.O_id AND om.O_status = 'Delivered'
+            LEFT JOIN order_master om ON od.O_id = om.O_id 
+              AND om.O_status = 'Delivered'
+              AND om.O_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
             GROUP BY \`${tableName}\`.${columnMap.id}, \`${tableName}\`.${columnMap.name}, \`${tableName}\`.${columnMap.stock}
+            HAVING totalSold > 0
           `);
         });
       });
@@ -881,41 +882,90 @@ exports.getInventoryReport = (req, res) => {
   });
 };
 
-exports.updateStock= (req, res) => {
-    const { productId, category, newStock } = req.body;
 
-    // Validate input
-    if (!productId || !category || newStock === undefined) {
-      return res.status(400).json({ success: false, message: "Product ID, category, and new stock value are required" });
-    }
+exports.updateStock = (req, res) => {
+  const { productId, categoryName, newStock } = req.body;
 
-    const stockValue = Number(newStock);
-    if (isNaN(stockValue) || stockValue < 0) {
-      return res.status(400).json({ success: false, message: "New stock value must be a non-negative number" });
-    }
-
-    const tableName = getTableNameFromCategory(category);
-
-    // Update the stock in the database
-    const query = `
-      UPDATE \`${tableName}\`
-      SET stock = ?
-      WHERE id = ?
-    `;
-    db.query(query, [stockValue, productId], (err, result) => {
-      if (err) {
-        console.error("Error updating stock:", err);
-        return res.status(500).json({ success: false, message: "Server error" });
-      }
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ success: false, message: "Product not found" });
-      }
-
-      res.json({ success: true, message: "Stock updated successfully" });
+  // Step 1: Validate input
+  if (!productId || !categoryName || newStock === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: "Product ID, category, and new stock value are required",
     });
-};
+  }
 
+  const stockValue = Number(newStock);
+  if (isNaN(stockValue) || stockValue < 0) {
+    return res.status(400).json({
+      success: false,
+      message: "New stock value must be a non-negative number",
+    });
+  }
+
+  // Step 2: Derive the table name
+  const tableName = categoryName.toLowerCase() + "_table";
+  console.log("Derived table name:", tableName);
+
+  // Step 3: Check if the table exists
+  db.query(`SHOW TABLES LIKE ?`, [tableName], (err, tableResult) => {
+    if (err || tableResult.length === 0) {
+      return res.status(404).json({ success: false, message: `Table '${tableName}' does not exist` });
+    }
+
+    // Step 4: Get the primary key
+    db.query(
+      `SHOW KEYS FROM \`${tableName}\` WHERE Key_name = 'PRIMARY'`,
+      (err, keyResults) => {
+        if (err || keyResults.length === 0) {
+          return res.status(500).json({ success: false, message: "No primary key found" });
+        }
+
+        const primaryKey = keyResults[0].Column_name;
+
+        // Step 5: Get table schema to map fields
+        db.query(`SHOW COLUMNS FROM \`${tableName}\``, (err, columns) => {
+          if (err) {
+            console.error("Error fetching table schema:", err);
+            return res.status(500).json({ success: false, message: `Server error: ${err.message}` });
+          }
+
+          // Map generic field names to actual column names
+          const columnMap = {
+            stock: null,
+          };
+
+          columns.forEach((col) => {
+            const field = col.Field.toLowerCase();
+            if (field.includes("stock")) columnMap.stock = col.Field;
+          });
+
+          if (!columnMap.stock) {
+            return res.status(400).json({
+              success: false,
+              message: `Stock column not found in table '${tableName}'`,
+            });
+          }
+
+          // Step 6: Update the stock
+          const updateQuery = `UPDATE \`${tableName}\` SET \`${columnMap.stock}\` = ? WHERE \`${primaryKey}\` = ?`;
+          db.query(updateQuery, [stockValue, productId], (err, result) => {
+            if (err) {
+              console.error("Error updating stock:", err);
+              return res.status(500).json({ success: false, message: `Server error: ${err.message}` });
+            }
+
+            if (result.affectedRows === 0) {
+              return res.status(404).json({ success: false, message: "Product not found" });
+            }
+
+            res.json({ success: true, message: "Stock updated successfully" });
+          });
+        });
+      }
+    );
+  });
+};
+  
 // Order Report Data
 exports.getOrderReport = (req, res) => {
   const { startDate, endDate, status, compareStartDate, compareEndDate } = req.query;
@@ -1902,10 +1952,23 @@ exports.exportCustomerReportPDF = (req, res) => {
     });
 };
 
-// Export Inventory Report as CSV
 exports.exportInventoryReportCSV = (req, res) => {
   const lowStockThreshold = 5;
   const { category } = req.query;
+
+  // Calculate dates
+  const currentDate = new Date();
+  const startDate = new Date(currentDate);
+  startDate.setDate(currentDate.getDate() - 30);
+
+  const formatDate = (date) => date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const downloadDate = `Downloaded on: ${formatDate(currentDate)}`;
+  const reportPeriod = `${formatDate(startDate)} - ${formatDate(currentDate)}`;
 
   db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
     if (err) {
@@ -1927,7 +1990,13 @@ exports.exportInventoryReportCSV = (req, res) => {
     const queryParams = [];
 
     for (const [categoryName, tableName] of categoryTableMap) {
-      if (category && category !== categoryName) continue;
+      // Case-insensitive category matching
+      if (category && category.toUpperCase() !== categoryName.toUpperCase()) {
+        console.log(`Skipping category ${categoryName} (table: ${tableName}) as it does not match requested category: ${category}`);
+        continue;
+      }
+
+      console.log(`Processing category ${categoryName} (table: ${tableName})`); // Debug: Log the category being processed
 
       db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
         if (err || result.length === 0) {
@@ -1947,7 +2016,7 @@ exports.exportInventoryReportCSV = (req, res) => {
 
           columns.forEach((col) => {
             const field = col.Field.toLowerCase();
-            if (field.includes("id") && !field.includes("cy_id"))
+            if (field.includes("id") && !field.includes("category_id"))
               columnMap.id = col.Field;
             else if (field.includes("name")) columnMap.name = col.Field;
             else if (field.includes("stock")) columnMap.stock = col.Field;
@@ -1957,40 +2026,53 @@ exports.exportInventoryReportCSV = (req, res) => {
           if (!columnMap.id || !columnMap.name || !columnMap.stock) return;
 
           stockQueries.push(`
-                        SELECT 
-                            \`${tableName}\`.${columnMap.id} as productId, 
-                            \`${tableName}\`.${columnMap.name} as productName, 
-                            \`${tableName}\`.${columnMap.stock} as stock,
-                            '${categoryName}' as category
-                        FROM \`${tableName}\` 
-                        WHERE \`${tableName}\`.${columnMap.stock} <= ? AND \`${tableName}\`.${columnMap.stock} >= 0
-                    `);
+            SELECT 
+              \`${tableName}\`.${columnMap.id} as productId, 
+              \`${tableName}\`.${columnMap.name} as productName, 
+              \`${tableName}\`.${columnMap.stock} as stock,
+              c.cy_id as categoryId,
+              c.cy_name as categoryName 
+            FROM \`${tableName}\` 
+            LEFT JOIN category c ON \`${tableName}\`.category_id = c.cy_id
+            WHERE \`${tableName}\`.${columnMap.stock} <= ? AND \`${tableName}\`.${columnMap.stock} >= 0
+          `);
           queryParams.push(lowStockThreshold);
 
           turnoverQueries.push(`
-                        SELECT 
-                            \`${tableName}\`.${columnMap.id} as productId,
-                            \`${tableName}\`.${columnMap.name} as productName,
-                            \`${tableName}\`.${columnMap.stock} as stock,
-                            COALESCE(SUM(od.ODETAILS_Qty), 0) as totalSold,
-                            '${categoryName}' as category
-                        FROM \`${tableName}\`
-                        LEFT JOIN order_details od ON \`${tableName}\`.${columnMap.id} = od.Product_id
-                        LEFT JOIN order_master om ON od.O_id = om.O_id AND om.O_status = 'Delivered'
-                        GROUP BY \`${tableName}\`.${columnMap.id}, \`${tableName}\`.${columnMap.name}, \`${tableName}\`.${columnMap.stock}
-                    `);
+            SELECT 
+              \`${tableName}\`.${columnMap.id} as productId,
+              \`${tableName}\`.${columnMap.name} as productName,
+              \`${tableName}\`.${columnMap.stock} as stock,
+              COALESCE(SUM(od.Odetails_Qty), 0) as totalSold,
+              c.cy_id as categoryId,
+              c.cy_name as categoryName,
+              CASE 
+                WHEN \`${tableName}\`.${columnMap.stock} = 0 THEN 0
+                ELSE COALESCE(SUM(od.Odetails_Qty), 0) / \`${tableName}\`.${columnMap.stock}
+              END as turnoverRatio
+            FROM \`${tableName}\`
+            LEFT JOIN category c ON \`${tableName}\`.category_id = c.cy_id
+            LEFT JOIN order_details od ON \`${tableName}\`.${columnMap.id} = od.Product_id
+            LEFT JOIN order_master om ON od.O_id = om.O_id 
+              AND om.O_status = 'Delivered'
+              AND om.O_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY \`${tableName}\`.${columnMap.id}, \`${tableName}\`.${columnMap.name}, \`${tableName}\`.${columnMap.stock}
+            HAVING totalSold > 0
+          `);
         });
       });
     }
 
     setTimeout(() => {
       if (stockQueries.length === 0) {
-        return res.json({ stockLevels: [], turnover: [], slowMoving: [] });
+        console.log("No stock queries generated for category:", category);
+        return res.json({ stockLevels: [], turnover: [] });
       }
 
       const finalStockQuery =
         stockQueries.join(" UNION ") + " ORDER BY stock ASC";
-      const finalTurnoverQuery = turnoverQueries.join(" UNION ");
+      const finalTurnoverQuery =
+        turnoverQueries.join(" UNION ") + " ORDER BY totalSold DESC";
 
       Promise.all([
         new Promise((resolve, reject) =>
@@ -2005,55 +2087,84 @@ exports.exportInventoryReportCSV = (req, res) => {
         ),
       ])
         .then(([stockLevels, turnover]) => {
-          const slowMoving = turnover.filter((item) => item.totalSold <= 5);
 
-          const stockLevelsData = stockLevels.map((item) => ({
-            Section: "Stock Levels",
-            ProductID: item.productId,
-            ProductName: item.productName,
-            Stock: item.stock,
-            Category: item.category,
-          }));
-          const turnoverData = turnover.map((item) => ({
-            Section: "Inventory Turnover",
-            ProductID: item.productId,
-            ProductName: item.productName,
-            Stock: item.stock,
-            TotalSold: item.totalSold,
-            Category: item.category,
-          }));
-          const slowMovingData = slowMoving.map((item) => ({
-            Section: "Slow Moving Products",
-            ProductID: item.productId,
-            ProductName: item.productName,
-            Stock: item.stock,
-            TotalSold: item.totalSold,
-            Category: item.category,
-          }));
-
+          // Prepare CSV data with headers
           const csvData = [
-            ...stockLevelsData,
-            { Section: "" },
-            ...turnoverData,
-            { Section: "" },
-            ...slowMovingData,
+            // Header Section
+            { Title: "Nature's Palette" },
+            { Title: "Inventory report" },
+            { Title: downloadDate },
+            { Title: reportPeriod },
+            { Title: category ? `Category: ${category}` : "All Categories" }, // Add category to the report
+            { Title: "" },
+
+            // Stock Levels Section
+            { Title: "Stock Levels (Low and Out of Stock)" },
+            { Title: "" },
+            { ProductID: "Product ID", ProductName: "Product Name", Stock: "Stock", CategoryID: "Category ID", CategoryName: "Category Name" },
+            ...stockLevels.map((item) => ({
+              ProductID: item.productId,
+              ProductName: item.productName,
+              Stock: item.stock,
+              CategoryID: item.categoryId,
+              CategoryName: item.categoryName,
+            })),
+
+            // Empty row for spacing
+            { ProductID: "", ProductName: "", Stock: "", CategoryID: "", CategoryName: "" },
           ];
 
+          if (turnover.length > 0) {
+            csvData.push(
+              { Title: "" },
+              { Title: "Inventory Turnover" },
+              { Title: `Inventory Report Period: (${reportPeriod})` },
+              { Title: "" },
+              { ProductID: "Product ID", ProductName: "Product Name", Stock: "Stock", TotalSold: "Total Sold", CategoryID: "Category ID", CategoryName: "Category Name", TurnoverRatio: "Turnover Ratio" },
+              ...turnover.map((item) => ({
+                ProductID: item.productId,
+                ProductName: item.productName,
+                Stock: item.stock,
+                TotalSold: item.totalSold,
+                CategoryID: item.categoryId,
+                CategoryName: item.categoryName,
+                TurnoverRatio: item.turnoverRatio.toFixed(2),
+              }))
+            );
+          }
+
           const fields = [
-            "Section",
             "ProductID",
             "ProductName",
             "Stock",
             "TotalSold",
-            "Category",
+            "CategoryID",
+            "CategoryName",
+            "TurnoverRatio",
           ];
-          const json2csvParser = new Parser({ fields });
-          const csv = json2csvParser.parse(csvData);
+
+          // Define a separate field for section headers
+          const titleFields = ["Title"];
+          // Create two parsers: one for section headers and one for data rows
+          const titleParser = new Parser({ fields: titleFields, header: false });
+          const dataParser = new Parser({ fields, header: false });
+
+          // Generate CSV content manually
+          let csv = "";
+          csvData.forEach((row) => {
+            if ("Title" in row) {
+              // Use titleParser for section headers
+              csv += titleParser.parse([row]) + "\n";
+            } else {
+              // Use dataParser for data rows
+              csv += dataParser.parse([row]) + "\n";
+            }
+          });
 
           res.header("Content-Type", "text/csv");
           res.header(
             "Content-Disposition",
-            'attachment; filename="inventory_report.csv"'
+            `attachment; filename="inventory_report_${category || "all"}.csv"`
           );
           res.send(csv);
         })
@@ -2067,10 +2178,25 @@ exports.exportInventoryReportCSV = (req, res) => {
   });
 };
 
-// Export Inventory Report as PDF
+const fs = require("fs");
+
 exports.exportInventoryReportPDF = (req, res) => {
   const lowStockThreshold = 5;
   const { category } = req.query;
+
+  // Calculate dates
+  const currentDate = new Date();
+  const startDate = new Date(currentDate);
+  startDate.setDate(currentDate.getDate() - 30);
+
+  const formatDate = (date) => date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const downloadDate = `Downloaded on: ${formatDate(currentDate)}`;
+  const reportPeriod = `Period: ${formatDate(startDate)} - ${formatDate(currentDate)}`;
 
   db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
     if (err) {
@@ -2092,7 +2218,13 @@ exports.exportInventoryReportPDF = (req, res) => {
     const queryParams = [];
 
     for (const [categoryName, tableName] of categoryTableMap) {
-      if (category && category !== categoryName) continue;
+      // Case-insensitive category matching
+      if (category && category.toUpperCase() !== categoryName.toUpperCase()) {
+        console.log(`Skipping category ${categoryName} (table: ${tableName}) as it does not match requested category: ${category}`);
+        continue;
+      }
+
+      console.log(`Processing category ${categoryName} (table: ${tableName})`); // Debug: Log the category being processed
 
       db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
         if (err || result.length === 0) {
@@ -2112,7 +2244,7 @@ exports.exportInventoryReportPDF = (req, res) => {
 
           columns.forEach((col) => {
             const field = col.Field.toLowerCase();
-            if (field.includes("id") && !field.includes("cy_id"))
+            if (field.includes("id") && !field.includes("category_id"))
               columnMap.id = col.Field;
             else if (field.includes("name")) columnMap.name = col.Field;
             else if (field.includes("stock")) columnMap.stock = col.Field;
@@ -2122,40 +2254,53 @@ exports.exportInventoryReportPDF = (req, res) => {
           if (!columnMap.id || !columnMap.name || !columnMap.stock) return;
 
           stockQueries.push(`
-                        SELECT 
-                            \`${tableName}\`.${columnMap.id} as productId, 
-                            \`${tableName}\`.${columnMap.name} as productName, 
-                            \`${tableName}\`.${columnMap.stock} as stock,
-                            '${categoryName}' as category
-                        FROM \`${tableName}\` 
-                        WHERE \`${tableName}\`.${columnMap.stock} <= ? AND \`${tableName}\`.${columnMap.stock} >= 0
-                    `);
+            SELECT 
+              \`${tableName}\`.${columnMap.id} as productId, 
+              \`${tableName}\`.${columnMap.name} as productName, 
+              \`${tableName}\`.${columnMap.stock} as stock,
+              c.cy_id as categoryId,
+              c.cy_name as categoryName 
+            FROM \`${tableName}\` 
+            LEFT JOIN category c ON \`${tableName}\`.category_id = c.cy_id
+            WHERE \`${tableName}\`.${columnMap.stock} <= ? AND \`${tableName}\`.${columnMap.stock} >= 0
+          `);
           queryParams.push(lowStockThreshold);
 
           turnoverQueries.push(`
-                        SELECT 
-                            \`${tableName}\`.${columnMap.id} as productId,
-                            \`${tableName}\`.${columnMap.name} as productName,
-                            \`${tableName}\`.${columnMap.stock} as stock,
-                            COALESCE(SUM(od.ODETAILS_Qty), 0) as totalSold,
-                            '${categoryName}' as category
-                        FROM \`${tableName}\`
-                        LEFT JOIN order_details od ON \`${tableName}\`.${columnMap.id} = od.Product_id
-                        LEFT JOIN order_master om ON od.O_id = om.O_id AND om.O_status = 'Delivered'
-                        GROUP BY \`${tableName}\`.${columnMap.id}, \`${tableName}\`.${columnMap.name}, \`${tableName}\`.${columnMap.stock}
-                    `);
+            SELECT 
+              \`${tableName}\`.${columnMap.id} as productId,
+              \`${tableName}\`.${columnMap.name} as productName,
+              \`${tableName}\`.${columnMap.stock} as stock,
+              COALESCE(SUM(od.Odetails_Qty), 0) as totalSold,
+              c.cy_id as categoryId,
+              c.cy_name as categoryName,
+              CASE 
+                WHEN \`${tableName}\`.${columnMap.stock} = 0 THEN 0
+                ELSE COALESCE(SUM(od.Odetails_Qty), 0) / \`${tableName}\`.${columnMap.stock}
+              END as turnoverRatio
+            FROM \`${tableName}\`
+            LEFT JOIN category c ON \`${tableName}\`.category_id = c.cy_id
+            LEFT JOIN order_details od ON \`${tableName}\`.${columnMap.id} = od.Product_id
+            LEFT JOIN order_master om ON od.O_id = om.O_id 
+              AND om.O_status = 'Delivered'
+              AND om.O_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY \`${tableName}\`.${columnMap.id}, \`${tableName}\`.${columnMap.name}, \`${tableName}\`.${columnMap.stock}
+            HAVING totalSold > 0
+          `);
         });
       });
     }
 
     setTimeout(() => {
       if (stockQueries.length === 0) {
-        return res.json({ stockLevels: [], turnover: [], slowMoving: [] });
+        console.log("No stock queries generated for category:", category);
+        return res.json({ stockLevels: [], turnover: [] });
       }
 
       const finalStockQuery =
         stockQueries.join(" UNION ") + " ORDER BY stock ASC";
-      const finalTurnoverQuery = turnoverQueries.join(" UNION ");
+      const finalTurnoverQuery =
+        turnoverQueries.join(" UNION ") + " ORDER BY totalSold DESC";
 
       Promise.all([
         new Promise((resolve, reject) =>
@@ -2170,60 +2315,155 @@ exports.exportInventoryReportPDF = (req, res) => {
         ),
       ])
         .then(([stockLevels, turnover]) => {
-          const slowMoving = turnover.filter((item) => item.totalSold <= 5);
+          console.log("Stock levels data:", stockLevels); // Debug: Log the stock levels data
+          console.log("Turnover data:", turnover); // Debug: Log the turnover data
 
-          const doc = new PDFDocument();
+          const doc = new PDFDocument({ margin: 10 });
           let buffers = [];
           doc.on("data", buffers.push.bind(buffers));
           doc.on("end", () => {
             const pdfData = Buffer.concat(buffers);
             res.writeHead(200, {
               "Content-Type": "application/pdf",
-              "Content-Disposition":
-                'attachment; filename="inventory_report.pdf"',
+              "Content-Disposition": `attachment; filename="inventory_report_${category || "all"}.pdf"`,
               "Content-Length": pdfData.length,
             });
             res.end(pdfData);
           });
 
-          doc.fontSize(20).text("Inventory Report", { align: "center" });
-          doc.moveDown();
+          // Track the current page number
+          let pageNumber = 1;
+          let isStockLevelsSection = false;
+          let isTurnoverSection = false;
 
-          doc
-            .fontSize(14)
-            .text("Stock Levels (Low and Out of Stock)", { underline: true });
-          doc.moveDown(0.5);
-          stockLevels.forEach((item) => {
-            doc
-              .fontSize(12)
-              .text(
-                `Product: ${item.productName}, Stock: ${item.stock}, Category: ${item.category}`
-              );
-          });
-          doc.moveDown();
+          // Define header dimensions
+          const leftMargin = 20;
+          const rightMargin = 10;
+          const logoPath = path.join(__dirname, "../public/ad-images/logo/logo.png");
+          const logoWidth = 100;
+          const logoHeight = 100;
+          const logoX = 30;
+          const logoY = 30;
+          const textX = logoX + logoWidth + 20;
+          const textY = logoY + (logoHeight / 2) - 10;
+          const headerHeight = logoY + logoHeight + 20;
 
-          doc.fontSize(14).text("Inventory Turnover", { underline: true });
-          doc.moveDown(0.5);
-          turnover.forEach((item) => {
-            doc
-              .fontSize(12)
-              .text(
-                `Product: ${item.productName}, Stock: ${item.stock}, Total Sold: ${item.totalSold}, Category: ${item.category}`
-              );
-          });
-          doc.moveDown();
+          // Function to add the header
+          const addHeader = () => {
+            try {
+              doc.image(logoPath, logoX, logoY, { width: logoWidth, height: logoHeight });
+            } catch (err) {
+              console.error("Error adding logo to PDF:", err);
+              doc.fontSize(12).fillColor("red").text("Logo not found", logoX, logoY, { width: logoWidth, align: "center" });
+            }
+            doc.fontSize(24).fillColor("#2E7D32").text("Nature’s Palette", textX, textY);
+          };
 
-          doc
-            .fontSize(14)
-            .text("Slow Moving Products (Total Sold ≤ 5)", { underline: true });
-          doc.moveDown(0.5);
-          slowMoving.forEach((item) => {
-            doc
-              .fontSize(12)
-              .text(
-                `Product: ${item.productName}, Stock: ${item.stock}, Total Sold: ${item.totalSold}, Category: ${item.category}`
-              );
+          // Add page numbers and header on every page
+          doc.on("pageAdded", () => {
+            pageNumber++;
+            addHeader();
+            doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, rightMargin, doc.y, { align: "right" });
+            doc.y = headerHeight;
+            if (isStockLevelsSection) {
+              doc.fontSize(16).fillColor("#2E7D32").text("Stock Levels (Low and Out of Stock)", leftMargin, doc.y, { underline: true });
+              doc.moveDown(0.5);
+              doc.fillColor("black").fontSize(12);
+            }
+            if (isTurnoverSection) {
+              doc.fontSize(16).fillColor("#2E7D32").text(`Inventory Turnover (${reportPeriod})`, leftMargin, doc.y, { underline: true });
+              doc.moveDown(0.5);
+              doc.fillColor("black").fontSize(12);
+            }
           });
+
+          // Add the header and page number to the first page
+          addHeader();
+          doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, rightMargin, doc.y, { align: "right" });
+          doc.y = headerHeight;
+
+          // Subheader: Inventory Report and Details
+          doc.fillColor("black");
+          doc.fontSize(16).text("Inventory Report", leftMargin, doc.y, { align: "center" });
+          doc.fontSize(12).text(downloadDate, leftMargin, doc.y, { align: "center" });
+          doc.fontSize(12).text(category ? `Category: ${category}` : "All Categories", leftMargin, doc.y, { align: "center" });
+          doc.moveDown(2);
+
+          // Stock Levels Section
+          isStockLevelsSection = true;
+          doc.fontSize(16).fillColor("#2E7D32").text("Stock Levels (Low and Out of Stock)", leftMargin, doc.y, { underline: true });
+          doc.moveDown(0.5);
+          doc.fillColor("black").fontSize(12);
+
+          stockLevels.forEach((item, index) => {
+            const lineHeight = 15;
+            const lines = 4;
+            const blockHeight = lines * lineHeight;
+            const sectionHeaderHeight = 30;
+
+            if (doc.y + blockHeight + (index === 0 ? sectionHeaderHeight : 0) > doc.page.height - 50) {
+              doc.addPage();
+            }
+
+            doc.text(`Product ID: ${item.productId}`, leftMargin, doc.y);
+            doc.moveDown(0.2);
+            doc.text(`Product Name: ${item.productName}`, leftMargin, doc.y);
+            doc.moveDown(0.2);
+            doc.text(`Stock: ${item.stock}`, leftMargin, doc.y);
+            doc.moveDown(0.2);
+            doc.text(`Category: [${item.categoryId}] ${item.categoryName}`, leftMargin, doc.y);
+            doc.moveDown(0.2);
+
+            if (index < stockLevels.length - 1) {
+              doc.moveDown(0.5);
+              doc.moveTo(leftMargin, doc.y).lineTo(doc.page.width - leftMargin, doc.y).stroke();
+              doc.moveDown(0.5);
+            }
+          });
+
+          isStockLevelsSection = false;
+          doc.moveDown(2.5);
+
+          // Inventory Turnover Section
+          if (turnover.length > 0) {
+            isTurnoverSection = true;
+            doc.fontSize(16).fillColor("#2E7D32").text(`Inventory Turnover (${reportPeriod})`, leftMargin, doc.y, { underline: true });
+            doc.moveDown(0.5);
+            doc.fillColor("black").fontSize(12);
+
+            turnover.forEach((item, index) => {
+              const lineHeight = 15;
+              const lines = 6;
+              const blockHeight = lines * lineHeight;
+              const sectionHeaderHeight = 30;
+
+              if (doc.y + blockHeight + (index === 0 ? sectionHeaderHeight : 0) > doc.page.height - 50) {
+                doc.addPage();
+              }
+
+              doc.text(`Product ID: ${item.productId}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Product Name: ${item.productName}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Stock: ${item.stock}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Total Sold: ${item.totalSold}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Category: [${item.categoryId}] ${item.categoryName}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Turnover Ratio: ${item.turnoverRatio.toFixed(2)}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+
+              if (index < turnover.length - 1) {
+                doc.moveDown(0.5);
+                doc.moveTo(leftMargin, doc.y).lineTo(doc.page.width - leftMargin, doc.y).stroke();
+                doc.moveDown(0.5);
+              }
+            });
+
+            isTurnoverSection = false;
+            doc.moveDown(2.5);
+          }
 
           doc.end();
         })
@@ -2236,7 +2476,6 @@ exports.exportInventoryReportPDF = (req, res) => {
     }, 1000);
   });
 };
-
 
 exports.exportOrderReportCSV = (req, res) => {
   let { startDate, endDate, status, compareStartDate, compareEndDate } = req.query;
