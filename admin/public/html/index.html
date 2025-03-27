@@ -801,9 +801,9 @@
                             </select>
                             <div id="salesCustomDateRange" style="display: none;">
                               <label for="salesStartDate">Start Date:</label>
-                              <input type="date" id="salesStartDate" min="2020-01-01">
+                              <input type="date" id="salesStartDate" min="2024-01-01">
                               <label for="salesEndDate">End Date:</label>
-                              <input type="date" id="salesEndDate" min="2020-01-01">
+                              <input type="date" id="salesEndDate" min="2024-01-01">
                               <button onclick="fetchSalesReport()">Apply</button>
                             </div>
                           </div>
@@ -900,7 +900,7 @@
                                 <tbody id="outOfStockProducts"></tbody>
                             </table>
                             <div id="updateStockModal" class="modal" style="display: none;">
-                                <div class="modal-content">
+                                <div class="modal-content" style="height: 370px;">
                                   <span class="close" onclick="closeStockModal()">×</span>
                                   <h2>Update Stock</h2>
                                   <form id="updateStockForm">

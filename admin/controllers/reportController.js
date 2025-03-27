@@ -537,12 +537,12 @@ exports.getInventoryCategories = (req, res) => {
 exports.getSalesReport = (req, res) => {
   const { startDate, endDate } = req.query;
 
-  // Default date range if not provided
-  const defaultStartDate = "2024-01-01";
+  // Default date range: January 2024 to yesterday
+  const defaultStartDate = "2024-01-01"; // Updated to January 2024
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
+  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-26"
 
   const effectiveStartDate = startDate || defaultStartDate;
   const effectiveEndDate = endDate || defaultEndDate;
@@ -550,9 +550,19 @@ exports.getSalesReport = (req, res) => {
   console.log("Effective startDate:", effectiveStartDate); // Debug: Log the startDate
   console.log("Effective endDate:", effectiveEndDate); // Debug: Log the endDate
 
-  // Calculate the number of days between startDate and endDate
+  // Validate date formats
   const start = new Date(effectiveStartDate);
   const end = new Date(effectiveEndDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+  }
+
+  // Ensure startDate is not after endDate
+  if (start > end) {
+    return res.status(400).json({ error: "startDate cannot be after endDate." });
+  }
+
+  // Calculate the number of days between startDate and endDate
   const timeDiff = Math.abs(end - start);
   const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
 
@@ -560,10 +570,10 @@ exports.getSalesReport = (req, res) => {
   let groupByFormat, dateFormat;
   if (daysDiff === 0 || daysDiff === 1) {
     groupByFormat = "hourly";
-    dateFormat = "%Y-%m-%d %H:00"; // e.g., "2025-03-22 14:00"
+    dateFormat = "%Y-%m-%d %H:00"; // e.g., "2025-03-26 14:00"
   } else if (daysDiff <= 7) {
     groupByFormat = "daily";
-    dateFormat = "%Y-%m-%d"; // e.g., "2025-03-22"
+    dateFormat = "%Y-%m-%d"; // e.g., "2025-03-26"
   } else if (daysDiff <= 90) {
     groupByFormat = "weekly";
     dateFormat = "%Y-%u"; // e.g., "2025-12" (year-week)
@@ -626,7 +636,7 @@ exports.getSalesReport = (req, res) => {
         FROM order_details od
         JOIN order_master om ON od.O_Id = om.O_Id
         JOIN (
-          ${unionQuery}
+          ${unionQuery} 
         ) p ON od.Product_id = p.id
         JOIN category c ON p.category_id = c.CY_ID
         WHERE om.O_status = 'Delivered'
@@ -645,38 +655,26 @@ exports.getSalesReport = (req, res) => {
         WHERE om.O_status = 'Delivered'
       `;
 
+      // Prepare query parameters
       const queryParams = [dateFormat]; // First parameter for DATE_FORMAT
 
       // Add date filters
-      if (startDate) {
+      if (effectiveStartDate) {
         salesQuery += ` AND om.O_date >= ?`;
         salesByProductQuery += ` AND om.O_date >= ?`;
         salesByCategoryQuery += ` AND om.O_date >= ?`;
-        queryParams.push(startDate);
+        queryParams.push(effectiveStartDate);
       }
-      if (endDate) {
+      if (effectiveEndDate) {
         salesQuery += ` AND om.O_date <= ?`;
         salesByProductQuery += ` AND om.O_date <= ?`;
         salesByCategoryQuery += ` AND om.O_date <= ?`;
-        queryParams.push(endDate);
+        queryParams.push(effectiveEndDate);
       }
 
       // Add GROUP BY and ORDER BY to salesQuery
-      if (groupByFormat === "hourly") {
-        salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d %H:00')`;
-      } else if (groupByFormat === "daily") {
-        salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m-%d')`;
-      } else if (groupByFormat === "weekly") {
-        salesQuery = salesQuery.replace(
-          "DATE_FORMAT(om.O_date, ?)",
-          "DATE_FORMAT(om.O_date, '%Y-%u') "
-        );
-        queryParams[0] = "%Y-%u"; // Update the dateFormat parameter
-        salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%u')`;
-      } else {
-        salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, '%Y-%m')`;
-      }
-      salesQuery += ` ORDER BY period`;
+      salesQuery += ` GROUP BY DATE_FORMAT(om.O_date, ?) ORDER BY period`;
+      queryParams.push(dateFormat); // Add dateFormat again for the GROUP BY
 
       salesByProductQuery += ` GROUP BY od.Product_id, p.name, c.CY_NAME ORDER BY totalRevenue DESC LIMIT 5`;
       salesByCategoryQuery += ` GROUP BY c.CY_NAME ORDER BY totalRevenue DESC`;
@@ -1247,17 +1245,41 @@ exports.exportSalesReportCSV = (req, res) => {
   const { startDate, endDate, groupBy } = req.query;
 
   // Default date range if not provided
-  const defaultStartDate = "2020-01-01";
+  const defaultStartDate = "2024-01-01";
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
+  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-26"
 
   const effectiveStartDate = startDate || defaultStartDate;
   const effectiveEndDate = endDate || defaultEndDate;
 
   // Current date for "Downloaded on"
-  const currentDate = today.toISOString().split("T")[0]; // e.g., "2025-03-24"
+  const currentDate = today.toISOString().split("T")[0]; // e.g., "2025-03-27"
+
+  // Validate date formats
+  const start = new Date(effectiveStartDate);
+  const end = new Date(effectiveEndDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+  }
+
+  // Ensure startDate is not after endDate
+  if (start > end) {
+    return res.status(400).json({ error: "startDate cannot be after endDate." });
+  }
+
+  // Ensure startDate is not before January 2024
+  const minDate = new Date("2024-01-01");
+  if (start < minDate) {
+    return res.status(400).json({ error: "startDate cannot be before January 1, 2024." });
+  }
+
+  // Ensure endDate is not after yesterday
+  const maxDate = new Date(defaultEndDate);
+  if (end > maxDate) {
+    return res.status(400).json({ error: `endDate cannot be after ${defaultEndDate}.` });
+  }
 
   // Fetch categories to build the UNION query
   db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
@@ -1276,7 +1298,16 @@ exports.exportSalesReportCSV = (req, res) => {
             console.warn(`Table ${tableName} does not exist for category ${category.CY_NAME}`);
             resolve(null); // Skip this table
           } else {
-            resolve({ tableName, categoryId: category.CY_ID, categoryName: category.CY_NAME });
+            // Fetch column names to find the 'name' column
+            db.query(`SHOW COLUMNS FROM \`${tableName}\``, (err, columns) => {
+              if (err) {
+                console.error(`Error fetching columns for table ${tableName}:`, err);
+                resolve(null);
+                return;
+              }
+              const nameColumn = columns.find(col => col.Field.toLowerCase().includes("name"))?.Field || 'name';
+              resolve({ tableName, categoryId: category.CY_ID, categoryName: category.CY_NAME, nameColumn });
+            });
           }
         });
       });
@@ -1292,7 +1323,7 @@ exports.exportSalesReportCSV = (req, res) => {
 
       // Build the UNION query for the product tables
       const unionQuery = validTables
-        .map(table => `SELECT id, name, category_id FROM \`${table.tableName}\``)
+        .map(table => `SELECT id, \`${table.nameColumn}\` AS name, category_id FROM \`${table.tableName}\``)
         .join(" UNION ");
 
       // Base queries
@@ -1385,65 +1416,73 @@ exports.exportSalesReportCSV = (req, res) => {
         .then(([totalSales, salesByProduct, salesByCategory]) => {
           // Prepare CSV data with improved formatting
           // Header Section
+          
           const headerData = [
-            { Title: "Sales Report", Value: "" },
-            { Title: "Date: ", Value: currentDate },
-            { Title: "", Value: "" }, // Spacer
-            { Title: "", Value: "" }, // Spacer
+            { Title: "Sales Report" },
+            { Title: "Downloaded on: ", Value: currentDate },
+            { Title: "Date Range: ", Value: `${effectiveStartDate} to ${effectiveEndDate}` },
+            { Title: "" }, // Spacer
+            { Title: "" }, // Spacer
           ];
 
           // Total Sales by Period Section
           const totalSalesHeader = [
-            { Title: "Total Sales by Period", Value: "" },
-            { Title: "Period", Value: "Total Sales (Rs.)" },
+            { Title: "Total Sales by Period" },
+            { Title: "" }, // Spacer
           ];
-          const totalSalesData = totalSales.map((item) => ({
-            Title: item.period,
-            Value: item.totalSales ? item.totalSales.toFixed(2) : "0.00",
-          }));
+          const totalSalesData = totalSales.length > 0
+            ? totalSales.map((item) => ({
+                Period: item.period,
+                TotalSales: item.totalSales ? item.totalSales.toFixed(2) : "0.00",
+              }))
+            : [{ Period: "No data available", TotalSales: "" }];
           const totalSalesSection = [
             ...totalSalesHeader,
             ...totalSalesData,
-            { Title: "", Value: "" }, // Spacer
-            { Title: "", Value: "" }, // Spacer
-            { Title: "", Value: "" }, // Spacer
+            { Period: "", TotalSales: "" }, // Spacer
+            { Period: "", TotalSales: "" }, // Spacer
+            { Period: "", TotalSales: "" }, // Spacer
           ];
 
           // Top 5 Products by Revenue Section
           const productsHeader = [
-            { Title: "Top 5 Products by Revenue", Value: "" },
-            { Title: "Product ID", Value: "Product Name", Category: "Category", UnitsSold: "Units Sold", Revenue: "Revenue (Rs.)" },
+            { Title: "Top 5 Products by Revenue" },
+            { Title: "" }, // Spacer
           ];
-          const productsData = salesByProduct.map((item) => ({
-            Title: item.Product_id,
-            Value: item.productName || "Unknown Product",
-            Category: item.categoryName || "Not Specified",
-            UnitsSold: item.totalUnitsSold || 0,
-            Revenue: item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00",
-          }));
+          const productsData = salesByProduct.length > 0
+            ? salesByProduct.map((item) => ({
+                ProductID: item.Product_id,
+                ProductName: item.productName || "Unknown Product",
+                Category: item.categoryName || "Not Specified",
+                UnitsSold: item.totalUnitsSold || 0,
+                Revenue: item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00",
+              }))
+            : [{ ProductID: "No data available", ProductName: "", Category: "", UnitsSold: "", Revenue: "" }];
           const productsSection = [
             ...productsHeader,
             ...productsData,
-            { Title: "", Value: "" }, // Spacer
-            { Title: "", Value: "" }, // Spacer
-            { Title: "", Value: "" }, // Spacer
+            { ProductID: "", ProductName: "", Category: "", UnitsSold: "", Revenue: "" }, // Spacer
+            { ProductID: "", ProductName: "", Category: "", UnitsSold: "", Revenue: "" }, // Spacer
+            { ProductID: "", ProductName: "", Category: "", UnitsSold: "", Revenue: "" }, // Spacer
           ];
 
           // Sales by Category Section
           const categoriesHeader = [
-            { Title: "Sales by Category", Value: "" },
-            { Title: "Category Name", Value: "Units Sold", Revenue: "Revenue (Rs.)" },
+            { Title: "Sales by Category" },
+            { Title: "" }, // Spacer
           ];
-          const categoriesData = salesByCategory.map((item) => ({
-            Title: item.categoryName || "Not Specified",
-            Value: item.totalUnitsSold || 0,
-            Revenue: item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00",
-          }));
+          const categoriesData = salesByCategory.length > 0
+            ? salesByCategory.map((item) => ({
+                CategoryName: item.categoryName || "Not Specified",
+                UnitsSold: item.totalUnitsSold || 0,
+                Revenue: item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00",
+              }))
+            : [{ CategoryName: "No data available", UnitsSold: "", Revenue: "" }];
           const categoriesSection = [
             ...categoriesHeader,
             ...categoriesData,
-            { Title: "", Value: "" }, // Spacer
-            { Title: "", Value: "" }, // Spacer
+            { CategoryName: "", UnitsSold: "", Revenue: "" }, // Spacer
+            { CategoryName: "", UnitsSold: "", Revenue: "" }, // Spacer
           ];
 
           // Combine all sections into the final CSV data
@@ -1454,17 +1493,52 @@ exports.exportSalesReportCSV = (req, res) => {
             ...categoriesSection,
           ];
 
-          // Define fields for the CSV
-          const fields = [
-            { label: "Title", value: "Title" },
-            { label: "Value", value: "Value" },
-            { label: "Category", value: "Category", default: "" },
-            { label: "Units Sold", value: "UnitsSold", default: "" },
-            { label: "Revenue (Rs.)", value: "Revenue", default: "" },
+          // Define fields for each section's data rows
+          const titleFields = ["Title"];
+          const totalSalesFields = [
+            { label: "Period", value: "Period" },
+            { label: "Total Sales (Rs.)", value: "TotalSales" },
+          ];
+          const productFields = [
+            { label: "Product ID", value: "ProductID" },
+            { label: "Product Name", value: "ProductName" },
+            { label: "Category", value: "Category" },
+            { label: "Units Sold", value: "UnitsSold" },
+            { label: "Revenue (Rs.)", value: "Revenue" },
+          ];
+          const categoryFields = [
+            { label: "Category Name", value: "CategoryName" },
+            { label: "Units Sold", value: "UnitsSold" },
+            { label: "Revenue (Rs.)", value: "Revenue" },
           ];
 
-          const json2csvParser = new Parser({ fields });
-          const csv = json2csvParser.parse(csvData);
+          // Create parsers for each type of row
+          const titleParser = new Parser({ fields: titleFields, header: false });
+          const headerParser = new Parser({ fields: ["Title", "Value"], header: false });
+          const totalSalesParser = new Parser({ fields: totalSalesFields, header: false });
+          const productParser = new Parser({ fields: productFields, header: false });
+          const categoryParser = new Parser({ fields: categoryFields, header: false });
+
+          // Generate CSV content manually
+          let csv = "";
+          csvData.forEach((row) => {
+            if ("Title" in row && !("Value" in row)) {
+              // Use titleParser for section headers
+              csv += titleParser.parse([row]) + "\n";
+            } else if ("Title" in row && "Value" in row) {
+              // Use headerParser for header rows with Title and Value (e.g., "Downloaded on: ", "2025-03-27")
+              csv += headerParser.parse([row]) + "\n";
+            } else if ("Period" in row) {
+              // Use totalSalesParser for Total Sales by Period data rows
+              csv += totalSalesParser.parse([row]) + "\n";
+            } else if ("ProductID" in row) {
+              // Use productParser for Top 5 Products by Revenue data rows
+              csv += productParser.parse([row]) + "\n";
+            } else if ("CategoryName" in row) {
+              // Use categoryParser for Sales by Category data rows
+              csv += categoryParser.parse([row]) + "\n";
+            }
+          });
 
           res.header("Content-Type", "text/csv");
           res.header(
@@ -1480,22 +1554,46 @@ exports.exportSalesReportCSV = (req, res) => {
     });
   });
 };
-// Export Sales Report as PDF
+
 exports.exportSalesReportPDF = (req, res) => {
   const { startDate, endDate, groupBy } = req.query;
 
   // Default date range if not provided
-  const defaultStartDate = "2020-01-01";
+  const defaultStartDate = "2024-01-01";
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
+  const defaultEndDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-26"
 
   const effectiveStartDate = startDate || defaultStartDate;
   const effectiveEndDate = endDate || defaultEndDate;
 
   // Current date for "Downloaded on"
-  const currentDate = today.toISOString().split("T")[0]; // e.g., "2025-03-24"
+  const currentDate = today.toISOString().split("T")[0]; // e.g., "2025-03-27"
+
+  // Validate date formats
+  const start = new Date(effectiveStartDate);
+  const end = new Date(effectiveEndDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+  }
+
+  // Ensure startDate is not after endDate
+  if (start > end) {
+    return res.status(400).json({ error: "startDate cannot be after endDate." });
+  }
+
+  // Ensure startDate is not before January 2024
+  const minDate = new Date("2024-01-01");
+  if (start < minDate) {
+    return res.status(400).json({ error: "startDate cannot be before January 1, 2024." });
+  }
+
+  // Ensure endDate is not after yesterday
+  const maxDate = new Date(defaultEndDate);
+  if (end > maxDate) {
+    return res.status(400).json({ error: `endDate cannot be after ${defaultEndDate}.` });
+  }
 
   // Fetch categories to build the UNION query
   db.query("SELECT CY_ID, CY_NAME FROM category", (err, categories) => {
@@ -1514,7 +1612,16 @@ exports.exportSalesReportPDF = (req, res) => {
             console.warn(`Table ${tableName} does not exist for category ${category.CY_NAME}`);
             resolve(null); // Skip this table
           } else {
-            resolve({ tableName, categoryId: category.CY_ID, categoryName: category.CY_NAME });
+            // Fetch column names to find the 'name' column
+            db.query(`SHOW COLUMNS FROM \`${tableName}\``, (err, columns) => {
+              if (err) {
+                console.error(`Error fetching columns for table ${tableName}:`, err);
+                resolve(null);
+                return;
+              }
+              const nameColumn = columns.find(col => col.Field.toLowerCase().includes("name"))?.Field || 'name';
+              resolve({ tableName, categoryId: category.CY_ID, categoryName: category.CY_NAME, nameColumn });
+            });
           }
         });
       });
@@ -1530,7 +1637,7 @@ exports.exportSalesReportPDF = (req, res) => {
 
       // Build the UNION query for the product tables
       const unionQuery = validTables
-        .map(table => `SELECT id, name, category_id FROM \`${table.tableName}\``)
+        .map(table => `SELECT id, \`${table.nameColumn}\` AS name, category_id FROM \`${table.tableName}\``)
         .join(" UNION ");
 
       // Base queries
@@ -1621,7 +1728,7 @@ exports.exportSalesReportPDF = (req, res) => {
         ),
       ])
         .then(([totalSales, salesByProduct, salesByCategory]) => {
-          const doc = new PDFDocument();
+          const doc = new PDFDocument({ margin: 10 });
           let buffers = [];
           doc.on("data", buffers.push.bind(buffers));
           doc.on("end", () => {
@@ -1634,59 +1741,179 @@ exports.exportSalesReportPDF = (req, res) => {
             res.end(pdfData);
           });
 
-          // Header
-          doc.fontSize(20).text("Sales Report", { align: "center" });
-          doc.fontSize(12).text(
-            `Downloaded on: ${currentDate}`,
-            { align: "center" }
-          );
+          // Track the current page number
+          let pageNumber = 1;
+          let isTotalSalesSection = false;
+          let isProductsSection = false;
+          let isCategoriesSection = false;
+
+          // Define header dimensions
+          const leftMargin = 20;
+          const rightMargin = 10;
+          const logoPath = path.join(__dirname, "../public/ad-images/logo/logo.png");
+          const logoWidth = 100;
+          const logoHeight = 100;
+          const logoX = 30;
+          const logoY = 30;
+          const textX = logoX + logoWidth + 20;
+          const textY = logoY + (logoHeight / 2) - 10;
+          const headerHeight = logoY + logoHeight + 20;
+
+          // Function to add the header
+          const addHeader = () => {
+            try {
+              doc.image(logoPath, logoX, logoY, { width: logoWidth, height: logoHeight });
+            } catch (err) {
+              console.error("Error adding logo to PDF:", err);
+              doc.fontSize(12).fillColor("red").text("Logo not found", logoX, logoY, { width: logoWidth, align: "center" });
+            }
+            doc.fontSize(24).fillColor("#2E7D32").text("Nature’s Palette", textX, textY);
+          };
+
+          // Add page numbers and header on every page
+          doc.on("pageAdded", () => {
+            pageNumber++;
+            addHeader();
+            doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, rightMargin, doc.y, { align: "right" });
+            doc.y = headerHeight;
+            if (isTotalSalesSection) {
+              doc.fontSize(16).fillColor("#2E7D32").text("Total Sales by Period", leftMargin, doc.y, { underline: true });
+              doc.moveDown(0.5);
+              doc.fillColor("black").fontSize(12);
+            }
+            if (isProductsSection) {
+              doc.fontSize(16).fillColor("#2E7D32").text("Top 5 Products by Revenue", leftMargin, doc.y, { underline: true });
+              doc.moveDown(0.5);
+              doc.fillColor("black").fontSize(12);
+            }
+            if (isCategoriesSection) {
+              doc.fontSize(16).fillColor("#2E7D32").text("Sales by Category", leftMargin, doc.y, { underline: true });
+              doc.moveDown(0.5);
+              doc.fillColor("black").fontSize(12);
+            }
+          });
+
+          // Add the header and page number to the first page
+          addHeader();
+          doc.fontSize(10).fillColor("black").text(`Page ${pageNumber}`, doc.page.width - 100, doc.page.height - 50, rightMargin, doc.y, { align: "right" });
+          doc.y = headerHeight;
+
+          // Subheader: Sales Report and Details
+          doc.fillColor("black");
+          doc.fontSize(16).text("Sales Report", leftMargin, doc.y, { align: "center" });
+          doc.fontSize(12).text(`Downloaded on: ${currentDate}`, leftMargin, doc.y, { align: "center" });
+          doc.fontSize(12).text(`Date Range: ${effectiveStartDate} to ${effectiveEndDate}`, leftMargin, doc.y, { align: "center" });
           doc.moveDown(2);
 
-
-          // Total Sales by Period
-          doc.fontSize(14).text("Total Sales by Period", { underline: true });
+          // Total Sales by Period Section
+          isTotalSalesSection = true;
+          doc.fontSize(16).fillColor("#2E7D32").text("Total Sales by Period", leftMargin, doc.y, { underline: true });
           doc.moveDown(0.5);
+          doc.fillColor("black").fontSize(12);
+
           if (totalSales.length > 0) {
-            totalSales.forEach((item) => {
-              doc.fontSize(12).text(`Period: ${item.period}`);
-              doc.fontSize(12).text(`Total Sales (Rs.): ${item.totalSales ? item.totalSales.toFixed(2) : "0.00"}`);
-              doc.moveDown(0.5);
+            totalSales.forEach((item, index) => {
+              const lineHeight = 15;
+              const lines = 2; // Period, Total Sales
+              const blockHeight = lines * lineHeight;
+              const sectionHeaderHeight = 30;
+
+              if (doc.y + blockHeight + (index === 0 ? sectionHeaderHeight : 0) > doc.page.height - 50) {
+                doc.addPage();
+              }
+
+              doc.text(`Period: ${item.period}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Total Sales (Rs.): ${item.totalSales ? item.totalSales.toFixed(2) : "0.00"}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+
+              if (index < totalSales.length - 1) {
+                doc.moveDown(0.5);
+                doc.moveTo(leftMargin, doc.y).lineTo(doc.page.width - leftMargin, doc.y).stroke();
+                doc.moveDown(0.5);
+              }
             });
           } else {
-            doc.fontSize(12).text("No sales data available for the selected period.");
+            doc.text("No sales data available for the selected period.", leftMargin, doc.y);
           }
-          doc.moveDown(2);
+          isTotalSalesSection = false;
+          doc.moveDown(2.5);
 
-          // Top 5 Products by Revenue
-          doc.fontSize(14).text("Top 5 Products by Revenue", { underline: true });
+          // Top 5 Products by Revenue Section
+          isProductsSection = true;
+          doc.fontSize(16).fillColor("#2E7D32").text("Top 5 Products by Revenue", leftMargin, doc.y, { underline: true });
           doc.moveDown(0.5);
+          doc.fillColor("black").fontSize(12);
+
           if (salesByProduct.length > 0) {
-            salesByProduct.forEach((item) => {
-              doc.fontSize(12).text(`Product ID: ${item.Product_id}`);
-              doc.fontSize(12).text(`Product Name: ${item.productName || "Unknown Product"}`);
-              doc.fontSize(12).text(`Category: ${item.categoryName || "Not Specified"}`);
-              doc.fontSize(12).text(`Units Sold: ${item.totalUnitsSold || 0}`);
-              doc.fontSize(12).text(`Revenue (Rs.): ${item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00"}`);
-              doc.moveDown(0.5);
-            });
-          } else {
-            doc.fontSize(12).text("No product sales data available.");
-          }
-          doc.moveDown(2);
+            salesByProduct.forEach((item, index) => {
+              const lineHeight = 15;
+              const lines = 5; // Product ID, Product Name, Category, Units Sold, Revenue
+              const blockHeight = lines * lineHeight;
+              const sectionHeaderHeight = 30;
 
-          // Sales by Category
-          doc.fontSize(14).text("Sales by Category", { underline: true });
-          doc.moveDown(0.5);
-          if (salesByCategory.length > 0) {
-            salesByCategory.forEach((item) => {
-              doc.fontSize(12).text(`Category Name: ${item.categoryName || "Not Specified"}`);
-              doc.fontSize(12).text(`Units Sold: ${item.totalUnitsSold || 0}`);
-              doc.fontSize(12).text(`Revenue (Rs.): ${item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00"}`);
-              doc.moveDown(0.5);
+              if (doc.y + blockHeight + (index === 0 ? sectionHeaderHeight : 0) > doc.page.height - 50) {
+                doc.addPage();
+              }
+
+              doc.text(`Product ID: ${item.Product_id}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Product Name: ${item.productName || "Unknown Product"}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Category: ${item.categoryName || "Not Specified"}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Units Sold: ${item.totalUnitsSold || 0}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Revenue (Rs.): ${item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00"}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+
+              if (index < salesByProduct.length - 1) {
+                doc.moveDown(0.5);
+                doc.moveTo(leftMargin, doc.y).lineTo(doc.page.width - leftMargin, doc.y).stroke();
+                doc.moveDown(0.5);
+              }
             });
           } else {
-            doc.fontSize(12).text("No category sales data available.");
+            doc.text("No product sales data available.", leftMargin, doc.y);
           }
+          isProductsSection = false;
+          doc.moveDown(2.5);
+
+          // Sales by Category Section
+          isCategoriesSection = true;
+          doc.fontSize(16).fillColor("#2E7D32").text("Sales by Category", leftMargin, doc.y, { underline: true });
+          doc.moveDown(0.5);
+          doc.fillColor("black").fontSize(12);
+
+          if (salesByCategory.length > 0) {
+            salesByCategory.forEach((item, index) => {
+              const lineHeight = 15;
+              const lines = 3; // Category Name, Units Sold, Revenue
+              const blockHeight = lines * lineHeight;
+              const sectionHeaderHeight = 30;
+
+              if (doc.y + blockHeight + (index === 0 ? sectionHeaderHeight : 0) > doc.page.height - 50) {
+                doc.addPage();
+              }
+
+              doc.text(`Category Name: ${item.categoryName || "Not Specified"}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Units Sold: ${item.totalUnitsSold || 0}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+              doc.text(`Revenue (Rs.): ${item.totalRevenue ? item.totalRevenue.toFixed(2) : "0.00"}`, leftMargin, doc.y);
+              doc.moveDown(0.2);
+
+              if (index < salesByCategory.length - 1) {
+                doc.moveDown(0.5);
+                doc.moveTo(leftMargin, doc.y).lineTo(doc.page.width - leftMargin, doc.y).stroke();
+                doc.moveDown(0.5);
+              }
+            });
+          } else {
+            doc.text("No category sales data available.", leftMargin, doc.y);
+          }
+          isCategoriesSection = false;
+          doc.moveDown(2.5);
 
           doc.end();
         })

@@ -504,13 +504,11 @@ function fetchSalesReport() {
   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
   const maxDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-22"
   const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // e.g., "2025-03-21"
-  const minDate = "2020-01-01";
+  const minDate = "2024-01-01";
 
   // Dynamically set max attributes for date inputs
   startDateElement.max = maxStartDate;
   endDateElement.max = maxDate;
-
-  console.log("Selected date range:", dateRange); // Debug: Log the selected date range
 
   if (dateRange === "all") {
     startDate = minDate;
@@ -543,7 +541,7 @@ function fetchSalesReport() {
     const maxStart = new Date(maxStartDate);
 
     if (start < min) {
-      alert("Start date cannot be before January 1, 2020.");
+      alert("Start date cannot be before January 1, 2024.");
       return;
     }
     if (start > maxStart) {
@@ -563,9 +561,6 @@ function fetchSalesReport() {
     alert("Please select a valid date range.");
     return;
   }
-
-  console.log("Calculated startDate:", startDate); // Debug: Log the startDate
-  console.log("Calculated endDate:", endDate); // Debug: Log the endDate
 
   // Determine the grouping for the chart label
   const start = new Date(startDate);
@@ -754,17 +749,27 @@ function fetchSalesReport() {
 
 // Export Sales Report
 function exportSalesReport(format) {
-  const dateRange = document.getElementById("salesDateRange").value;
-  let startDate, endDate;
+  const dateRangeElement = document.getElementById("salesDateRange");
+  const startDateElement = document.getElementById("salesStartDate");
+  const endDateElement = document.getElementById("salesEndDate");
+
+  if (!dateRangeElement || !startDateElement || !endDateElement) {
+    console.error("One or more required DOM elements are missing.");
+    alert("Error: Required elements are missing on the page.");
+    return;
+  }
+
+  const dateRange = dateRangeElement.value;
+  let startDate, endDate, groupBy;
 
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   const dayBeforeYesterday = new Date(yesterday);
   dayBeforeYesterday.setDate(yesterday.getDate() - 1);
-  const maxDate = yesterday.toISOString().split("T")[0]; // "2025-03-22"
-  const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // "2025-03-21"
-  const minDate = "2020-01-01";
+  const maxDate = yesterday.toISOString().split("T")[0]; // e.g., "2025-03-26"
+  const maxStartDate = dayBeforeYesterday.toISOString().split("T")[0]; // e.g., "2025-03-25"
+  const minDate = "2024-01-01";
 
   if (dateRange === "all") {
     startDate = minDate;
@@ -782,8 +787,8 @@ function exportSalesReport(format) {
       .toISOString()
       .split("T")[0];
   } else if (dateRange === "custom") {
-    startDate = document.getElementById("salesStartDate").value;
-    endDate = document.getElementById("salesEndDate").value;
+    startDate = startDateElement.value;
+    endDate = endDateElement.value;
 
     if (!startDate || !endDate) {
       alert("Please select both start and end dates.");
@@ -797,7 +802,7 @@ function exportSalesReport(format) {
     const maxStart = new Date(maxStartDate);
 
     if (start < min) {
-      alert("Start date cannot be before January 1, 2020.");
+      alert("Start date cannot be before January 1, 2024.");
       return;
     }
     if (start > maxStart) {
@@ -812,11 +817,33 @@ function exportSalesReport(format) {
       alert("Start date cannot be after end date.");
       return;
     }
+  } else {
+    console.error("Invalid date range selected:", dateRange);
+    alert("Please select a valid date range.");
+    return;
+  }
+
+  // Calculate the grouping for the export (same logic as fetchSalesReport)
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const timeDiff = Math.abs(end - start);
+  const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+  if (daysDiff === 0 || daysDiff === 1) {
+    groupBy = "daily"; // Hourly grouping is not supported in export, so use daily
+  } else if (daysDiff <= 7) {
+    groupBy = "daily";
+  } else if (daysDiff <= 90) {
+    groupBy = "weekly";
+  } else {
+    groupBy = "monthly";
   }
 
   const queryParams = new URLSearchParams();
   if (startDate) queryParams.append("startDate", startDate);
   if (endDate) queryParams.append("endDate", endDate);
+  if (groupBy) queryParams.append("groupBy", groupBy);
+
+  console.log("Export query parameters:", queryParams.toString()); // Debug: Log the query parameters
 
   const endpoint =
     format === "csv"
@@ -824,13 +851,23 @@ function exportSalesReport(format) {
       : "/report/export-sales-report-pdf";
   const fileName = `sales_report.${format}`;
 
+  // Show loading state
+  const exportButton = document.querySelector('button[onclick*="exportSalesReport"]');
+  if (exportButton) {
+    exportButton.disabled = true;
+    exportButton.textContent = "Exporting...";
+  }
+
   fetch(`${endpoint}?${queryParams.toString()}`, {
     method: "GET",
     headers: { Accept: format === "csv" ? "text/csv" : "application/pdf" },
   })
     .then((response) => {
-      if (!response.ok)
-        throw new Error(`HTTP error! Status: ${response.status}`);
+      if (!response.ok) {
+        return response.json().then((errorData) => {
+          throw new Error(`HTTP error! Status: ${response.status}, Response: ${JSON.stringify(errorData)}`);
+        });
+      }
       return response.blob();
     })
     .then((blob) => {
@@ -847,8 +884,8 @@ function exportSalesReport(format) {
     })
     .catch((error) => {
       console.error(`Error exporting sales report as ${format}:`, error);
-      alert(`Failed to export sales report as ${format.toUpperCase()}.`);
-    });
+      alert(`Failed to export sales report as ${format.toUpperCase()}: ${error.message}`);
+    })
 }
 
 function fetchCustomerReport() {
@@ -914,7 +951,7 @@ function fetchCustomerReport() {
     const maxStart = new Date(maxStartDate);
 
     if (start < min) {
-      alert("Start date cannot be before January 1, 2020.");
+      alert("Start date cannot be before January 1, 2024.");
       return;
     }
     if (start > maxStart) {
@@ -1105,7 +1142,7 @@ function handleDateRangeChangeCustomer() {
   if (dateRange === 'custom') {
     customDateRange.style.display = 'block';
     // Set default values for custom range
-    startDateInput.value = '2020-01-01'; // Default start date
+    startDateInput.value = '2024-01-01'; // Default start date
     endDateInput.value = maxDate; // Default end date (yesterday)
   } else {
     customDateRange.style.display = 'none';
@@ -1157,7 +1194,7 @@ function exportCustomerReport(format) {
     const maxStart = new Date(maxStartDate);
 
     if (start < min) {
-      alert("Start date cannot be before January 1, 2020.");
+      alert("Start date cannot be before January 1, 2024.");
       return;
     }
     if (start > maxStart) {
