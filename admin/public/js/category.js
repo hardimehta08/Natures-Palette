@@ -1,3 +1,4 @@
+
 const fetchCategories = async () => {
   try {
     const response = await fetch("/category/categories");
@@ -12,6 +13,9 @@ const fetchCategories = async () => {
     tableBody.innerHTML = ""; // Clear existing data
 
     categories.forEach((category) => {
+      const imageSrc = category.category_image
+        ? `/Database/${category.category_image.split('/').pop()}` // Extract filename from path
+        : "/Database/default-image.jpg";
       // Display Category Row
       let row = `
                 <tr id="category-row-${category.category_id}">
@@ -25,7 +29,7 @@ const fetchCategories = async () => {
                         : "No description"
                     }</td>
                     <td>
-                        <img src="/images/${category.category_image}" alt="${
+                        <img src="${imageSrc}" alt="${
         category.category_name
       }" width="50">
                     </td>
@@ -282,18 +286,20 @@ function fetchSubcategories() {
       return response.json();
     })
     .then((subcategories) => {
-      console.log("✅ Subcategories:", subcategories); // Debugging
       const subcategoryTable = document.getElementById("subcat-list");
       subcategoryTable.innerHTML = "";
 
       if (subcategories.length > 0) {
         subcategories.forEach((sub) => {
+          const imageSrc = sub.sub_image
+            ? `/Database/${sub.sub_image.split('/').pop()}` // Extract filename from path
+            : "/Database/default-image.jpg";
           let row = `
                     <tr>
                         <td>${sub.sub_id}</td>
                         <td>${sub.sub_name}</td>
                         <td>${sub.sub_desc || "No description"}</td>
-                        <td><img src="/images/${sub.sub_image}" alt="${
+                        <td><img src="${imageSrc}" alt="${
             sub.sub_name
           }" width="50"></td> 
                         <td>${categoryId}</td>
@@ -434,12 +440,15 @@ function fetchSubSubcategories() {
 
       if (subsubcategories.length > 0) {
         subsubcategories.forEach((ssc) => {
+          const imageSrc = ssc.ss_image
+          ? `/Database/${ssc.ss_image.split('/').pop()}` // Extract filename from path
+          : "/Database/default-image.jpg";
           let row = `
                         <tr>
                             <td>${ssc.ss_id}</td>
                             <td>${ssc.ss_name}</td>
                             <td>${ssc.ss_desc || "No description"}</td>
-                            <td><img src="/images/${ssc.ss_image}" alt="${
+                            <td><img src="${imageSrc}" alt="${
             ssc.ss_name
           }" width="50"></td>
                             <td>${subcategoryId}</td>

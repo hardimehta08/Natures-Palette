@@ -313,7 +313,7 @@ function insertImages(productId, uploadedFiles, res) {
   console.log("🟢 Function insertImages Called");
 
   // Ensure "Database" folder exists
-  const directoryPath = path.join(__dirname, "../../../trial4 (2)/Nature-s-Palette/trial4/public/Database/");
+  const directoryPath = path.join(__dirname, "../../public/Database/");
   if (!fs.existsSync(directoryPath)) {
     fs.mkdirSync(directoryPath, { recursive: true });
   }

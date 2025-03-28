@@ -3,16 +3,6 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "public/images/"); // Store in 'public/uploads'
-  },
-  filename: (req, file, cb) => {
-    cb(null, file.originalname);
-  },
-});
-const upload = multer({ storage });
-
 // Database connection
 const conn = mysql.createConnection({
   host: "localhost",
@@ -121,7 +111,7 @@ const getSubSubcategories = (req, res) => {
 
 const addCategory = (req, res) => {
   const { cy_name, cy_desc } = req.body;
-  const cy_image = req.file ? `../images/${req.file.filename}` : null; // Set image if uploaded, otherwise null
+  const cy_image = req.file; // Assuming multer or similar middleware is used for file upload
 
   if (!cy_name || !cy_desc) {
     return res
@@ -129,6 +119,18 @@ const addCategory = (req, res) => {
       .json({ error: "Category name and description are required." });
   }
 
+  // Define the directory path outside admin folder (public/Database)
+  const directoryPath = path.join(
+    __dirname,
+    "../../public/Database/" // Adjust the path based on your project structure
+  );
+
+  // Ensure the "Database" folder exists
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath, { recursive: true });
+  }
+
+  // Get the maximum category ID from the database
   const getMaxCategoryIdQuery = `SELECT MAX(cy_id) AS maxId FROM category`;
 
   conn.query(getMaxCategoryIdQuery, (err, result) => {
@@ -145,11 +147,28 @@ const addCategory = (req, res) => {
       newCategoryId = "CY01";
     }
 
-    // ✅ Ensure all 4 columns are filled correctly
+    // Handle the image file
+    let imagePath = null;
+    if (cy_image) {
+      const extension = path.extname(cy_image.originalname) || ".jpg"; // Default to .jpg if no extension
+      const imageFileName = `${newCategoryId}${extension}`; // e.g., CY01.jpg
+      const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
+      imagePath = `Database/${imageFileName}`; // Relative path for database storage
+
+      // Move the uploaded file to the target location
+      fs.rename(cy_image.path, targetPath, (err) => {
+        if (err) {
+          console.error("Error moving image:", err);
+          return res.status(500).json({ error: "Image upload failed" });
+        }
+      });
+    }
+
+    // Insert into the database
     const insertQuery = `INSERT INTO category (cy_id, cy_name, cy_desc, cy_image) VALUES (?, ?, ?, ?)`;
     conn.query(
       insertQuery,
-      [newCategoryId, cy_name, cy_desc, cy_image || null],
+      [newCategoryId, cy_name, cy_desc, imagePath || null],
       (err) => {
         if (err) {
           console.error("Error inserting category:", err);
@@ -166,10 +185,18 @@ const addCategory = (req, res) => {
 
 const addSubCategory = (req, res) => {
   const { sub_name, sub_desc, cy_id } = req.body;
-  const sub_image = req.file ? `../images/${req.file.filename}` : null;
+  const sub_image = req.file; // File from multer
 
-  if (!sub_name || !sub_desc || !cy_id || !sub_image) {
-    return res.status(400).json({ error: "All fields are required" });
+  if (!sub_name || !sub_desc || !cy_id) {
+    return res.status(400).json({ error: "All fields except image are required" });
+  }
+
+  // Define the directory path (public/Database)
+  const directoryPath = path.join(__dirname, "../../public/Database/");
+
+  // Ensure the "Database" folder exists
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath, { recursive: true });
   }
 
   conn.beginTransaction((err) => {
@@ -178,16 +205,13 @@ const addSubCategory = (req, res) => {
       return res.status(500).json({ error: "Database transaction error" });
     }
 
-    // ✅ Fetch the maximum subcategory ID
+    // Fetch the maximum subcategory ID
     const getMaxSubIdQuery = `SELECT MAX(CAST(SUBSTRING(sub_id, 4) AS UNSIGNED)) AS maxId FROM subcategory`;
 
     conn.query(getMaxSubIdQuery, (err, results) => {
       if (err) {
         console.error("❌ Error fetching max subcategory ID:", err);
-        return rollbackTransaction(
-          res,
-          "Database error while fetching subcategory ID"
-        );
+        return rollbackTransaction(res, "Database error while fetching subcategory ID");
       }
 
       let newSubId =
@@ -197,21 +221,35 @@ const addSubCategory = (req, res) => {
 
       console.log("✅ Generated Unique Subcategory ID:", newSubId);
 
-      // ✅ Insert New Subcategory
+      // Handle the image file
+      let imagePath = null;
+      if (sub_image) {
+        const extension = path.extname(sub_image.originalname) || ".jpg"; // Default to .jpg if no extension
+        const imageFileName = `${newSubId}${extension}`; // e.g., SUB01.jpg
+        const tempPath = sub_image.path; // Temporary path from multer
+        const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
+        imagePath = `Database/${imageFileName}`; // Relative path for database storage
+
+        try {
+          fs.renameSync(tempPath, targetPath); // Move file synchronously
+        } catch (err) {
+          console.error("❌ Error moving image:", err);
+          return rollbackTransaction(res, "Image upload failed");
+        }
+      }
+
+      // Insert new subcategory
       const insertQuery = `INSERT INTO subcategory (sub_id, sub_name, sub_desc, cy_id, sub_image) VALUES (?, ?, ?, ?, ?)`;
       conn.query(
         insertQuery,
-        [newSubId, sub_name, sub_desc, cy_id, sub_image],
+        [newSubId, sub_name, sub_desc, cy_id, imagePath || null],
         (err, result) => {
           if (err) {
             console.error("❌ Error inserting subcategory:", err);
-            return rollbackTransaction(
-              res,
-              "Database error while inserting subcategory"
-            );
+            return rollbackTransaction(res, "Database error while inserting subcategory");
           }
 
-          // ✅ Commit Transaction
+          // Commit transaction
           conn.commit((err) => {
             if (err) {
               console.error("❌ Error committing transaction:", err);
@@ -230,7 +268,7 @@ const addSubCategory = (req, res) => {
   });
 };
 
-// ✅ Utility Function to Rollback Transaction
+// Utility function to rollback transaction
 function rollbackTransaction(res, message) {
   conn.rollback(() => {
     res.status(500).json({ error: message });
@@ -239,7 +277,7 @@ function rollbackTransaction(res, message) {
 
 const addSubSubCategory = (req, res) => {
   const { ss_name, ss_desc, sub_id } = req.body;
-  const ss_image = req.file ? `../images/${req.file.filename}` : null;
+  const ss_image = req.file; // File from multer
 
   if (!ss_name || !ss_desc || !sub_id) {
     return res.status(400).json({
@@ -247,26 +285,51 @@ const addSubSubCategory = (req, res) => {
     });
   }
 
+  // Define the directory path (public/Database)
+  const directoryPath = path.join(__dirname, "../../public/Database/");
+
+  // Ensure the "Database" folder exists
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath, { recursive: true });
+  }
+
   const getMaxSsIdQuery = `SELECT MAX(CAST(SUBSTRING(ss_id, 3) AS UNSIGNED)) AS maxId FROM subsubcategory`;
 
   conn.query(getMaxSsIdQuery, (err, result) => {
     if (err) {
       console.error("❌ Error fetching max sub-subcategory ID:", err);
-      return res.status(500).json({ error: "Database error" });
+      return res.status(500).json({ error: "Database error: " + err.message });
     }
 
     let newSsId = result[0].maxId
       ? `SS${String(result[0].maxId + 1).padStart(2, "0")}`
       : `SS01`;
 
+    // Handle the image file
+    let imagePath = null;
+    if (ss_image) {
+      const extension = path.extname(ss_image.originalname) || ".jpg"; // Default to .jpg if no extension
+      const imageFileName = `${newSsId}${extension}`; // e.g., SS01.jpg
+      const tempPath = ss_image.path; // Temporary path from multer
+      const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
+      imagePath = `Database/${imageFileName}`; // Relative path for database storage
+
+      try {
+        fs.renameSync(tempPath, targetPath); // Move file synchronously
+      } catch (err) {
+        console.error("❌ Error moving image:", err);
+        return res.status(500).json({ error: "Image upload failed" });
+      }
+    }
+
     const insertQuery = `INSERT INTO subsubcategory (ss_id, ss_name, ss_desc, sub_id, ss_image) VALUES (?, ?, ?, ?, ?)`;
     conn.query(
       insertQuery,
-      [newSsId, ss_name, ss_desc, sub_id, ss_image],
+      [newSsId, ss_name, ss_desc, sub_id, imagePath || null],
       (err, result) => {
         if (err) {
           console.error("❌ Error inserting sub-subcategory:", err);
-          return res.status(500).json({ error: "Database error" });
+          return res.status(500).json({ error: "Database error: " + err.message });
         }
         res.json({
           message: "✅ Sub-Subcategory added successfully",
@@ -281,34 +344,80 @@ const addSubSubCategory = (req, res) => {
 const updateCategory = (req, res) => {
   const categoryId = req.params.id;
   const { cy_name, cy_desc } = req.body;
-  const cy_image = req.file ? `${req.file.filename}` : null;
+  const cy_image = req.file; // File from multer
 
   if (!cy_name) {
     return res.status(400).json({ error: "Category name is required" });
   }
 
-  let query = "UPDATE category SET cy_name = ?, cy_desc = ? WHERE cy_id = ?";
-  let params = [cy_name, cy_desc, categoryId];
+  // Define the directory path (public/Database)
+  const directoryPath = path.join(__dirname, "../../public/Database/");
 
-  if (cy_image) {
-    query =
-      "UPDATE category SET cy_name = ?, cy_desc = ?, cy_image = ? WHERE cy_id = ?";
-    params = [cy_name, cy_desc, cy_image, categoryId];
+  // Ensure the "Database" folder exists
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath, { recursive: true });
   }
 
-  conn.query(query, params, (err, result) => {
+  // Step 1: Get old image path (if exists)
+  const getImageQuery = "SELECT cy_image FROM category WHERE cy_id = ?";
+  conn.query(getImageQuery, [categoryId], (err, result) => {
     if (err) {
-      console.error("Error updating category:", err);
-      return res.status(500).json({ error: "Database error" });
+      console.error("❌ Error fetching old image:", err);
+      return res.status(500).json({ error: "Database error: " + err.message });
     }
-    res.json({ message: "Category updated successfully" });
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+
+    const oldImagePath = result[0].cy_image;
+
+    // Step 2: Handle the new image file (if provided)
+    let newImagePath = oldImagePath; // Default to old image if no new one is uploaded
+    if (cy_image) {
+      const extension = path.extname(cy_image.originalname) || ".jpg"; // Default to .jpg
+      const imageFileName = `${categoryId}${extension}`; // e.g., CY01.jpg
+      const tempPath = cy_image.path; // Temporary path from multer
+      const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
+      newImagePath = `Database/${imageFileName}`; // Relative path for database
+
+      try {
+        // Move the new image to the target location
+        fs.renameSync(tempPath, targetPath);
+
+        // Delete the old image if it exists and is different
+        if (oldImagePath && oldImagePath !== newImagePath) {
+          const oldImageFullPath = path.join(directoryPath, path.basename(oldImagePath));
+          if (fs.existsSync(oldImageFullPath)) {
+            fs.unlinkSync(oldImageFullPath);
+          }
+        }
+      } catch (err) {
+        console.error("❌ Error handling image:", err);
+        return res.status(500).json({ error: "Image processing failed" });
+      }
+    }
+
+    // Step 3: Update category in the database
+    const query = "UPDATE category SET cy_name = ?, cy_desc = ?, cy_image = ? WHERE cy_id = ?";
+    const params = [cy_name, cy_desc || null, newImagePath || null, categoryId];
+
+    conn.query(query, params, (err, result) => {
+      if (err) {
+        console.error("❌ Error updating category:", err);
+        return res.status(500).json({ error: "Database error: " + err.message });
+      }
+
+      console.log("✅ Category updated successfully:", categoryId);
+      res.json({ message: "Category updated successfully" });
+    });
   });
 };
 
 const updateSubcategory = (req, res) => {
   const subcategoryId = req.params.id;
   const { sub_name, sub_desc } = req.body;
-  const sub_image = req.file ? req.file.filename : null;
+  const sub_image = req.file; // File from multer
 
   if (!sub_name || !sub_desc) {
     return res
@@ -316,47 +425,58 @@ const updateSubcategory = (req, res) => {
       .json({ error: "Subcategory name and description are required" });
   }
 
-  // ✅ Step 1: Get Old Image Path (if exists)
+  // Define the directory path (public/Database)
+  const directoryPath = path.join(__dirname, "../../public/Database/");
+
+  // Ensure the "Database" folder exists
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath, { recursive: true });
+  }
+
+  // Step 1: Get old image path (if exists)
   const getImageQuery = "SELECT sub_image FROM subcategory WHERE sub_id = ?";
   conn.query(getImageQuery, [subcategoryId], (err, result) => {
     if (err) {
       console.error("❌ Error fetching old image:", err);
-      return res.status(500).json({ error: "Database error" });
+      return res.status(500).json({ error: "Database error: " + err.message });
     }
 
     const oldImagePath = result.length > 0 ? result[0].sub_image : null;
 
-    // ✅ Step 2: Update Subcategory
-    let query, params;
-
+    // Step 2: Handle the new image file (if provided)
+    let newImagePath = oldImagePath; // Default to old image if no new one is uploaded
     if (sub_image) {
-      query =
-        "UPDATE subcategory SET sub_name = ?, sub_desc = ?, sub_image = ? WHERE sub_id = ?";
-      params = [sub_name, sub_desc, sub_image, subcategoryId];
-    } else {
-      query =
-        "UPDATE subcategory SET sub_name = ?, sub_desc = ? WHERE sub_id = ?";
-      params = [sub_name, sub_desc, subcategoryId];
+      const extension = path.extname(sub_image.originalname) || ".jpg"; // Default to .jpg
+      const imageFileName = `${subcategoryId}${extension}`; // e.g., SUB01.jpg
+      const tempPath = sub_image.path; // Temporary path from multer
+      const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
+      newImagePath = `Database/${imageFileName}`; // Relative path for database
+
+      try {
+        // Move the new image to the target location
+        fs.renameSync(tempPath, targetPath);
+
+        // Delete the old image if it exists and is different
+        if (oldImagePath && oldImagePath !== newImagePath) {
+          const oldImageFullPath = path.join(directoryPath, path.basename(oldImagePath));
+          if (fs.existsSync(oldImageFullPath)) {
+            fs.unlinkSync(oldImageFullPath);
+          }
+        }
+      } catch (err) {
+        console.error("❌ Error handling image:", err);
+        return res.status(500).json({ error: "Image processing failed" });
+      }
     }
+
+    // Step 3: Update subcategory in the database
+    const query = "UPDATE subcategory SET sub_name = ?, sub_desc = ?, sub_image = ? WHERE sub_id = ?";
+    const params = [sub_name, sub_desc, newImagePath || null, subcategoryId];
 
     conn.query(query, params, (err, result) => {
       if (err) {
         console.error("❌ Error updating subcategory:", err);
-        return res.status(500).json({ error: "Database error" });
-      }
-
-      // ✅ Step 3: Delete Old Image (if a new one is uploaded)
-      if (sub_image && oldImagePath) {
-        const oldImageFullPath = path.join(
-          __dirname,
-          "..",
-          "public",
-          "images",
-          oldImagePath
-        );
-        fs.unlink(oldImageFullPath, (err) => {
-          if (err) console.error("❌ Error deleting old image:", err);
-        });
+        return res.status(500).json({ error: "Database error: " + err.message });
       }
 
       console.log("✅ Subcategory updated successfully:", subcategoryId);
@@ -368,64 +488,76 @@ const updateSubcategory = (req, res) => {
 const updateSubSubcategory = (req, res) => {
   const subsubcategoryId = req.params.id;
   const { ss_name, ss_desc } = req.body;
-  const ss_image = req.file ? req.file.filename : null;
+  const ss_image = req.file; // File from multer
 
   if (!ss_name) {
     return res.status(400).json({ error: "Sub-Subcategory name is required" });
   }
 
-  // Get Old Image Path
+  // Define the directory path (public/Database)
+  const directoryPath = path.join(__dirname, "../../public/Database/");
+
+  // Ensure the "Database" folder exists
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath, { recursive: true });
+  }
+
+  // Step 1: Get old image path (if exists)
   const getImageQuery = "SELECT ss_image FROM subsubcategory WHERE ss_id = ?";
   conn.query(getImageQuery, [subsubcategoryId], (err, result) => {
     if (err) {
       console.error("❌ Error fetching old image:", err);
-      return res.status(500).json({ error: "Database error" });
+      return res.status(500).json({ error: "Database error: " + err.message });
     }
 
-    // Handle case when no record is found
     if (result.length === 0) {
       return res.status(404).json({ error: "Sub-Subcategory not found" });
     }
 
     const oldImagePath = result[0].ss_image;
 
-    // Prepare Query and Parameters
-    let query, params;
+    // Step 2: Handle the new image file (if provided)
+    let newImagePath = oldImagePath; // Default to old image if no new one is uploaded
     if (ss_image) {
-      query =
-        "UPDATE subsubcategory SET ss_name = ?, ss_desc = ?, ss_image = ? WHERE ss_id = ?";
-      params = [ss_name, ss_desc, ss_image, subsubcategoryId];
-    } else {
-      query =
-        "UPDATE subsubcategory SET ss_name = ?, ss_desc = ? WHERE ss_id = ?";
-      params = [ss_name, ss_desc, subsubcategoryId];
+      const extension = path.extname(ss_image.originalname) || ".jpg"; // Default to .jpg
+      const imageFileName = `${subsubcategoryId}${extension}`; // e.g., SS01.jpg
+      const tempPath = ss_image.path; // Temporary path from multer
+      const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
+      newImagePath = `Database/${imageFileName}`; // Relative path for database
+
+      try {
+        // Move the new image to the target location
+        fs.renameSync(tempPath, targetPath);
+
+        // Delete the old image if it exists and is different
+        if (oldImagePath && oldImagePath !== newImagePath) {
+          const oldImageFullPath = path.join(directoryPath, path.basename(oldImagePath));
+          if (fs.existsSync(oldImageFullPath)) {
+            fs.unlinkSync(oldImageFullPath);
+          }
+        }
+      } catch (err) {
+        console.error("❌ Error handling image:", err);
+        return res.status(500).json({ error: "Image processing failed" });
+      }
     }
 
-    // Execute Update Query
+    // Step 3: Update sub-subcategory in the database
+    const query = "UPDATE subsubcategory SET ss_name = ?, ss_desc = ?, ss_image = ? WHERE ss_id = ?";
+    const params = [ss_name, ss_desc || null, newImagePath || null, subsubcategoryId];
+
     conn.query(query, params, (err, result) => {
       if (err) {
         console.error("❌ Error updating sub-subcategory:", err);
-        return res.status(500).json({ error: "Database error" });
+        return res.status(500).json({ error: "Database error: " + err.message });
       }
 
-      // Delete old image if a new one is uploaded
-      if (ss_image && oldImagePath) {
-        const oldImageFullPath = path.join(
-          __dirname,
-          "..",
-          "public",
-          "images",
-          oldImagePath
-        );
-        fs.unlink(oldImageFullPath, (err) => {
-          if (err) console.error("⚠ Error deleting old image:", err);
-        });
-      }
-
-      res.json({ message: "✅ Sub-Subcategory updated successfully" });
+      console.log("✅ Sub-Subcategory updated successfully:", subsubcategoryId);
+      res.json({ message: "Sub-Subcategory updated successfully" });
     });
   });
 };
+
 const removeCategory = (req, res) => {
   const categoryId = req.params.id;
 
@@ -944,5 +1076,4 @@ module.exports = {
   getSubcategoriesByCategory,
   getAllCategories,
   getSubSubcategories,
-  upload,
 };

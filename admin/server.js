@@ -32,6 +32,7 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(path.join(__dirname, "public", "html")));
+app.use("/Database", express.static(path.join(__dirname, "../public/Database")));
 // app.use('/images', express.static(path.join(__dirname, 'public/images')));
 app.use(bodyParser.json({ limit: "100mb" }));
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
