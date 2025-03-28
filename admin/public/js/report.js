@@ -1403,15 +1403,19 @@ function fetchInventoryReport(page = 1) {
           lowStockTbody.innerHTML += row;
         });
      }
+     
+     const outOfStockProducts = (data.stockLevels || []).filter(product => Number(product.stock) === 0);
       // Out of Stock Products
       const outOfStockTbody = document.getElementById("outOfStockProducts");
+      console.log("outOfStockProducts:", outOfStockProducts);
+      console.log("outOfStockProducts Length:", outOfStockProducts.length);
       outOfStockTbody.innerHTML = "";
       if (outOfStockProducts.length === 0) {
-        outOfStockTbody.innerHTML = `
-          <tr>
-            <td colspan="5" style="text-align: center;">No out of stock products found.</td>
-          </tr>
-        `;
+          outOfStockTbody.innerHTML = `
+              <tr>
+                  <td colspan="5" style="text-align: center;">No out of stock products found.</td>
+              </tr>
+          `;
       } else {
         data.stockLevels
           .filter((product) => Number(product.stock) === 0)
@@ -1430,7 +1434,7 @@ function fetchInventoryReport(page = 1) {
             outOfStockTbody.innerHTML += row;
           });
       }
-      // Critical Stock Alert and Notification Drawer
+     
       // Critical Stock Alert and Notification Drawer
       const criticalStockData = data.stockLevels.filter((item) => Number(item.stock) <= 2);
       const alertBanner = document.getElementById("criticalStockAlert");

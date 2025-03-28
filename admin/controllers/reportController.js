@@ -919,11 +919,9 @@ exports.getInventoryReport = (req, res) => {
         ),
       ])
         .then(([stockLevels, turnover]) => {
-          const slowMoving = turnover.filter((item) => item.totalSold <= 5);
           res.json({
             stockLevels: stockLevels || [],
             turnover: turnover || [],
-            slowMoving: slowMoving || [],
           });
         })
         .catch((err) => {
