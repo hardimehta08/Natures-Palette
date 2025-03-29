@@ -186,22 +186,25 @@ document
       price: document.getElementById("edit-product-price").value,
       stock: document.getElementById("edit-product-stock").value,
     };
-    const images = [
-      document.getElementById("edit-prod-img1").files[0]?.name || null,
-      document.getElementById("edit-prod-img2").files[0]?.name || null,
-      document.getElementById("edit-prod-img3").files[0]?.name || null,
-    ].filter((img) => img); // Filter out null values
+
+    // Create FormData to handle file uploads
+    const formData = new FormData();
+    formData.append("tableName", currentTableName);
+    formData.append("productId", productId);
+    formData.append("productData", JSON.stringify(productData));
+
+    // Append image files
+    for (let i = 1; i <= 3; i++) {
+      const fileInput = document.getElementById(`edit-prod-img${i}`);
+      if (fileInput && fileInput.files.length > 0) {
+        formData.append("images", fileInput.files[0]);
+      }
+    }
 
     try {
       const response = await fetch("/product/update", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tableName: currentTableName,
-          productId,
-          productData,
-          images,
-        }),
+        body: formData, // Send as FormData, not JSON
         credentials: "include",
       });
 
@@ -218,6 +221,7 @@ document
       alert("Failed to update product.");
     }
   });
+
 // Delete product
 function deleteProduct(productId) {
   if (!confirm("Are you sure you want to delete this product?")) return;
