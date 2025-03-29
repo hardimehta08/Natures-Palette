@@ -358,190 +358,259 @@ document
     }
   });
 
-async function fetchFieldTypes(tableName) {
-  try {
-    const response = await fetch(
-      `/product/get-field-types?tableName=${tableName}`,
-      { credentials: "include" }
-    );
-    const data = await response.json();
-    return data.fields || [];
-  } catch (error) {
-    console.error("Error fetching field types:", error);
-    return [];
-  }
-}
-
-async function generateForm(fields, categoryName, category_id) {
-  const formContainer = document.getElementById("product-form-container");
-  formContainer.innerHTML = `<h3>Add Product to ${categoryName}</h3>`;
-
-  const form = document.createElement("form");
-  form.id = "product-form";
-  form.enctype = "multipart/form-data";
-
-  form.appendChild(createHiddenField("category_id", category_id));
-  form.appendChild(createReadOnlyField("Category ID", "CY_ID", category_id));
-
-  fields.forEach((field) => {
-    if (field.name === "category_id") return;
-    form.appendChild(createInputField(field));
-  });
-
-  for (let i = 1; i <= 3; i++) {
-    form.appendChild(createFileInputField(`Upload Image ${i}`, `prod_img${i}`));
-  }
-
-  const submitButton = document.createElement("button");
-  submitButton.textContent = "Add Product";
-  submitButton.type = "submit";
-  submitButton.className = "btn";
-  form.appendChild(submitButton);
-
-  formContainer.appendChild(form);
-
-  form.addEventListener("submit", async function (event) {
-    event.preventDefault();
-    const formData = new FormData();
-
-    // Append category ID
-    formData.append("category_id", category_id);
-
-    // Collect product data (except images)
-    const productData = {};
-    new FormData(form).forEach((value, key) => {
-      if (!value || value === "undefined") return;
-      if (!key.startsWith("prod_img")) productData[key] = value;
-    });
-
-    // Convert productData object to JSON and append to FormData
-    formData.append("productData", JSON.stringify(productData));
-
-    // Append image files
-    for (let i = 1; i <= 3; i++) {
-      let fileInput = form.querySelector(`[name=prod_img${i}]`);
-      if (fileInput && fileInput.files.length > 0) {
-        formData.append("images", fileInput.files[0]); // ✅ Append file
-      }
-    }
-
-    console.log("Final Collected Data:", { category_id, productData });
-
+  async function fetchFieldTypes(tableName) {
     try {
-      const response = await fetch("/product/add", {
-        method: "POST",
-        body: formData, // ✅ Send as FormData, NOT JSON
-        credentials: "include",
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        alert("Product added successfully!");
-        form.reset();
-      } else {
-        alert("Error: " + result.error);
-      }
+      const response = await fetch(
+        `/product/get-field-types?tableName=${tableName}`,
+        { credentials: "include" }
+      );
+      const data = await response.json();
+      return data.fields || [];
     } catch (error) {
-      console.error("Error:", error);
-      alert("Failed to add product.");
+      console.error("Error fetching field types:", error);
+      return [];
     }
-  });
-}
-
-function convertToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result); // Returns Base64 string
-    reader.onerror = (error) => reject(error);
-  });
-}
-
-function createReadOnlyField(labelText, name, value) {
-  const div = document.createElement("div");
-  div.className = "form-group";
-  div.innerHTML = `<label>${labelText}:</label><input type="text" name="${name}" value="${value}" readonly>`;
-  return div;
-}
-
-function createHiddenField(name, value) {
-  const input = document.createElement("input");
-  input.type = "hidden";
-  input.name = name;
-  input.value = value;
-  return input;
-}
-
-function createFileInputField(labelText, name) {
-  const div = document.createElement("div");
-  div.className = "form-group";
-
-  const label = document.createElement("label");
-  label.textContent = labelText;
-  div.appendChild(label);
-
-  const input = document.createElement("input");
-  input.type = "file";
-  input.name = name;
-  input.accept = "image/*";
-  div.appendChild(input);
-
-  return div;
-}
-
-function createInputField(field) {
-  const div = document.createElement("div");
-  div.className = "form-group";
-
-  const label = document.createElement("label");
-  label.textContent = field.name;
-  div.appendChild(label);
-
-  const input = document.createElement("input");
-  input.name = field.name;
-  input.required = true;
-
-  if (
-    field.type.includes("int") ||
-    field.type.includes("decimal") ||
-    field.type.includes("float") ||
-    field.type.includes("double")
-  ) {
-    input.type = "number";
-  } else if (field.type.includes("varchar") || field.type.includes("text")) {
-    input.type = "text";
-  } else if (
-    field.type.includes("date") ||
-    field.type.includes("datetime") ||
-    field.type.includes("timestamp")
-  ) {
-    input.type = "date";
-  } else if (
-    field.type.includes("boolean") ||
-    field.type.includes("tinyint(1)")
-  ) {
-    input.type = "checkbox";
-  } else {
-    input.type = "text";
   }
-
-  div.appendChild(input);
-  return div;
-}
-
-async function fetchPrimaryKey(tableName) {
-  try {
-    const response = await fetch(
-      `/product/get-primary-key?tableName=${tableName}`,
-      { credentials: "include" }
-    );
-    const data = await response.json();
-    return data.primaryKey || "P_ID";
-  } catch (error) {
-    console.error("Error fetching primary key:", error);
-    return "P_ID";
+  
+  async function generateForm(fields, categoryName, category_id) {
+    const formContainer = document.getElementById("product-form-container");
+    formContainer.innerHTML = `<h3>Add Product to ${categoryName}</h3>`;
+  
+    const form = document.createElement("form");
+    form.id = "product-form";
+    form.enctype = "multipart/form-data";
+  
+    form.appendChild(createHiddenField("category_id", category_id));
+    form.appendChild(createReadOnlyField("Category ID", "CY_ID", category_id));
+  
+    // Filter out the primary key field (e.g., PRODUCT_ID) since it's auto-generated
+    fields.forEach((field) => {
+      if (field.name === "category_id" || field.name === "PRODUCT_ID") return;
+      form.appendChild(createInputField(field));
+    });
+  
+    // Add image upload fields with previews
+    const imagePreviews = [];
+    for (let i = 1; i <= 3; i++) {
+      const fileInputDiv = createFileInputField(`Upload Image ${i}`, `prod_img${i}`);
+      form.appendChild(fileInputDiv);
+  
+      // Add preview div
+      const previewDiv = document.createElement("div");
+      previewDiv.id = `preview-prod_img${i}`;
+      previewDiv.style.marginBottom = "10px";
+      form.appendChild(previewDiv);
+      imagePreviews.push(previewDiv);
+  
+      // Add event listener for image preview
+      const fileInput = fileInputDiv.querySelector(`[name=prod_img${i}]`);
+      fileInput.addEventListener("change", async () => {
+        if (fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          try {
+            const base64 = await convertToBase64(file);
+            previewDiv.innerHTML = `<img src="${base64}" alt="Image ${i} Preview" style="max-width: 200px; max-height: 200px;" />`;
+          } catch (error) {
+            console.error(`Error converting image ${i} to Base64:`, error);
+            previewDiv.innerHTML = `<p style="color: red;">Failed to load preview for Image ${i}</p>`;
+          }
+        } else {
+          previewDiv.innerHTML = "";
+        }
+      });
+    }
+  
+    const submitButton = document.createElement("button");
+    submitButton.textContent = "Add Product";
+    submitButton.type = "submit";
+    submitButton.className = "btn";
+    form.appendChild(submitButton);
+  
+    formContainer.appendChild(form);
+  
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const formData = new FormData();
+  
+      // Append category ID
+      formData.append("category_id", category_id);
+  
+      // Collect product data (except images)
+      const productData = {};
+      new FormData(form).forEach((value, key) => {
+        if (!value || value === "undefined") return;
+        if (!key.startsWith("prod_img")) {
+          // Handle checkbox values (convert to 1/0 for database)
+          const input = form.querySelector(`[name=${key}]`);
+          if (input.type === "checkbox") {
+            productData[key] = input.checked ? 1 : 0;
+          } else {
+            productData[key] = value;
+          }
+        }
+      });
+  
+      // Convert productData object to JSON and append to FormData
+      formData.append("productData", JSON.stringify(productData));
+  
+      // Append image files with validation
+      let imageCount = 0;
+      for (let i = 1; i <= 3; i++) {
+        let fileInput = form.querySelector(`[name=prod_img${i}]`);
+        if (fileInput && fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          // Validate file type (allow only images)
+          if (!file.type.startsWith("image/")) {
+            alert(`File for Image ${i} must be an image (e.g., JPG, PNG).`);
+            return;
+          }
+          formData.append("images", file); // ✅ Append file
+          imageCount++;
+        }
+      }
+  
+      console.log("Final Collected Data:", { category_id, productData, imageCount });
+  
+      try {
+        const response = await fetch("/product/add", {
+          method: "POST",
+          body: formData, // ✅ Send as FormData, NOT JSON
+          credentials: "include",
+        });
+  
+        const result = await response.json();
+        if (result.success) {
+          alert(`Product added successfully! Product ID: ${result.insertedProductId}`);
+  
+          form.reset();
+          // Clear image previews
+          imagePreviews.forEach((preview) => (preview.innerHTML = ""));
+        } else {
+          alert("Error: " + result.error);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Failed to add product.");
+      }
+    });
   }
-}
+  
+  
+  function convertToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result); // Returns Base64 string
+      reader.onerror = (error) => reject(error);
+    });
+  }
+  
+  function createReadOnlyField(labelText, name, value) {
+    const div = document.createElement("div");
+    div.className = "form-group";
+    div.innerHTML = `<label>${labelText}:</label><input type="text" name="${name}" value="${value}" readonly>`;
+    return div;
+  }
+  
+  function createHiddenField(name, value) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    return input;
+  }
+  
+  function createFileInputField(labelText, name) {
+    const div = document.createElement("div");
+    div.className = "form-group";
+  
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    div.appendChild(label);
+  
+    const input = document.createElement("input");
+    input.type = "file";
+    input.name = name;
+    input.accept = "image/*";
+    div.appendChild(input);
+  
+    return div;
+  }
+  
+  function createInputField(field) {
+    const div = document.createElement("div");
+    div.className = "form-group";
+  
+    const label = document.createElement("label");
+    // Use field.label if available, otherwise use field.name
+    label.textContent = field.label || field.name.replace(/_/g, " ").toUpperCase();
+    div.appendChild(label);
+  
+    const input = document.createElement("input");
+    input.name = field.name;
+    input.required = field.required !== undefined ? field.required : true;
+  
+    if (
+      field.type.includes("int") ||
+      field.type.includes("decimal") ||
+      field.type.includes("float") ||
+      field.type.includes("double")
+    ) {
+      input.type = "number";
+      if (field.type.includes("decimal") || field.type.includes("float") || field.type.includes("double")) {
+        input.step = "0.01"; // Allow decimal values
+      }
+    } else if (field.type.includes("varchar") || field.type.includes("text")) {
+      input.type = "text";
+    } else if (
+      field.type.includes("date") ||
+      field.type.includes("datetime") ||
+      field.type.includes("timestamp")
+    ) {
+      input.type = "date";
+    } else if (
+      field.type.includes("boolean") ||
+      field.type.includes("tinyint(1)")
+    ) {
+      input.type = "checkbox";
+    } else if (field.type.includes("enum")) {
+      // Handle ENUM fields as a dropdown
+      const select = document.createElement("select");
+      select.name = field.name;
+      select.required = field.required !== undefined ? field.required : true;
+  
+      // Parse ENUM values (assuming field.enumValues is an array of options)
+      const enumValues = field.enumValues || [];
+      enumValues.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+  
+      div.appendChild(select);
+      return div;
+    } else {
+      input.type = "text";
+    }
+  
+    div.appendChild(input);
+    return div;
+  }
+  
+  async function fetchPrimaryKey(tableName) {
+    try {
+      const response = await fetch(
+        `/product/get-primary-key?tableName=${tableName}`,
+        { credentials: "include" }
+      );
+      const data = await response.json();
+      return data.primaryKey || "PRODUCT_ID"; // Updated default to match expected primary key
+    } catch (error) {
+      console.error("Error fetching primary key:", error);
+      return "PRODUCT_ID";
+    }
+  }
 
 document.addEventListener("DOMContentLoaded", function () {
   fetchCategories1();

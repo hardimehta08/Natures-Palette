@@ -286,7 +286,7 @@ const addProduct = (req, res) => {
           return res.status(500).json({ success: false, error: "No primary key found for the category table" });
         }
 
-        const query = `INSERT INTO ${tableName} SET ?`;
+        const query = `INSERT INTO ${tableName} SET ?`; // Adjusted table name to include "_table"
         db.query(query, productData, (err, result) => {
           if (err) {
             console.error("🔴 Error Inserting Product:", err);
@@ -295,10 +295,10 @@ const addProduct = (req, res) => {
 
           console.log("🟢 Product Inserted Successfully:", productData);
 
-          // ✅ Process Images
+          // ✅ Process Images, passing categoryName
           const uploadedFiles = files.images instanceof Array ? files.images : [files.images];
           if (uploadedFiles.length > 0) {
-            insertImages(productData.id, uploadedFiles, res);
+            insertImages(productData.id, uploadedFiles, categoryName, res); // Pass categoryName
           } else {
             res.json({ success: true, message: "Product added successfully (no images provided).", productId: productData.id });
           }
@@ -309,85 +309,142 @@ const addProduct = (req, res) => {
 };
 
 // ✅ Function to Insert Images
-function insertImages(productId, uploadedFiles, res) {
+async function insertImages(productId, uploadedFiles, categoryName, res) {
   console.log("🟢 Function insertImages Called");
 
-  // Ensure "Database" folder exists
-  const directoryPath = path.join(__dirname, "../../public/Database/");
+  // Ensure categoryName is a valid string
+  if (!categoryName || typeof categoryName !== "string") {
+    console.error("🔴 Error: categoryName is invalid:", categoryName);
+    return res.status(400).json({ error: "Invalid category name" });
+  }
+
+  // Format category name for file path
+  const formattedCategoryName = categoryName.toLowerCase().replace(/\s+/g, "_"); // e.g., "Bouquet"
+  const directoryPath = path.join(
+    __dirname,
+    "../../public/Database",
+    formattedCategoryName,
+    productId
+  );
+
+  // Ensure the directory exists
   if (!fs.existsSync(directoryPath)) {
     fs.mkdirSync(directoryPath, { recursive: true });
   }
 
-  // Get the last IMG_ID from DB
-  db.query(`SELECT IMG_ID FROM image ORDER BY CAST(SUBSTRING(IMG_ID, 4) AS UNSIGNED) DESC LIMIT 1`, (err, imgResult) => {
+  console.log("🟡 Target Directory:", directoryPath);
+
+  // Delete old images before adding new ones
+  db.query(`SELECT * FROM image WHERE PRODUCT_ID = ?`, [productId], (err, result) => {
     if (err) {
-      console.error("🔴 Database Error Fetching Last IMG_ID:", err);
-      return res.status(500).json({ error: "Database error" });
+      console.error("🔴 Error Fetching Existing Images:", err);
+      return res.status(500).json({ error: "Failed to fetch existing images" });
     }
 
-    let newImgId = imgResult.length > 0
-      ? `IMG${String(parseInt(imgResult[0].IMG_ID.replace(/\D/g, ""), 10) + 1).padStart(3, "0")}`
-      : "IMG001";
+    if (result.length > 0) {
+      const oldImagePaths = Object.values(result[0]).filter((path) => path && path.startsWith("Database"));
+      
+      oldImagePaths.forEach((imagePath) => {
+        const fullPath = path.join(__dirname, "../../public", imagePath);
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath); // Delete old image
+          console.log(`🗑️ Deleted Old Image: ${fullPath}`);
+        }
+      });
 
-    console.log("🟢 Generated New Image ID:", newImgId);
+      // Delete the existing database record
+      db.query(`DELETE FROM image WHERE PRODUCT_ID = ?`, [productId], (err) => {
+        if (err) {
+          console.error("🔴 Error Deleting Old Image Records:", err);
+        } else {
+          console.log("✅ Old Image Records Deleted Successfully");
+        }
+      });
+    }
 
-    const imageInsertData = [];
-    let saveCount = 0;
+    // Now, Insert New Images
+    saveNewImages(productId, uploadedFiles, formattedCategoryName, directoryPath, res);
+  });
+}
 
-    uploadedFiles.forEach((file, idx) => {
-      if (!file || !file.filepath) {
-        console.error(`🔴 Image ${idx + 1} is missing or not in the expected format:`, file);
-        return;
+// Helper Function to Save New Images
+function saveNewImages(productId, uploadedFiles, formattedCategoryName, directoryPath, res) {
+  db.query(
+    `SELECT IMG_ID FROM image ORDER BY CAST(SUBSTRING(IMG_ID, 4) AS UNSIGNED) DESC LIMIT 1`,
+    (err, imgResult) => {
+      if (err) {
+        console.error("🔴 Database Error Fetching Last IMG_ID:", err);
+        return res.status(500).json({ error: "Database error" });
       }
 
-      const extension = path.extname(file.originalFilename) || ".jpg"; // Default to .jpg
-      const imageFileName = `${newImgId}-${idx + 1}${extension}`;
-      const relativePath = `Database/${imageFileName}`;
-      const targetPath = path.join(directoryPath, imageFileName);
+      let newImgId =
+        imgResult.length > 0
+          ? `IMG${String(parseInt(imgResult[0].IMG_ID.replace(/\D/g, ""), 10) + 1).padStart(3, "0")}`
+          : "IMG001";
 
-      console.log(`🟡 Saving File: ${targetPath}`);
+      console.log("🟢 Generated New Image ID:", newImgId);
 
-      // Move the file to the uploads directory
-      fs.rename(file.filepath, targetPath, (err) => {
-        if (err) {
-          console.error(`🔴 Error Moving Image ${file.filepath}:`, err);
+      const imageInsertData = [];
+      let saveCount = 0;
+
+      uploadedFiles.forEach((file, idx) => {
+        if (!file || !file.filepath) {
+          console.error(`🔴 Image ${idx + 1} is missing or invalid format:`, file);
           return;
         }
 
-        imageInsertData.push(relativePath);
-        saveCount++;
+        const extension = path.extname(file.originalFilename) || ".jpg"; // Default to .jpg
+        const imageFileName = `${idx + 1}${extension}`; // e.g., "1.jpg", "2.jpg"
+        const targetPath = path.join(directoryPath, imageFileName);
 
-        if (saveCount === uploadedFiles.length) {
-          console.log("🟢 All Images Processed, Preparing to Insert into Database");
+        // Construct the database path
+        const relativePath = `Database/${formattedCategoryName}/${productId}/${imageFileName}`;
 
-          if (imageInsertData.length === 0) {
-            return res.status(500).json({ error: "No images were saved." });
+        console.log(`🟡 Saving File: ${targetPath}`);
+
+        // Move the file to the target directory
+        fs.rename(file.filepath, targetPath, (err) => {
+          if (err) {
+            console.error(`🔴 Error Moving Image ${file.filepath}:`, err);
+            return;
           }
 
-          // Insert into DB
-          const columns = imageInsertData.map((_, i) => `PATH${i + 1}`).join(", ");
-          const values = imageInsertData.map((path) => `'${path}'`).join(", ");
-          const imageQuery = `INSERT INTO image (IMG_ID, PRODUCT_ID, ${columns}) VALUES ('${newImgId}', '${productId}', ${values})`;
+          imageInsertData.push(relativePath);
+          saveCount++;
 
-          console.log("🟢 Running SQL Query:", imageQuery);
+          if (saveCount === uploadedFiles.length) {
+            console.log("🟢 All Images Processed, Preparing to Insert into Database");
 
-          db.query(imageQuery, [], (err) => {
-            if (err) {
-              console.error("🔴 Database Insert Error:", err);
-              return res.status(500).json({ error: "Image insertion failed" });
+            if (imageInsertData.length === 0) {
+              return res.status(500).json({ error: "No images were saved." });
             }
 
-            console.log("✅ Database Insertion Successful!");
-            res.json({
-              success: true,
-              message: "Product and images added successfully",
-              insertedProductId: productId,
+            // Insert into DB
+            const columns = imageInsertData.map((_, i) => `PATH${i + 1}`).join(", ");
+            const values = imageInsertData.map((path) => `'${path}'`).join(", ");
+            const imageQuery = `INSERT INTO image (IMG_ID, PRODUCT_ID, ${columns}) VALUES ('${newImgId}', '${productId}', ${values})`;
+
+            console.log("🟢 Running SQL Query:", imageQuery);
+
+            db.query(imageQuery, [], (err) => {
+              if (err) {
+                console.error("🔴 Database Insert Error:", err);
+                return res.status(500).json({ error: "Image insertion failed" });
+              }
+
+              console.log("✅ Database Insertion Successful!");
+              res.json({
+                success: true,
+                message: "Product and images updated successfully",
+                insertedProductId: productId,
+                imagePaths: imageInsertData, // Return the paths for user access
+              });
             });
-          });
-        }
+          }
+        });
       });
-    });
-  });
+    }
+  );
 }
 
 const getPK = (req, res) => {
@@ -539,6 +596,7 @@ const updateProduct = (req, res) => {
     );
   });
 };
+
 // Function to update images
 function updateImages(productId, images, res) {
   // First, delete existing images for this product
