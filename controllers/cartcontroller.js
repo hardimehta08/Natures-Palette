@@ -29,7 +29,6 @@ const generateCartId = (callback) => {
 };
 
 // Add Item to Cart
-// Add Item to Cart
 const addItemToCart = (req, res) => {
   if (!req.session.userId) {
     return res
@@ -124,23 +123,57 @@ const addItemToCartFromProduct = (req, res) => {
 
         const productId = results[0].id;
 
-        generateCartId((err, newCartId) => {
-          if (err)
-            return res.status(500).json({ error: "Error generating cart ID." });
+        // Check if the product is already in the cart
+        const checkCartQuery =
+          "SELECT ca_qty FROM cart WHERE product_id = ? AND c_id = ?";
+        conn.query(
+          checkCartQuery,
+          [productId, req.session.userId],
+          (err, cartResults) => {
+            if (err) return res.status(500).json({ error: "Database error." });
 
-          const sql =
-            "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
-          conn.query(
-            sql,
-            [newCartId, req.session.userId, productId, quantity],
-            (err, result) => {
-              if (err)
-                return res.status(500).json({ error: "Database error." });
+            if (cartResults.length > 0) {
+              // Product already exists in the cart; update its quantity
+              const existingQuantity = cartResults[0].ca_qty;
+              const newQuantity = existingQuantity + quantity;
 
-              res.status(200).json({ message: "Item added to cart." });
+              const updateQuery =
+                "UPDATE cart SET ca_qty = ? WHERE product_id = ? AND c_id = ?";
+              conn.query(
+                updateQuery,
+                [newQuantity, productId, req.session.userId],
+                (err, updateResult) => {
+                  if (err)
+                    return res.status(500).json({ error: "Database error." });
+                  res
+                    .status(200)
+                    .json({ message: "Cart updated successfully!" });
+                }
+              );
+            } else {
+              // Product is not in the cart; insert as a new record
+              generateCartId((err, newCartId) => {
+                if (err)
+                  return res
+                    .status(500)
+                    .json({ error: "Error generating cart ID." });
+
+                const sql =
+                  "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
+                conn.query(
+                  sql,
+                  [newCartId, req.session.userId, productId, quantity],
+                  (err, result) => {
+                    if (err)
+                      return res.status(500).json({ error: "Database error." });
+
+                    res.status(200).json({ message: "Item added to cart." });
+                  }
+                );
+              });
             }
-          );
-        });
+          }
+        );
       }
     );
   });

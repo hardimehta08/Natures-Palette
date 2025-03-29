@@ -123,19 +123,3 @@ trigger.forEach((btn) => {
     body.classList.add("active");
   });
 });
-
-// let featuredImg = document.getElementById("featured-image");
-// let smallImgs = document.getElementsByClassName("small-Img");
-
-// for (let i = 0; i < smallImgs.length; i++) {
-//   smallImgs[i].addEventListener("click", () => {
-//     featuredImg.src = smallImgs[i].src;
-//     for (let j = 0; j < smallImgs.length; j++) {
-//       if (i === j) {
-//         smallImgs[j].classList.add("sm-card");
-//       } else {
-//         smallImgs[j].classList.remove("sm-card");
-//       }
-//     }
-//   });
-// }

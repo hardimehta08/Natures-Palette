@@ -8,42 +8,31 @@ const fetchCategories = async () => {
     }
 
     const categories = await response.json();
-
     const tableBody = document.getElementById("cat-list");
     tableBody.innerHTML = ""; // Clear existing data
 
     categories.forEach((category) => {
       const imageSrc = category.category_image
-        ? `/Database/${category.category_image.split('/').pop()}` // Extract filename from path
+        ? `/Database/${category.category_image.split('/').pop()}`
         : "/Database/default-image.jpg";
-      // Display Category Row
+
+      // Determine button text based on is_deleted value
+      const actionButtonText = category.is_deleted ? "Activate" : "Inactivate";
+      const actionFunction = category.is_deleted
+        ? `activateCategory('${category.category_id}')`
+        : `removeCategory('${category.category_id}')`;
+
       let row = `
                 <tr id="category-row-${category.category_id}">
                     <td>${category.category_id}</td>
-                    <td id="cat-name-${category.category_id}">${
-        category.category_name
-      }</td>
-                    <td>${
-                      category.category_desc
-                        ? category.category_desc
-                        : "No description"
-                    }</td>
+                    <td id="cat-name-${category.category_id}">${category.category_name}</td>
+                    <td>${category.category_desc ? category.category_desc : "No description"}</td>
                     <td>
-                        <img src="${imageSrc}" alt="${
-        category.category_name
-      }" width="50">
+                        <img src="${imageSrc}" alt="${category.category_name}" width="50">
                     </td>
                     <td>
-                        <button class="btn" onclick="openUpdateModal('${
-                          category.category_id
-                        }', '${category.category_name}', '${
-        category.category_desc ? category.category_desc : ""
-      }', '${
-        category.category_image ? category.category_image : ""
-      }')">Update</button>
-                        <button class="btn" onclick="removeCategory('${
-                          category.category_id
-                        }')">Remove</button>
+                        <button class="btn" onclick="openUpdateModal('${category.category_id}', '${category.category_name}', '${category.category_desc ? category.category_desc : ""}', '${category.category_image ? category.category_image : ""}')">Update</button>
+                        <button class="btn" id="action-btn-${category.category_id}" onclick="${actionFunction}">${actionButtonText}</button>
                     </td>
                 </tr>
             `;
@@ -54,6 +43,7 @@ const fetchCategories = async () => {
     console.error("Error fetching categories:", error);
   }
 };
+
 
 function handleCategoryChange() {
   fetch("/category/get-categories") // ✅ Fetch categories from backend
@@ -114,27 +104,46 @@ document
     }
   });
 
-function removeCategory(categoryId) {
-  fetch(`/category/rcategories/${encodeURIComponent(categoryId)}`, {
-    method: "PUT",
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      alert(data.message); // Show success message
-
-      // Hide the category from the UI if the element exists
-      const row = document.getElementById(`category-row-${categoryId}`);
-      if (row) {
-        row.style.display = "none";
-      } else {
-        console.warn(
-          `⚠ Category row with ID "category-row-${categoryId}" not found in DOM`
-        );
-      }
+  function removeCategory(categoryId) {
+    fetch(`/category/rcategories/${encodeURIComponent(categoryId)}`, {
+      method: "PUT",
     })
-    .catch((error) => console.error("❌ Error removing category:", error));
-}
+      .then((response) => response.json())
+      .then((data) => {
+        alert(data.message);
+  
+        // Change button text and function
+        const actionButton = document.getElementById(`action-btn-${categoryId}`);
+        if (actionButton) {
+          actionButton.textContent = "Activate";
+          actionButton.setAttribute("onclick", `activateCategory('${categoryId}')`);
+        }
+      })
+      .catch((error) => console.error("❌ Error removing category:", error));
+  }
+  
+  
 
+  function activateCategory(categoryId) {
+    fetch(`/category/activate/${encodeURIComponent(categoryId)}`, {
+      method: "PUT",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        alert(data.message);
+  
+        // Change button text and function
+        const actionButton = document.getElementById(`action-btn-${categoryId}`);
+        if (actionButton) {
+          actionButton.textContent = "Inactive";
+          actionButton.setAttribute("onclick", `removeCategory('${categoryId}')`);
+        }
+      })
+      .catch((error) => console.error("❌ Error activating category:", error));
+  }
+  
+  
+  
 function openUpdateModal(
   categoryId,
   categoryName,
@@ -292,26 +301,25 @@ function fetchSubcategories() {
       if (subcategories.length > 0) {
         subcategories.forEach((sub) => {
           const imageSrc = sub.sub_image
-            ? `/Database/${sub.sub_image.split('/').pop()}` // Extract filename from path
+            ? `/Database/${sub.sub_image.split('/').pop()}`
             : "/Database/default-image.jpg";
+
+          // Determine button text and function based on is_deleted value
+          const actionButtonText = sub.is_deleted ? "Activate" : "Inactivate";
+          const actionFunction = sub.is_deleted
+            ? `activateSubcategory('${sub.sub_id}')`
+            : `removeSubcategory('${sub.sub_id}')`;
+
           let row = `
-                    <tr>
+                    <tr id="subcategory-row-${sub.sub_id}">
                         <td>${sub.sub_id}</td>
                         <td>${sub.sub_name}</td>
                         <td>${sub.sub_desc || "No description"}</td>
-                        <td><img src="${imageSrc}" alt="${
-            sub.sub_name
-          }" width="50"></td> 
+                        <td><img src="${imageSrc}" alt="${sub.sub_name}" width="50"></td> 
                         <td>${categoryId}</td>
                         <td>
-                            <button class="btn" onclick="openUpdateSubModal('${
-                              sub.sub_id
-                            }', '${sub.sub_name}', '${
-            sub.sub_desc
-          }')">Update</button>
-                            <button class="btn" onclick="removeSubcategory('${
-                              sub.sub_id
-                            }')">Remove</button>
+                            <button class="btn" onclick="openUpdateSubModal('${sub.sub_id}', '${sub.sub_name}', '${sub.sub_desc}')">Update</button>
+                            <button class="btn" id="action-btn-${sub.sub_id}" onclick="${actionFunction}">${actionButtonText}</button>
                         </td>
                     </tr>
                 `;
@@ -324,27 +332,47 @@ function fetchSubcategories() {
     .catch((error) => console.error("❌ Error fetching subcategories:", error));
 }
 
+
 function removeSubcategory(subId) {
-  if (
-    !confirm(
-      "Are you sure you want to remove this subcategory from the website?"
-    )
-  )
-    return;
+  if (!confirm("Are you sure you want to remove this subcategory?")) return;
 
   fetch(`/category/rsubcategories/${subId}`, { method: "PUT" })
     .then((response) => {
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return response.json();
     })
     .then((data) => {
       alert(data.message);
-      document.getElementById(`subcategory-row-${subId}`).style.display =
-        "none"; // Hide row
+
+      // Change button text and function
+      const actionButton = document.getElementById(`action-btn-${subId}`);
+      if (actionButton) {
+        actionButton.textContent = "Activate";
+        actionButton.setAttribute("onclick", `activateSubcategory('${subId}')`);
+      }
     })
-    .catch((error) => console.error("Error removing subcategory:", error));
+    .catch((error) => console.error("❌ Error removing subcategory:", error));
 }
+
+function activateSubcategory(subId) {
+  fetch(`/category/activateSub/${subId}`, { method: "PUT" })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then((data) => {
+      alert(data.message);
+
+      // Change button text and function
+      const actionButton = document.getElementById(`action-btn-${subId}`);
+      if (actionButton) {
+        actionButton.textContent = "Inactivate";
+        actionButton.setAttribute("onclick", `removeSubcategory('${subId}')`);
+      }
+    })
+    .catch((error) => console.error("❌ Error activating subcategory:", error));
+}
+
 
 // ✅ Auto Fetch Subcategories When Category is Selected
 document
@@ -441,26 +469,25 @@ function fetchSubSubcategories() {
       if (subsubcategories.length > 0) {
         subsubcategories.forEach((ssc) => {
           const imageSrc = ssc.ss_image
-          ? `/Database/${ssc.ss_image.split('/').pop()}` // Extract filename from path
-          : "/Database/default-image.jpg";
+            ? `/Database/${ssc.ss_image.split('/').pop()}`
+            : "/Database/default-image.jpg";
+
+          // Determine button text and function based on is_deleted value
+          const actionButtonText = ssc.is_deleted ? "Activate" : "Remove";
+          const actionFunction = ssc.is_deleted
+            ? `activateSubSubcategory('${ssc.ss_id}')`
+            : `removeSubSubcategory('${ssc.ss_id}')`;
+
           let row = `
-                        <tr>
+                        <tr id="subsubcategory-row-${ssc.ss_id}">
                             <td>${ssc.ss_id}</td>
                             <td>${ssc.ss_name}</td>
                             <td>${ssc.ss_desc || "No description"}</td>
-                            <td><img src="${imageSrc}" alt="${
-            ssc.ss_name
-          }" width="50"></td>
+                            <td><img src="${imageSrc}" alt="${ssc.ss_name}" width="50"></td>
                             <td>${subcategoryId}</td>
                             <td>
-                                <button class="btn" onclick="openUpdateSubSubModal('${
-                                  ssc.ss_id
-                                }', '${ssc.ss_name}', '${
-            ssc.ss_desc
-          }')">Update</button>
-                                <button class="btn" onclick="removeSubSubcategory('${
-                                  ssc.ss_id
-                                }')">Remove</button>
+                                <button class="btn" onclick="openUpdateSubSubModal('${ssc.ss_id}', '${ssc.ss_name}', '${ssc.ss_desc}')">Update</button>
+                                <button class="btn" id="action-btn-${ssc.ss_id}" onclick="${actionFunction}">${actionButtonText}</button>
                             </td>
                         </tr>
                     `;
@@ -470,10 +497,9 @@ function fetchSubSubcategories() {
         subsubTable.innerHTML = `<tr><td colspan="6">No sub-subcategories found for this subcategory.</td></tr>`;
       }
     })
-    .catch((error) =>
-      console.error("❌ Error fetching sub-subcategories:", error)
-    );
+    .catch((error) => console.error("❌ Error fetching sub-subcategories:", error));
 }
+
 
 // ✅ Add event listeners for category selection
 document.getElementById("prod_cate").addEventListener("change", () => {
@@ -615,26 +641,45 @@ document
     }
   });
 
-function removeSubSubcategory(ssId) {
-  if (
-    !confirm(
-      "Are you sure you want to remove this sub-subcategory from the website?"
-    )
-  )
-    return;
+  function removeSubSubcategory(ssId) {
+    if (!confirm("Are you sure you want to remove this sub-subcategory?")) return;
+  
+    fetch(`/category/rsubsubcategories/${ssId}`, { method: "PUT" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        alert(data.message);
+  
+        // Change button text and function
+        const actionButton = document.getElementById(`action-btn-${ssId}`);
+        if (actionButton) {
+          actionButton.textContent = "Activate";
+          actionButton.setAttribute("onclick", `activateSubSubcategory('${ssId}')`);
+        }
+      })
+      .catch((error) => console.error("❌ Error removing sub-subcategory:", error));
+  }
 
-  fetch(`/category/rsubsubcategories/${ssId}`, { method: "PUT" })
-    .then((response) => {
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-      return response.json();
-    })
-    .then((data) => {
-      alert(data.message);
-      document.getElementById(`subsubcategory-row-${ssId}`).style.display =
-        "none"; // Hide row
-    })
-    .catch((error) => console.error("Error removing sub-subcategory:", error));
-}
+  function activateSubSubcategory(ssId) {
+    fetch(`/category/activateSubSub/${ssId}`, { method: "PUT" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        alert(data.message);
+  
+        // Change button text and function
+        const actionButton = document.getElementById(`action-btn-${ssId}`);
+        if (actionButton) {
+          actionButton.textContent = "Remove";
+          actionButton.setAttribute("onclick", `removeSubSubcategory('${ssId}')`);
+        }
+      })
+      .catch((error) => console.error("❌ Error activating sub-subcategory:", error));
+  }
+  
 
 

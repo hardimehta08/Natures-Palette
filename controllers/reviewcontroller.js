@@ -33,40 +33,28 @@ const addFeedback = (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Please login to add feedback." });
   }
-
-  const { productId, description } = req.body;
+  const { productId, description, starRating } = req.body;
   const date = new Date();
-
   generateFeedbackId((err, newFeedbackId) => {
     if (err)
       return res.status(500).json({ error: "Error generating feedback ID." });
-
     const sql =
-      "INSERT INTO feedback (f_id, f_desc, f_date, c_id, product_id) VALUES (?, ?, ?, ?, ?)";
+      "INSERT INTO feedback (f_id, f_desc, f_date, c_id, product_id, star_rating) VALUES (?, ?, ?, ?, ?, ?)";
     conn.query(
       sql,
-      [newFeedbackId, description, date, req.session.userId, productId],
+      [
+        newFeedbackId,
+        description,
+        date,
+        req.session.userId,
+        productId,
+        starRating,
+      ],
       (err, result) => {
         if (err) throw err;
         res.status(200).json({ message: "Feedback added." });
       }
     );
-  });
-};
-
-// Get Product Feedback
-const getProductFeedback = (req, res) => {
-  const productId = req.params.productId;
-
-  const sql = `
-    SELECT f.*, cu.c_username AS username 
-    FROM feedback f 
-    JOIN customer cu ON f.c_id = cu.c_id 
-    WHERE f.product_id = ?
-  `;
-  conn.query(sql, [productId], (err, result) => {
-    if (err) throw err;
-    res.status(200).json(result);
   });
 };
 
@@ -82,6 +70,67 @@ const deleteFeedback = (req, res) => {
     if (err) throw err;
     res.status(200).json({ message: "Feedback deleted." });
   });
+};
+
+const userfeedback = async (req, res) => {
+  try {
+    const viewsSql = `
+      SELECT *
+      FROM INFORMATION_SCHEMA.VIEWS
+      WHERE TABLE_SCHEMA = 'main_project';
+    `;
+    conn.query(viewsSql, (err, viewsResult) => {
+      if (err) throw err;
+
+      // Check if viewsResult is an array and has values
+      if (!Array.isArray(viewsResult) || viewsResult.length === 0) {
+        return res.status(500).json({ error: "No views found in the schema." });
+      }
+      const views = viewsResult.map((row) => row.TABLE_NAME);
+
+      // Define a function to fetch feedback data from each view
+      const fetchFeedbackData = (view) => {
+        return new Promise((resolve, reject) => {
+          const sql = `
+            SELECT F.F_ID, F.F_DESC, F.F_DATE, F.star_rating, F.C_ID, F.PRODUCT_ID, EV.name
+            FROM FEEDBACK AS F
+            JOIN ${view} AS EV ON F.PRODUCT_ID = EV.id
+            WHERE F.C_ID = ?;
+          `;
+          conn.query(sql, [req.session.userId], (err, result) => {
+            if (err) {
+              console.error(`Error querying view ${view}:`, err);
+              return reject(err);
+            }
+            // console.log(result);
+            resolve(result);
+          });
+        });
+      };
+
+      // Fetch feedback data from all views and aggregate results
+      const promises = views.map((view) => fetchFeedbackData(view));
+      Promise.all(promises)
+        .then((results) => {
+          const feedbackData = results.flat();
+          if (feedbackData.length === 0) {
+            return res.status(404).json({ error: "No feedback data found." });
+          }
+          res.status(200).json(feedbackData);
+        })
+        .catch((err) => {
+          console.error("Error fetching feedback data:", err);
+          res
+            .status(500)
+            .json({ error: "An error occurred while fetching feedback data." });
+        });
+    });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching feedback data." });
+  }
 };
 
 const feedbacks = async (req, res) => {
@@ -104,18 +153,33 @@ const feedbacks = async (req, res) => {
       const fetchFeedbackData = (view) => {
         return new Promise((resolve, reject) => {
           const sql = `
-            SELECT F.F_ID, F.F_DESC, F.C_ID, F.PRODUCT_ID, C.C_USERNAME, CAT.CY_NAME
-            FROM FEEDBACK AS F
-            JOIN CUSTOMER AS C ON F.C_ID = C.C_ID
-            JOIN ${view} AS EV ON F.PRODUCT_ID = EV.id
-            JOIN CATEGORY AS CAT ON EV.category_id = CAT.CY_ID
-            ORDER BY F.F_ID DESC;
+            SELECT 
+    F.F_ID, 
+    F.F_DESC, 
+    F.F_DATE, 
+    F.star_rating, 
+    F.C_ID, 
+    F.PRODUCT_ID, 
+    C.CY_NAME, 
+    CUST.C_USERNAME
+FROM 
+    FEEDBACK AS F
+JOIN 
+    ${view} AS EV 
+    ON F.PRODUCT_ID = EV.id
+JOIN 
+    CATEGORY AS C 
+    ON EV.category_id = C.CY_ID -- Joining based on category_id from the view
+JOIN 
+    CUSTOMER AS CUST 
+    ON F.C_ID = CUST.C_ID; -- Joining to get customer username
           `;
-          conn.query(sql, (err, result) => {
+          conn.query(sql, [req.session.userId], (err, result) => {
             if (err) {
               console.error(`Error querying view ${view}:`, err);
               return reject(err);
             }
+            // console.log(result);
             resolve(result);
           });
         });
@@ -126,6 +190,9 @@ const feedbacks = async (req, res) => {
       Promise.all(promises)
         .then((results) => {
           const feedbackData = results.flat();
+          if (feedbackData.length === 0) {
+            return res.status(404).json({ error: "No feedback data found." });
+          }
           res.status(200).json(feedbackData);
         })
         .catch((err) => {
@@ -146,6 +213,6 @@ const feedbacks = async (req, res) => {
 module.exports = {
   feedbacks,
   addFeedback,
-  getProductFeedback,
   deleteFeedback,
+  userfeedback
 };

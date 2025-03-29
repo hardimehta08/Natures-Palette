@@ -1,12 +1,12 @@
 const path = require("path");
 const mysql = require("mysql2");
 const express = require("express");
-const cors = require("cors");
 const app = express(); // Create an Express app
 const session = require("express-session");
 const sendfileController = require("./controllers/filecontroller");
 const dynamicController = require("./controllers/dynamiccontroller")(app);
 const combinedRouter = require("./routes/headrouter")(app);
+const cors = require("cors");
 
 const connection = mysql.createConnection({
   host: "localhost",
@@ -26,14 +26,10 @@ connection.connect((err) => {
 
 const PORT = process.env.PORT || 4000;
 
-app.use(cors({ origin: "http://localhost:3000" })); // Allow admin server
-app.use("/images", express.static(path.join(__dirname, "../public/images")));
-
 app.use(express.json());
 app.use("/index", express.static(path.join(__dirname, "index")));
 app.use(express.static("public"));
 app.use(express.static(path.join(__dirname, "public")));
-
 app.use(
   session({
     secret: "your_secret_key", // Change this to a secure secret key
@@ -42,7 +38,8 @@ app.use(
     cookie: { secure: false }, // Set 'true' if using HTTPS
   })
 );
-
+app.use(cors({ origin: "http://localhost:3000" })); // Allow admin server
+app.use("/images", express.static(path.join(__dirname, "../public/images")));
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "index.html"));
 });
@@ -112,6 +109,9 @@ app.get("/wishlist.html", (req, res) => {
 const fetchrouter = require("./routes/fetchrouter");
 app.use("/fetch", fetchrouter);
 // Feedback
+app.get("/feedback.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "html", "feedback.html"));
+});
 const feedback = require("./routes/reviewrouter");
 app.use("/feedback", feedback);
 
@@ -120,9 +120,6 @@ app.get("/contactus.html", (req, res) => {
 });
 app.get("/privacy.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "privacy.html"));
-});
-app.get("/index/plants", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "html", "shop.html"));
 });
 
 app.get("/header", (req, res) => {

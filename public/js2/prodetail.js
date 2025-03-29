@@ -28,6 +28,7 @@ fetch(`/product/${productName}`)
       reviewElement.innerHTML = `
     <div class="profile">
       <strong>${feedback.username}</strong>
+      <div class="stars">${"⭐".repeat(feedback.star_rating)}</div>
       <div class="date">${new Date(feedback.f_date).toLocaleDateString(
         "en-GB"
       )}</div>
@@ -50,6 +51,7 @@ fetch(`/product/${productName}`)
       thumbnailContainer.appendChild(img);
     });
   });
+
 function wishlist() {
   fetch("/wishlist/add", {
     method: "POST",
@@ -75,6 +77,7 @@ function wishlist() {
       messageElement.innerHTML = errorObj.error;
     });
 }
+
 const quantity = document.getElementById("quantity");
 let quantityValue;
 function addtocart() {
@@ -115,17 +118,19 @@ fetch("/best-selling")
   .then((data) => {
     displayNewArrivals(data);
   });
+
 const displayNewArrivals = (data) => {
   const productContainer = document.getElementById("newarrival-container");
   productContainer.innerHTML = "";
 
   if (data && data.forEach) {
     data.forEach((item) => {
+      const formattedName = item.P_NAME.replace(/_/g, " ");
       const productHTML = `
           <div class="product-card">
             <a href="/product.html?product=${item.P_NAME}">
-              <img src="../${item.PATH1}" alt="${item.P_NAME}">
-              <h3 class="product-name">${item.P_NAME}</h3>
+              <img src="../${item.PATH1}" alt="${formattedName}">
+              <h3 class="product-name">${formattedName}</h3>
               <p class="product-price">₹${item.P_PRICE}</p>
             </a>
           </div>
@@ -136,96 +141,81 @@ const displayNewArrivals = (data) => {
     console.error("Error: new arrivals is not an array or undefined");
   }
 };
+document.getElementById("write-review").addEventListener("click", () => {
+  const feedbackContainer = document.getElementById("feedback-container");
+  const feedbackForm = `
+    <div class="card">
+      <div class="card-header">
+        <button class="close-btn" id="close-feedback">&times;</button>
+      </div>
+      <div class="card-body">
+        <div class="stars" id="star-container">
+          <i class="fas fa-star" data-rating="1" id="one"></i>
+          <i class="fas fa-star" data-rating="2" id="two"></i>
+          <i class="fas fa-star" data-rating="3" id="three"></i>
+          <i class="fas fa-star" data-rating="4" id="four"></i>
+          <i class="fas fa-star" data-rating="5" id="five"></i>
+        </div>
+        <textarea id="feedback-text" rows="10" placeholder="Please, leave a message"></textarea>
+        <button class="cta" id="submit-feedback">Submit Feedback</button><br />
+      </div>
+    </div>
+  `;
+  feedbackContainer.innerHTML = feedbackForm;
 
-// const reviewContainer = document.getElementById("review-container");
-// let totalRating = 0;
-// const product = [
-//   {
-//     id: 1,
-//     name: "aaa",
-//     price: 599,
-//     category: "Plant",
-//     image: "../Database(image)/Plant/P0001/1.jpg",
-//     rating: 4.5,
-//     isBestseller: true,
-//     isNewArrival: false,
-//     reviews: 3,
-//   },
-//   {
-//     id: 2,
-//     name: "bbb",
-//     price: 999,
-//     category: "Plant",
-//     image: "../Database/Plant/P0001/2.jpg",
-//     rating: 4.7,
-//     isBestseller: true,
-//     isNewArrival: false,
-//     reviews: 2,
-//   },
-// ];
-// for (let i = 0; i < product.length; i++) {
-//   if (Array.isArray(product[i].reviews)) {
-//     product[i].reviews.forEach((review) => {
-//       totalRating += review.rating;
-//       const reviewElement = document.createElement("div");
-//       reviewElement.classList.add("profile");
-//       reviewElement.innerHTML = `
-//         <div class="thumb-name">
-//           <img src=  "../Database(image)/Plant/P0001/1.jpg" alt="">
-//             <div class="grouping">
-//                 <strong>${review.name}</strong>
-//                 <div class="ratingg">${"⭐".repeat(review.rating)}</div>
-//                 <div class="date">${review.date}</div>
-//             </div>
-//         </div>
-//         <div class="comment">${review.comment}</div>
-//         <p class="gray">${review.desc}</p>
-//       `;
-//       reviewContainer.appendChild(reviewElement);
-//     });
-//   }
-// }
+  // Close button functionality
+  document.getElementById("close-feedback").addEventListener("click", () => {
+    feedbackContainer.innerHTML = ""; // Clear the feedback form
+  });
 
-// Calculate average rating
-// const averageRating = (totalRating / product.reviews.length).toFixed(1);
-// document.getElementById("average-rating").textContent = `${averageRating} ⭐`;
-// document.getElementById(
-//   "total-reviews"
-// ).textContent = `${product.reviews.length} Reviews`;
-// document.getElementById("review-count").textContent = product.reviews.length;
+  let starRating = 0;
+  const stars = document.querySelectorAll(".stars i");
+  stars.forEach((star) => {
+    star.addEventListener("click", () => {
+      starRating = star.getAttribute("data-rating");
+      stars.forEach((s, index) => {
+        s.classList.toggle("selected", index < starRating);
+      });
+    });
+  });
 
-// // Tab switching functionality
-// document.querySelectorAll(".tab-link").forEach((tab) => {
-//   tab.addEventListener("click", () => {
-//     // Remove active class from all tabs & sections
-//     document
-//       .querySelectorAll(".tab-link")
-//       .forEach((t) => t.classList.remove("active"));
-//     document
-//       .querySelectorAll(".product-about")
-//       .forEach((content) => content.classList.remove("active"));
+  // Event listener for submitting feedback
+  document.getElementById("submit-feedback").addEventListener("click", () => {
+    const feedbackText = document.getElementById("feedback-text").value;
 
-//     // Activate clicked tab and corresponding section
-//     tab.classList.add("active");
-//     document.getElementById(tab.dataset.id).classList.add("active");
-//   });
-// });
-// function displayProducts1(containerId) {
-//   const container = document.getElementById(containerId);
-//   container.innerHTML = ""; // Clear previous products
-
-//   products1.forEach((product) => {
-//     const productCard = document.createElement("div");
-//     productCard.className = "product-card";
-//     productCard.innerHTML = `
-//       <a href="/product.html?product=${product.name}">
-//       <img src="${product.image}" alt="${product.name}">
-//       <h3>${product.name}</h3>
-//       <p>Rating: ${product.rating} ⭐</p>
-//       <p>Price: $${product.price}</p>
-//       </a>
-//     `;
-//     container.appendChild(productCard);
-//   });
-// }
-// displayProducts1("newarrival-container");
+    fetch("/feedback/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        productId: prodid,
+        description: feedbackText,
+        starRating: starRating,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response.text().then((text) => {
+            throw new Error(text);
+          });
+        }
+        return response.json();
+      })
+      .then((data) => {
+        alert("Feedback has been submitted successfully!");
+        location.reload(); // Reload the page
+      })
+      .catch((error) => {
+        const errorObj = JSON.parse(error.message);
+        const messageElement = document.getElementById("message");
+        messageElement.innerHTML = errorObj.error;
+      });
+  });
+});
+function maxqty() {
+  var i = document.getElementById("quantity").value;
+  if (i == 10) {
+    alert("Cannot add more than 10 items");
+  }
+}

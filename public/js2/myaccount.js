@@ -22,6 +22,17 @@ fetch("/user/profile")
       fetch("/order/customer/orders")
         .then((response) => response.json())
         .then((data) => {
+          if (data.message == "Order not found") {
+            document.getElementById("order_name").innerHTML =
+              "No orders placed yet!";
+
+            // Hide other elements
+            document.getElementById("order_image").style.display = "none";
+            document.getElementById("order_price").style.display = "none";
+            document.getElementById("order_id").style.display = "none";
+            document.getElementById("order_date").style.display = "none";
+            document.getElementById("order_status").style.display = "none";
+          }
           document.getElementById("order_image").src = "../" + data.image;
           document.getElementById("order_name").innerHTML = data.name.replace(
             /_/g,
@@ -58,7 +69,7 @@ function logout() {
       return response.text(); // Parse the response as plain text
     })
     .then((data) => {
-      alert("Logout successful: " + data);
+      alert("Logout successful!");
       window.location.href = "/";
     })
     .catch((error) => {
@@ -143,5 +154,114 @@ function changepass() {
     .catch((error) => {
       console.log("Error:", error);
       alert("Error updating password: " + error.message);
+    });
+}
+fetch("/feedback/customer")
+  .then((response) => response.json())
+  .then((data) => {
+    // console.log(data);
+    const feedbackContainer = document.getElementById("f_container");
+    if (data.error == "No feedback data found.") {
+      feedbackContainer.innerHTML = "<h3>No feedbacks found!</h3>";
+    }
+
+    data.forEach((item) => {
+      // Create a new div for each feedback item
+      const feedbackCard = document.createElement("div");
+      feedbackCard.style = `
+    background-color: white;
+    height: auto;
+    width: 19cm;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: left !important;
+    margin-bottom: 20px;  // Add margin to separate each card
+  `;
+
+      const cardContent = `
+    <div
+      style="
+        width: 100%;
+        padding: 1rem !important;
+        margin-left: 1cm !important;
+        margin-top: 10px !important;
+        position:relative;
+      "
+    >
+      <h5
+        style="
+          font-size: 1.5rem !important;
+          font-weight: bold !important;
+          margin-bottom: 20px !important;
+        "
+      >
+        ${item.name.replace(/_/g, " ")}
+        <button id="del_feedback" onclick="delfeedback('${
+          item.F_ID
+        }')">Delete</button>
+      </h5>
+      <div class="stars" style="margin-bottom:10px;">${"⭐".repeat(
+        item.star_rating
+      )}</div>
+      <p><strong>Date: </strong>${new Date(item.F_DATE).toLocaleDateString(
+        "en-GB"
+      )}</p>
+      <p style="width: 100% !important; margin: 10px 0">${item.F_DESC}</p>
+    </div>
+  `;
+
+      feedbackCard.innerHTML = cardContent;
+      feedbackContainer.appendChild(feedbackCard);
+    });
+  });
+
+function delfeedback(f_id) {
+  fetch("/feedback/delete", {
+    method: "DELETE",
+    body: JSON.stringify({ feedbackId: f_id }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then((data) => {
+      if (data.status == 200) {
+        alert("feedback deleted successfully!");
+        location.reload();
+      } else {
+        console.error("Error:", data.statusText);
+      }
+    })
+    .catch((error) => console.error("Error:", error));
+}
+function deleteUser() {
+  const userConfirmed = confirm(
+    "Are you sure you want to delete your account?"
+  );
+  if (!userConfirmed) {
+    return; // Exit if the user cancels the action
+  }
+
+  fetch("/user/delete", {
+    method: "DELETE", // Specify the HTTP method as DELETE
+    headers: {
+      "Content-Type": "application/json", // Ensure the server knows it's JSON data
+    },
+  })
+    .then((response) => {
+      if (response.ok) {
+        alert("Your account has been deleted successfully."); // Notify user of success
+        window.location.href = "/login.html";
+      } else {
+        response.json().then((data) => {
+          alert(`Error: ${data.error || "Failed to delete your account."}`); // Show error from the server
+        });
+      }
+    })
+    .catch((error) => {
+      console.error("Error deleting account:", error);
+      alert(
+        "An error occurred while trying to delete your account. Please try again."
+      );
     });
 }

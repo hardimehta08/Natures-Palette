@@ -13,7 +13,7 @@ async function fetchProducts(endpoint, containerId) {
       productCard.innerHTML = `
           <a href="/product.html?product=${product.P_NAME}">
               <img src="${product.PATH1}" alt="${product.P_NAME}" width="150px">
-              <h3>${product.P_NAME}</h3>
+              <h3>${product.P_NAME.replace(/_/g, " ")}</h3>
               <p>Price: ₹${product.P_PRICE}</p>
           `;
       container.appendChild(productCard);

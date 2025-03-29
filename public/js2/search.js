@@ -2,7 +2,7 @@ let debounceTimer;
 async function fetchKeywords() {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(async () => {
-    const searchTerm = document.getElementById("search").value;
+    const searchTerm = document.getElementById("search").value.replace(/_/g, ' '); // Replace underscores with spaces
     if (searchTerm.length > 2) {
       const response = await fetch(`/search/searchKeywords?q=${searchTerm}`);
       const keywords = await response.json();
@@ -13,8 +13,8 @@ async function fetchKeywords() {
       if (keywords.length > 0) {
         keywords.forEach((item) => {
           const li = document.createElement("li");
-          li.textContent = item.keyword;
-          li.onclick = () => navigateToProductDetail(item.keyword);
+          li.textContent = item.keyword.replace(/_/g, ' '); // Replace underscores with spaces in keyword
+          li.onclick = () => navigateToProductDetail(item.keyword.replace(/_/g, ' ')); // Ensure no underscores in navigation
           dropdownMenu.appendChild(li);
         });
         dropdownMenu.style.display = "block";
@@ -31,5 +31,5 @@ async function fetchKeywords() {
 }
 
 function navigateToProductDetail(keyword) {
-  window.location.href = `/product.html?product=${keyword}`;
+  window.location.href = `/product.html?product=${keyword.replace(/_/g, ' ')}`; // Replace underscores in URL parameter
 }

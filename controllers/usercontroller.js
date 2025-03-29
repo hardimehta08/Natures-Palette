@@ -31,11 +31,11 @@ const generateCustomerId = (callback) => {
 
 const registerUser = async (req, res) => {
   try {
-    const { username, email, password, address, pincode, mobile } = req.body;
+    let { username, email, password, address, pincode, mobile } = req.body;
 
-    // Check for unique email and username
+    // Check for unique email and username among active users only
     const checkUserSql =
-      "SELECT * FROM customer WHERE c_email = ? OR c_username = ?";
+      "SELECT * FROM customer WHERE (c_email = ? OR c_username = ?) AND c_status != 'INACTIVE'";
     conn.query(checkUserSql, [email, username], async (err, result) => {
       if (err) throw err;
 
@@ -63,16 +63,36 @@ const registerUser = async (req, res) => {
             return res
               .status(500)
               .json({ error: "Error generating customer ID." });
-
+          const currentDate = new Date();
+          const formattedDate = currentDate.toISOString().split("T")[0];
           // Create a new user
           const insertUserSql =
-            "INSERT INTO customer (c_id, c_username, c_email, c_password, c_address, c_pincode, c_mobile) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            "INSERT INTO customer (c_id, c_username, c_email, c_password, c_address, c_pincode, c_mobile,Pincode,c_reg_date) VALUES (?, ?, ?, ?, ?, ?, ?,?,?)";
           conn.query(
             insertUserSql,
-            [newId, username, email, hashedPassword, address, pincode, mobile],
+            [
+              newId,
+              username,
+              email,
+              hashedPassword,
+              address,
+              pincode,
+              mobile,
+              pincode,
+              formattedDate,
+            ],
             (err, result) => {
               if (err) throw err;
-
+              const name = username;
+              const capitalized = name
+                .split(" ")
+                .map(
+                  (word) =>
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                )
+                .join(" ");
+              username
+               = capitalized;
               // Send welcome email
               sendMail(
                 email,
@@ -95,7 +115,8 @@ const registerUser = async (req, res) => {
 
 const loginUser = (req, res) => {
   const { email, password } = req.body;
-  const sql = "SELECT c_id, c_password FROM customer WHERE c_email = ?";
+  const sql =
+    "SELECT c_id, c_password FROM customer WHERE c_email = ? and c_status = 'active'";
 
   conn.query(sql, [email], async (err, result) => {
     if (err) {
@@ -120,6 +141,7 @@ const loginUser = (req, res) => {
 };
 
 // Get User Profile
+// Get User Profile
 const getUserProfile = (req, res) => {
   if (!req.session.userId) {
     return res
@@ -128,9 +150,14 @@ const getUserProfile = (req, res) => {
   }
 
   const sql =
-    "SELECT c.c_username, c.c_email,c.c_address,c.c_pincode,c.c_mobile,a.city,a.PostOfficeName FROM customer c JOIN area a ON c.c_pincode = a.pincode WHERE c.c_id = ?;";
+    "SELECT c.c_username, c.c_email, c.c_address, c.c_pincode, c.c_mobile, a.city, a.PostOfficeName FROM customer c JOIN area a ON c.c_pincode = a.pincode WHERE c.c_id = ? AND c_status = 'ACTIVE';";
   conn.query(sql, [req.session.userId], (err, result) => {
     if (err) throw err;
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: "User not found or inactive." });
+    }
+
     res.status(200).json(result[0]);
   });
 };
@@ -144,35 +171,28 @@ const updateUserProfile = (req, res) => {
   }
 
   const { username, email, address, pincode, mobile } = req.body;
-
-  const connection = conn; // Assuming conn is a valid database connection
-
-  // Fetch current profile data
   const sql =
-    "SELECT c_username, c_email, c_address, c_pincode, c_mobile FROM customer WHERE c_id = ?";
-  connection.query(sql, [req.session.userId], (err, rows) => {
+    "SELECT c_username, c_email, c_address, c_pincode, c_mobile FROM customer WHERE c_id = ? AND c_status = 'ACTIVE'";
+  conn.query(sql, [req.session.userId], (err, rows) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ message: "Error fetching user profile." });
     }
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: "User  not found." });
+      return res.status(404).json({ message: "User not found or inactive." });
     }
 
     const currentProfile = rows[0];
-
-    // Use existing values if new values are not provided
     const updatedUsername = username || currentProfile.c_username;
     const updatedEmail = email || currentProfile.c_email;
     const updatedAddress = address || currentProfile.c_address;
     const updatedPincode = pincode || currentProfile.c_pincode;
     const updatedMobile = mobile || currentProfile.c_mobile;
 
-    // Update profile data
     const updateSql =
-      "UPDATE customer SET c_username = ?, c_email = ?, c_address = ?, c_pincode = ?, c_mobile = ? WHERE c_id = ?";
-    connection.query(
+      "UPDATE customer SET c_username = ?, c_email = ?, c_address = ?, c_pincode = ?, c_mobile = ? WHERE c_id = ? AND c_status = 'ACTIVE'";
+    conn.query(
       updateSql,
       [
         updatedUsername,
@@ -193,6 +213,8 @@ const updateUserProfile = (req, res) => {
     );
   });
 };
+
+// Update Password
 const updatePassword = (req, res) => {
   if (!req.session.userId) {
     return res
@@ -201,43 +223,38 @@ const updatePassword = (req, res) => {
   }
 
   const { currentPassword, newPassword, confirmPassword } = req.body;
-  // Check if new password and confirm password match
+
   if (newPassword !== confirmPassword) {
     return res
       .status(400)
       .json({ message: "New password and confirm password do not match." });
   }
 
-  const connection = conn; // Assuming conn is a valid database connection
-
-  // Fetch current password hash
-  const sql = "SELECT c_password FROM customer WHERE c_id = ?";
-  connection.query(sql, [req.session.userId], async (err, rows) => {
+  const sql =
+    "SELECT c_password FROM customer WHERE c_id = ? AND c_status = 'ACTIVE'";
+  conn.query(sql, [req.session.userId], async (err, rows) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ message: "Error fetching user data." });
     }
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: "User not found." });
+      return res.status(404).json({ message: "User not found or inactive." });
     }
 
     const currentPasswordHash = rows[0].c_password;
-
-    // Check if current password is correct
     const isMatch = await bcrypt.compare(currentPassword, currentPasswordHash);
+
     if (!isMatch) {
       return res
         .status(400)
         .json({ message: "Current password is incorrect." });
     }
 
-    // Hash the new password
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
-
-    // Update the password in the database
-    const updateSql = "UPDATE customer SET c_password = ? WHERE c_id = ?";
-    connection.query(
+    const updateSql =
+      "UPDATE customer SET c_password = ? WHERE c_id = ? AND c_status = 'ACTIVE'";
+    conn.query(
       updateSql,
       [newPasswordHash, req.session.userId],
       (updateErr) => {
@@ -260,9 +277,11 @@ const logoutUser = (req, res) => {
   });
 };
 
+// Verify Password
 const verifyPassword = (req, res) => {
   const { email, password } = req.body;
-  const sql = "SELECT c_password FROM customer WHERE c_email = ?";
+  const sql =
+    "SELECT c_password FROM customer WHERE c_email = ? AND c_status = 'ACTIVE'";
 
   conn.query(sql, [email], async (err, result) => {
     if (err) {
@@ -271,7 +290,7 @@ const verifyPassword = (req, res) => {
     }
 
     if (result.length === 0) {
-      return res.status(400).json({ error: "User not found" });
+      return res.status(400).json({ error: "User not found or inactive." });
     }
 
     const user = result[0];
@@ -288,9 +307,9 @@ const verifyPassword = (req, res) => {
 // Forgot Password
 const forgotPassword = (req, res) => {
   const { email } = req.body;
+  const sql =
+    "SELECT c_id FROM customer WHERE c_email = ? AND c_status = 'ACTIVE'";
 
-  // Validate email exists in the database
-  const sql = "SELECT C_ID FROM customer WHERE C_EMAIL = ?";
   conn.query(sql, [email], (err, result) => {
     if (err) {
       console.error("Database query error: ", err);
@@ -298,10 +317,9 @@ const forgotPassword = (req, res) => {
     }
 
     if (result.length === 0) {
-      return res.status(400).json({ error: "Email not found." });
+      return res.status(400).json({ error: "Email not found or inactive." });
     }
 
-    // Send the password reset email
     const resetLink = `http://localhost:4000/user/reset-password?email=${email}`;
     sendMail(
       email,
@@ -321,9 +339,9 @@ const resetPassword = async (req, res) => {
     return res.status(400).json({ error: "Passwords do not match." });
   }
 
-  // Update the password in the database
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-  const updateSql = "UPDATE customer SET C_PASSWORD = ? WHERE C_EMAIL = ?";
+  const updateSql =
+    "UPDATE customer SET c_password = ? WHERE c_email = ? AND c_status = 'ACTIVE'";
 
   conn.query(updateSql, [hashedPassword, email], (err) => {
     if (err) {
@@ -337,7 +355,41 @@ const resetPassword = async (req, res) => {
     });
   });
 };
+// Controller function to delete a user
+const deleteUser = async (req, res) => {
+  try {
+    const id = req.session.userId;
 
+    // Check if the user exists
+    const checkUserSql = "SELECT * FROM customer WHERE c_id = ?";
+    conn.query(checkUserSql, [id], (err, result) => {
+      if (err) throw err;
+
+      if (result.length === 0) {
+        return res.status(404).json({ error: "User not found." });
+      }
+
+      // Set the user's status to INACTIVE
+      const updateUserStatusSql =
+        "UPDATE customer SET c_status = 'INACTIVE' WHERE c_id = ?";
+      conn.query(updateUserStatusSql, [id], (err, updateResult) => {
+        if (err) throw err;
+
+        if (updateResult.affectedRows > 0) {
+          res
+            .status(200)
+            .json({ message: "User status updated to INACTIVE successfully." });
+        } else {
+          res.status(500).json({ error: "Failed to update user status." });
+        }
+      });
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error updating user status: " + error.message });
+  }
+};
 module.exports = {
   registerUser,
   loginUser,
@@ -348,4 +400,5 @@ module.exports = {
   verifyPassword,
   forgotPassword,
   resetPassword,
+  deleteUser,
 };

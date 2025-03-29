@@ -19,15 +19,13 @@ const getViewsAndSearchProducts = (searchTerm, callback) => {
 
     const searchPattern = `%${searchTerm}%`;
 
-    const searchQueries = views
-      .map((view) => {
-        return `
+    const searchQueries = views.map((view) => {
+      return `
         SELECT '${view.TABLE_NAME}' AS category, id, name, price, description
         FROM ${view.TABLE_NAME}
         WHERE name LIKE ?
       `;
-      })
-      .join(" UNION ALL ");
+    }).join(" UNION ALL ");
 
     const query = `${searchQueries}`;
 
@@ -70,15 +68,13 @@ const getViewsAndSearchKeywords = (searchTerm, callback) => {
 
     const searchPattern = `%${searchTerm}%`;
 
-    const searchQueries = views
-      .map((view) => {
-        return `
+    const searchQueries = views.map((view) => {
+      return `
         SELECT name AS keyword
         FROM ${view.TABLE_NAME}
         WHERE name LIKE ?
       `;
-      })
-      .join(" UNION ");
+    }).join(" UNION ");
 
     const query = `${searchQueries}`;
 

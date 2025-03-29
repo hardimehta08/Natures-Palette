@@ -561,7 +561,6 @@ const updateSubSubcategory = (req, res) => {
 const removeCategory = (req, res) => {
   const categoryId = req.params.id;
 
-  // Ensure correct column name (CY_ID instead of id)
   const query = "UPDATE category SET is_deleted = 1 WHERE CY_ID = ?";
 
   conn.query(query, [categoryId], (err, result) => {
@@ -572,6 +571,21 @@ const removeCategory = (req, res) => {
     res.json({ message: "✅ Category removed successfully (soft delete)" });
   });
 };
+
+const activateCategory = (req, res) => {
+  const categoryId = req.params.id;
+
+  const query = "UPDATE category SET is_deleted = 0 WHERE CY_ID = ?";
+
+  conn.query(query, [categoryId], (err, result) => {
+    if (err) {
+      console.error("❌ Error activating category:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    res.json({ message: "✅ Category activated successfully" });
+  });
+};
+
 
 const removeSubCategory = (req, res) => {
   const subcategoryId = req.params.id;
@@ -592,6 +606,27 @@ const removeSubCategory = (req, res) => {
     res.json({ message: "✅ Subcategory removed successfully (soft delete)" });
   });
 };
+
+const activateSubCategory = (req, res) => {
+  const subcategoryId = req.params.id;
+
+  if (!subcategoryId) {
+    return res.status(400).json({ error: "Subcategory ID is required" });
+  }
+
+  const query = "UPDATE subcategory SET is_deleted = 0 WHERE sub_id = ?";
+  conn.query(query, [subcategoryId], (err, result) => {
+    if (err) {
+      console.error("❌ Error activating subcategory:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Subcategory not found" });
+    }
+    res.json({ message: "✅ Subcategory activated successfully" });
+  });
+};
+
 
 const removeSubSubCategory = (req, res) => {
   const subsubcategoryId = req.params.id;
@@ -614,85 +649,27 @@ const removeSubSubCategory = (req, res) => {
     });
   });
 };
-function deleteSubCategory(req, res) {
-  const { id } = req.params;
 
-  if (!id) {
-    console.error("❌ ID not received in request");
-    return res.status(400).json({ error: "Missing subcategory ID" });
+const activateSubSubCategory = (req, res) => {
+  const subsubcategoryId = req.params.id;
+
+  if (!subsubcategoryId) {
+    return res.status(400).json({ error: "Sub-subcategory ID is required" });
   }
 
-  console.log(`🛑 Deleting subcategory: ${id}`);
-
-  conn.query("SET FOREIGN_KEY_CHECKS = 0", (err) => {
+  const query = "UPDATE subsubcategory SET is_deleted = 0 WHERE ss_id = ?";
+  conn.query(query, [subsubcategoryId], (err, result) => {
     if (err) {
-      console.error("❌ Error disabling foreign key checks:", err);
+      console.error("❌ Error activating sub-subcategory:", err);
       return res.status(500).json({ error: "Database error" });
     }
-
-    const deleteSubSubcategoriesQuery =
-      "DELETE FROM subsubcategory WHERE sub_id = ?";
-    conn.query(deleteSubSubcategoriesQuery, [id], (err) => {
-      if (err) {
-        console.error("❌ Error deleting related sub-subcategories:", err);
-        return res
-          .status(500)
-          .json({ error: "Database error while deleting sub-subcategories" });
-      }
-
-      console.log(`✅ Related sub-subcategories deleted for: ${id}`);
-
-      const deleteQuery = "DELETE FROM subcategory WHERE sub_id = ?";
-      conn.query(deleteQuery, [id], (err, result) => {
-        if (err) {
-          console.error("❌ Error deleting subcategory:", err);
-          return res
-            .status(500)
-            .json({ error: "Database error while deleting subcategory" });
-        }
-
-        if (result.affectedRows === 0) {
-          console.warn("⚠ Warning: Subcategory not found or already deleted.");
-          return res.status(404).json({ error: "Subcategory not found" });
-        }
-
-        console.log(`✅ Subcategory ${id} deleted successfully.`);
-
-        reorderSubcategoryIDs((err, idMapping) => {
-          if (err)
-            return res
-              .status(500)
-              .json({ error: "Error while reordering subcategory IDs" });
-
-          updateSubSubcategoryIDs(idMapping, (err) => {
-            if (err)
-              return res
-                .status(500)
-                .json({ error: "Error while updating sub-subcategory IDs" });
-
-            reorderSubSubcategoryIDs((err) => {
-              if (err)
-                return res.status(500).json({
-                  error: "Error while reordering sub-subcategory IDs",
-                });
-
-              conn.query("SET FOREIGN_KEY_CHECKS = 1", (err) => {
-                if (err) {
-                  console.error("❌ Error enabling foreign key checks:", err);
-                  return res.status(500).json({ error: "Database error" });
-                }
-                res.json({
-                  message:
-                    "✅ Subcategory deleted, IDs reordered, and sub-subcategory IDs updated successfully",
-                });
-              });
-            });
-          });
-        });
-      });
-    });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Sub-subcategory not found" });
+    }
+    res.json({ message: "✅ Sub-subcategory activated successfully" });
   });
-}
+};
+
 
 // ✅ Function to Reorder Subcategory IDs
 function reorderSubcategoryIDs(callback) {
@@ -796,93 +773,6 @@ function reorderSubSubcategoryIDs(callback) {
     });
   });
 }
-
-const deleteSubSubCategory = (req, res) => {
-  const ssId = req.params.id;
-
-  // Get Image Path
-  const getImageQuery = "SELECT ss_image FROM subsubcategory WHERE ss_id = ?";
-  conn.query(getImageQuery, [ssId], (err, result) => {
-    if (err) {
-      console.error("Error fetching sub-subcategory image:", err);
-      return res.status(500).json({ error: "Database error" });
-    }
-    console.log("🔍 Retrieved Sub-Subcategory Data:", result);
-    // Delete Image File
-    if (result.length > 0 && result[0].ss_image) {
-      const imageFileName = result[0].ss_image.trim(); // Ensure there's no extra spaces
-      const oldImagePath = path.join(
-        __dirname,
-        "..",
-        "public",
-        "images",
-        imageFileName
-      );
-
-      console.log("🗑 Attempting to delete image:", oldImagePath);
-
-      // Check if file exists before deleting
-      fs.access(oldImagePath, fs.constants.F_OK, (err) => {
-        if (!err) {
-          fs.unlink(oldImagePath, (err) => {
-            if (err) {
-              console.error("❌ Error deleting sub-subcategory image:", err);
-            } else {
-              console.log("✅ Old image deleted successfully:", oldImagePath);
-            }
-          });
-        } else {
-          console.warn(
-            "⚠ Image file does not exist, skipping deletion:",
-            oldImagePath
-          );
-        }
-      });
-    } else {
-      console.warn("⚠ No image found for this sub-subcategory.");
-    }
-
-    // Delete Sub-Subcategory from DB
-    const deleteQuery = "DELETE FROM subsubcategory WHERE ss_id = ?";
-    conn.query(deleteQuery, [ssId], (err, result) => {
-      if (err) {
-        console.error("Error deleting sub-subcategory:", err);
-        return res.status(500).json({ error: "Database error" });
-      }
-
-      // Reset Counter for Reordering
-      const setCounterQuery = "SET @count = 0";
-      conn.query(setCounterQuery, (err) => {
-        if (err) {
-          console.error("Error setting sub-subcategory counter:", err);
-          return res.status(500).json({ error: "Database error" });
-        }
-
-        // Reorder Sub-Subcategory IDs Dynamically
-        const reorderQuery = `
-                    UPDATE subsubcategory 
-                    JOIN (
-                        SELECT ss_id, sub_id, (@count := @count + 1) AS newId
-                        FROM subsubcategory
-                        ORDER BY sub_id, ss_id
-                    ) AS orderedSS
-                    ON subsubcategory.ss_id = orderedSS.ss_id
-                    SET subsubcategory.ss_id = CONCAT('SS', LPAD(orderedSS.newId, 2, '0'));
-                `;
-
-        conn.query(reorderQuery, (err) => {
-          if (err) {
-            console.error("Error reordering sub-subcategory IDs:", err);
-            return res.status(500).json({ error: "Database error" });
-          }
-          res.json({
-            message: "Sub-Subcategory deleted and IDs reordered successfully",
-          });
-        });
-      });
-    });
-  });
-};
 
 const getAllCategories = (req, res) => {
   const query = "SELECT * FROM category WHERE is_deleted = 0"; // ✅ Fetch all categories
@@ -1076,4 +966,7 @@ module.exports = {
   getSubcategoriesByCategory,
   getAllCategories,
   getSubSubcategories,
+  activateCategory,
+  activateSubCategory,
+  activateSubSubCategory,
 };

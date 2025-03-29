@@ -24,14 +24,17 @@ router.get('/subsubcategories/:subcategoryId', categoryController.getSubSubcateg
 router.post('/categories', upload.single('cy_image'), categoryController.addCategory);
 router.put('/categories/:id', upload.single('cy_image'), categoryController.updateCategory);
 router.put('/rcategories/:id', categoryController.removeCategory);
+router.put("/activate/:id",categoryController.activateCategory);
 
 // Use local 'upload' instead of 'categoryController.upload'
 router.post('/subcategories', upload.single('sub_image'), categoryController.addSubCategory);
 router.put('/subcategories/:id', upload.single('sub_image'), categoryController.updateSubcategory);
 router.put('/rsubcategories/:id', categoryController.removeSubCategory);
+router.put('/activateSub/:id', categoryController.activateSubCategory);
 
 router.post('/subsubcategories', upload.single('ss_image'), categoryController.addSubSubCategory);
 router.put('/subsubcategories/:id', upload.single('ss_image'), categoryController.updateSubSubcategory);
 router.put('/rsubsubcategories/:id', categoryController.removeSubSubCategory);
+router.put('/activateSubSub/:id', categoryController.activateSubSubCategory);
 
 module.exports = router;

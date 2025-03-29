@@ -151,11 +151,12 @@ const displayProducts = (data) => {
 
   if (products && Array.isArray(products)) {
     products.forEach((product) => {
+      const formattedName = product.name.replace(/_/g, " ");
       const productHTML = `
           <div class="product-card">
             <a href="/product.html?product=${product.name}">
               <img src="../${product.img}" alt="${product.name}" class="">
-              <h3 class="product-name">${product.name}</h3>
+              <h3 class="product-name">${formattedName}</h3>
               <p class="product-price">&#8377; ${product.price}</p>
             </a>
           </div>
@@ -170,19 +171,24 @@ const displayProducts = (data) => {
 const displayNewArrivals = (data) => {
   const productContainer = document.getElementById("newarrival-container");
   productContainer.innerHTML = "";
-  const products = data;
-  products.forEach((item) => {
-    const productHTML = `
-          <div class="product-card">
-          <a href="/product.html?product=${item.P_NAME}">
-            <img src="${item.PATH1}" alt="${item.P_NAME}">
-            <h3 class="product-name">${item.P_NAME}</h3>
+
+  if (data && data.forEach) {
+    data.forEach((item) => {
+      const formattedName = item.P_NAME.replace(/_/g, " ");
+      const productHTML = `
+        <div class="product-card">
+          <a href="/product.html?product=${formattedName}">
+            <img src="../${item.PATH1}" alt="${formattedName}">
+            <h3 class="product-name">${formattedName}</h3>
             <p class="product-price">₹${item.P_PRICE}</p>
           </a>
-          </div>
-        `;
-    productContainer.innerHTML += productHTML;
-  });
+        </div>
+      `;
+      productContainer.innerHTML += productHTML;
+    });
+  } else {
+    console.error("Error: new arrivals is not an array or undefined");
+  }
 };
 
 const capitalize = (str) => {
@@ -208,13 +214,16 @@ const updateHeaderUI = (data) => {
     optionItems.classList.add("option-items");
 
     const a = document.createElement("a");
-    let subName=sub.ss_name || sub.sub_name;
+    let subName = sub.ss_name || sub.sub_name;
     let formattedPath;
-    if(sub.ss_name){
-      formattedPath = `/${subcategory.toLowerCase().replace(/ /g, "_")}/${subName.toLowerCase().replace(/ /g, "_")}`;
-    }
-    else{
-      formattedPath = `/${category.toLowerCase().replace(/ /g, "_")}/${subName.toLowerCase().replace(/ /g, "_")}`;
+    if (sub.ss_name) {
+      formattedPath = `/${subcategory
+        .toLowerCase()
+        .replace(/ /g, "_")}/${subName.toLowerCase().replace(/ /g, "_")}`;
+    } else {
+      formattedPath = `/${category.toLowerCase().replace(/ /g, "_")}/${subName
+        .toLowerCase()
+        .replace(/ /g, "_")}`;
     }
     a.href = formattedPath;
 
@@ -305,3 +314,8 @@ document.addEventListener("DOMContentLoaded", (event) => {
     });
   }
 });
+fetch("/best-selling")
+  .then((response) => response.json())
+  .then((data) => {
+    displayNewArrivals(data);
+  });
