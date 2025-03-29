@@ -473,30 +473,31 @@
                 </div>
             
                 <!-- Update Sub-Subcategory Section -->
-                <section id="updateSubSubcategoryModal" class="subsubcategory-section hidden">
-                    <h2 class="form-h2">Update Sub-Subcategory</h2>
+                <section id="updateSubSubcategoryModal" class="subsubcategory-section hidden" style="height: 470px;">
+                    <h2 class="section-title">Update Sub-Subcategory</h2>
                     <form id="updateSubSubcategoryForm" enctype="multipart/form-data">
                         <input type="hidden" id="updateSubSubcategoryId">
-            
+                
                         <div class="input-group">
-                            <label for="updateSubSubcategoryName">Sub-Subcategory Name:</label>
+                            <label for="updateSubSubcategoryName"> Sub-Subcategory Name</label>
                             <input type="text" id="updateSubSubcategoryName" name="ss_name" placeholder="Enter Sub-Subcategory Name" required>
                         </div>
-            
+                
                         <div class="input-group">
-                            <label for="updateSubSubcategoryDescription">Sub-Subcategory Description:</label>
+                            <label for="updateSubSubcategoryDescription"> Description</label>
                             <textarea id="updateSubSubcategoryDescription" name="ss_desc" placeholder="Enter Sub-Subcategory Description"></textarea>
                         </div>
-            
+                
                         <div class="input-group file-upload">
-                            <label for="updateSubSubcategoryImage">Sub-Subcategory Image:</label>
+                            <label for="updateSubSubcategoryImage">Upload Image</label>
                             <input type="file" id="updateSubSubcategoryImage" name="ss_image" accept="image/*">
                         </div>
-            
+                
                         <button type="submit" class="btn-submit">Update Sub-Subcategory</button>
                         <button type="button" class="btn-cancel" onclick="closeUpdateSubSubModal()" style="width: 100%;">Cancel</button>
                     </form>
-                  </section>
+                </section>
+                
             </div>
             <div class="form-group">
               <label>Category:</label>
