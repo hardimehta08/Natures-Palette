@@ -13,7 +13,6 @@ const db = mysql.createConnection({
 
 // Dashboard Data
 exports.getDashboardData = (req, res) => {
-  console.log("Starting getDashboardData...");
 
   const today = new Date();
   const startOfDay = today.toISOString().split("T")[0];
@@ -160,7 +159,6 @@ exports.getDashboardData = (req, res) => {
     // Dynamic Best Sellers with Category Name
     const bestSellersPromises = [];
     for (const [categoryName, tableName] of categoryTableMap) {
-      console.log(`Processing best sellers for category: ${categoryName} (table: ${tableName})`);
       bestSellersPromises.push(
         new Promise((resolve, reject) => {
           db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
@@ -374,7 +372,6 @@ exports.getDashboardData = (req, res) => {
 
 exports.getInventoryCategories = (req, res) => {
   const query = `SELECT CY_NAME FROM category`;
-  console.log("Fetching categories from database...");
   db.query(query, (err, results) => {
     if (err) {
       console.error("Error fetching inventory categories:", err);
@@ -382,7 +379,6 @@ exports.getInventoryCategories = (req, res) => {
         .status(500)
         .json({ error: "Database error", details: err.message });
     }
-    console.log("Categories fetched:", results);
     const categories = results.map((row) => row.CY_NAME);
     res.json(categories);
   });
@@ -547,9 +543,6 @@ exports.getSalesReport = (req, res) => {
   const effectiveStartDate = startDate || defaultStartDate;
   const effectiveEndDate = endDate || defaultEndDate;
 
-  console.log("Effective startDate:", effectiveStartDate); // Debug: Log the startDate
-  console.log("Effective endDate:", effectiveEndDate); // Debug: Log the endDate
-
   // Validate date formats
   const start = new Date(effectiveStartDate);
   const end = new Date(effectiveEndDate);
@@ -679,11 +672,6 @@ exports.getSalesReport = (req, res) => {
       salesByProductQuery += ` GROUP BY od.Product_id, p.name, c.CY_NAME ORDER BY totalRevenue DESC LIMIT 5`;
       salesByCategoryQuery += ` GROUP BY c.CY_NAME ORDER BY totalRevenue DESC`;
 
-      console.log("Sales query:", salesQuery); // Debug: Log the query
-      console.log("Sales by Product query:", salesByProductQuery); // Debug: Log the query
-      console.log("Sales by Category query:", salesByCategoryQuery); // Debug: Log the query
-      console.log("Query parameters:", queryParams); // Debug: Log the parameters
-
       Promise.all([
         new Promise((resolve, reject) =>
           db.query(salesQuery, queryParams, (err, result) =>
@@ -702,10 +690,6 @@ exports.getSalesReport = (req, res) => {
         ),
       ])
         .then(([totalSales, salesByProduct, salesByCategory]) => {
-          console.log("Total Sales:", totalSales);
-          console.log("Sales by Product:", salesByProduct);
-          console.log("Sales by Category:", salesByCategory);
-
           res.json({
             totalSales: totalSales || [],
             salesByProduct: salesByProduct || [],
@@ -848,7 +832,6 @@ exports.getInventoryReport = (req, res) => {
           };
 
           columns.forEach((col) => {
-            console.log(col);
             const field = col.Field.toLowerCase();
             if (field.includes("id") && !field.includes("category_id"))columnMap.id = col.Field;
             else if (field.includes("name")) columnMap.name = col.Field;
@@ -956,7 +939,6 @@ exports.updateStock = (req, res) => {
 
   // Step 2: Derive the table name
   const tableName = categoryName.toLowerCase() + "_table";
-  console.log("Derived table name:", tableName);
 
   // Step 3: Check if the table exists
   db.query(`SHOW TABLES LIKE ?`, [tableName], (err, tableResult) => {
@@ -1191,12 +1173,6 @@ exports.getOrderReport = (req, res) => {
       params: compareQueryParams,
     },
   };
-
-  // Log queries for debugging
-  Object.entries(queries).forEach(([key, { sql, params }]) => {
-    console.log(`${key} Query:`, sql);
-    console.log(`${key} Params:`, params);
-  });
 
   // Execute all queries in parallel
   Promise.all(
@@ -1968,9 +1944,6 @@ exports.exportCustomerReportCSV = (req, res) => {
 
   purchaseHistoryQuery += ` GROUP BY om.C_id, c.c_username ORDER BY totalSpent DESC LIMIT 10`;
 
-  console.log("demographicsQuery:", demographicsQuery);
-  console.log("purchaseHistoryQuery:", purchaseHistoryQuery, queryParams);
-
   Promise.all([
     new Promise((resolve, reject) =>
       db.query(demographicsQuery, (err, result) => {
@@ -1992,9 +1965,6 @@ exports.exportCustomerReportCSV = (req, res) => {
     ),
   ])
     .then(([demographics, purchaseHistory]) => {
-      console.log("demographics:", demographics);
-      console.log("purchaseHistory:", purchaseHistory);
-
       let csvContent = "";
 
       csvContent += "Customer Report\n";
@@ -2080,9 +2050,6 @@ exports.exportCustomerReportPDF = (req, res) => {
   }
 
   purchaseHistoryQuery += ` GROUP BY om.C_id, c.c_username ORDER BY totalSpent DESC LIMIT 10`;
-
-  console.log("demographicsQuery:", demographicsQuery);
-  console.log("purchaseHistoryQuery:", purchaseHistoryQuery, queryParams);
 
   Promise.all([
     new Promise((resolve, reject) =>
@@ -2276,8 +2243,6 @@ exports.exportInventoryReportCSV = (req, res) => {
         console.log(`Skipping category ${categoryName} (table: ${tableName}) as it does not match requested category: ${category}`);
         continue;
       }
-
-      console.log(`Processing category ${categoryName} (table: ${tableName})`); // Debug: Log the category being processed
 
       db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
         if (err || result.length === 0) {
@@ -2505,8 +2470,6 @@ exports.exportInventoryReportPDF = (req, res) => {
         continue;
       }
 
-      console.log(`Processing category ${categoryName} (table: ${tableName})`); // Debug: Log the category being processed
-
       db.query(`SHOW TABLES LIKE ?`, [tableName], (err, result) => {
         if (err || result.length === 0) {
           console.log(`Table ${tableName} does not exist:`, err?.sqlMessage);
@@ -2596,9 +2559,6 @@ exports.exportInventoryReportPDF = (req, res) => {
         ),
       ])
         .then(([stockLevels, turnover]) => {
-          console.log("Stock levels data:", stockLevels); // Debug: Log the stock levels data
-          console.log("Turnover data:", turnover); // Debug: Log the turnover data
-
           const doc = new PDFDocument({ margin: 10 });
           let buffers = [];
           doc.on("data", buffers.push.bind(buffers));
@@ -3433,8 +3393,6 @@ exports.exportOrderReportPDF = (req, res) => {
           doc.moveDown(0.5);
         }
 
-        // Debug: Log the cursor position and page number
-        console.log(`Shipping Detail ${index + 1}: doc.y = ${doc.y}, Page = ${pageNumber}`);
       });
 
       isShippingDetailsSection = false; // Reset the flag
