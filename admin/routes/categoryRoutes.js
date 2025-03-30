@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const categoryController = require('../controllers/categoryController');
 const multer = require('multer');
+const path = require('path');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'public/Database/');  // Store in 'public/Database'
+        cb(null, path.join(__dirname, '../../public/Database'));
     },
     filename: (req, file, cb) => {
-        cb(null, file.originalname);
+        cb(null,file.originalname);
     }
 });
 const upload = multer({ storage });

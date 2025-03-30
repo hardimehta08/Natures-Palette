@@ -13,64 +13,31 @@ const conn = mysql.createConnection({
 
 const getCategories = (req, res) => {
   const query = `
-        SELECT 
-            c.cy_id AS category_id, c.cy_name AS category_name, c.cy_desc AS category_desc, c.cy_image AS category_image
-        FROM 
-            category c
-    `;
+    SELECT 
+      cy_id AS category_id,
+      cy_name AS category_name,
+      cy_desc AS category_desc,
+      cy_image AS category_image
+    FROM 
+      category
+  `;
 
   conn.query(query, (err, results) => {
     if (err) {
-      console.error("Error fetching categories:", err);
-      return res.status(500).json({ error: "Database error" });
+      console.error("❌ Error fetching categories:", err);
+      return res.status(500).json({ error: "Database error: " + err.message });
     }
 
-    // Organize the data into a hierarchical structure
-    const categories = [];
-    const categoryMap = {};
+    // No need for complex hierarchy if frontend only expects flat data
+    const categories = results.map(row => ({
+      category_id: row.category_id,
+      category_name: row.category_name,
+      category_desc: row.category_desc,
+      category_image: row.category_image
+    }));
 
-    results.forEach((row) => {
-      // ✅ Category Level
-      if (!categoryMap[row.category_id]) {
-        categoryMap[row.category_id] = {
-          category_id: row.category_id,
-          category_name: row.category_name,
-          category_desc: row.category_desc, // ✅ Fetching category description
-          category_image: row.category_image,
-          subcategories: [],
-        };
-        categories.push(categoryMap[row.category_id]);
-      }
-
-      // ✅ Subcategory Level
-      if (row.subcategory_id) {
-        let subcategory = categoryMap[row.category_id].subcategories.find(
-          (sub) => sub.subcategory_id === row.subcategory_id
-        );
-        if (!subcategory) {
-          subcategory = {
-            subcategory_id: row.subcategory_id,
-            subcategory_name: row.subcategory_name,
-            subcategory_desc: row.subcategory_desc, // ✅ Fetching subcategory description
-            subcategory_image: row.subcategory_image,
-            subsubcategories: [],
-          };
-          categoryMap[row.category_id].subcategories.push(subcategory);
-        }
-
-        // ✅ Sub-Subcategory Level
-        if (row.subsubcategory_id) {
-          subcategory.subsubcategories.push({
-            subsubcategory_id: row.subsubcategory_id,
-            subsubcategory_name: row.subsubcategory_name,
-            subsubcategory_desc: row.subsubcategory_desc, // ✅ Fetching subsubcategory description
-            subsubcategory_image: row.subsubcategory_image,
-          });
-        }
-      }
-    });
-
-    res.json(categories); // ✅ Return JSON data
+    console.log("✅ Categories fetched:", categories); // Debug output
+    res.json(categories);
   });
 };
 
@@ -111,77 +78,71 @@ const getSubSubcategories = (req, res) => {
 
 const addCategory = (req, res) => {
   const { cy_name, cy_desc } = req.body;
-  const cy_image = req.file; // Assuming multer or similar middleware is used for file upload
+  const cy_image = req.file;
 
   if (!cy_name || !cy_desc) {
-    return res
-      .status(400)
-      .json({ error: "Category name and description are required." });
+      return res.status(400).json({ error: "Category name and description are required." });
   }
 
-  // Define the directory path outside admin folder (public/Database)
-  const directoryPath = path.join(
-    __dirname,
-    "../../public/Database/" // Adjust the path based on your project structure
-  );
-
-  // Ensure the "Database" folder exists
+  const directoryPath = path.join(__dirname, "../../public/Database");
   if (!fs.existsSync(directoryPath)) {
-    fs.mkdirSync(directoryPath, { recursive: true });
+      fs.mkdirSync(directoryPath, { recursive: true });
   }
 
-  // Get the maximum category ID from the database
   const getMaxCategoryIdQuery = `SELECT MAX(cy_id) AS maxId FROM category`;
-
   conn.query(getMaxCategoryIdQuery, (err, result) => {
-    if (err) {
-      console.error("Error fetching max category ID:", err);
-      return res.status(500).json({ error: "Database error: " + err.message });
-    }
-
-    let newCategoryId;
-    if (result[0].maxId) {
-      const lastIdNumber = parseInt(result[0].maxId.replace(/\D/g, ""), 10) + 1;
-      newCategoryId = `CY${String(lastIdNumber).padStart(2, "0")}`;
-    } else {
-      newCategoryId = "CY01";
-    }
-
-    // Handle the image file
-    let imagePath = null;
-    if (cy_image) {
-      const extension = path.extname(cy_image.originalname) || ".jpg"; // Default to .jpg if no extension
-      const imageFileName = `${newCategoryId}${extension}`; // e.g., CY01.jpg
-      const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
-      imagePath = `Database/${imageFileName}`; // Relative path for database storage
-
-      // Move the uploaded file to the target location
-      fs.rename(cy_image.path, targetPath, (err) => {
-        if (err) {
-          console.error("Error moving image:", err);
-          return res.status(500).json({ error: "Image upload failed" });
-        }
-      });
-    }
-
-    // Insert into the database
-    const insertQuery = `INSERT INTO category (cy_id, cy_name, cy_desc, cy_image) VALUES (?, ?, ?, ?)`;
-    conn.query(
-      insertQuery,
-      [newCategoryId, cy_name, cy_desc, imagePath || null],
-      (err) => {
-        if (err) {
-          console.error("Error inserting category:", err);
-          return res
-            .status(500)
-            .json({ error: "Database error: " + err.message });
-        }
-
-        res.json({ message: "Category added successfully", id: newCategoryId });
+      if (err) {
+          console.error("❌ Error fetching max category ID:", err);
+          return res.status(500).json({ error: "Database error: " + err.message });
       }
-    );
+
+      let newCategoryId;
+      if (result[0].maxId) {
+          const lastIdNumber = parseInt(result[0].maxId.replace(/\D/g, ""), 10) + 1;
+          newCategoryId = `CY${String(lastIdNumber).padStart(2, "0")}`;
+      } else {
+          newCategoryId = "CY01";
+      }
+
+      let imagePath = null;
+      if (cy_image) {
+          const extension = path.extname(cy_image.originalname) || ".jpg";
+          const imageFileName = `${newCategoryId}${extension}`;
+          const tempPath = cy_image.path;
+          const targetPath = path.join(directoryPath, imageFileName);
+          imagePath = `Database/${imageFileName}`;
+
+          try {
+              if (!fs.existsSync(tempPath)) {
+                  console.error("❌ Temp file not found:", tempPath);
+                  return res.status(500).json({ error: "Temporary file not found" });
+              }
+              fs.renameSync(tempPath, targetPath);
+          } catch (err) {
+              console.error("❌ Error handling image:", err);
+              return res.status(500).json({ error: "Image processing failed: " + err.message });
+          }
+      }
+
+      const insertQuery = `INSERT INTO category (cy_id, cy_name, cy_desc, cy_image) VALUES (?, ?, ?, ?)`;
+      const params = [newCategoryId, cy_name, cy_desc || null, imagePath || null];
+
+      conn.query(insertQuery, params, (err) => {
+          if (err) {
+              console.error("❌ Error inserting category:", err);
+              return res.status(500).json({ error: "Database error: " + err.message });
+          }
+
+          console.log("✅ Category added successfully:", newCategoryId);
+          res.json({
+              message: "Category added successfully",
+              id: newCategoryId,
+              imagePath: imagePath || null
+          });
+      });
   });
 };
+
 
 const addSubCategory = (req, res) => {
   const { sub_name, sub_desc, cy_id } = req.body;
@@ -191,8 +152,7 @@ const addSubCategory = (req, res) => {
     return res.status(400).json({ error: "All fields except image are required" });
   }
 
-  // Define the directory path (public/Database)
-  const directoryPath = path.join(__dirname, "../../public/Database/");
+  const directoryPath = path.join(__dirname, "../../public/Database");
 
   // Ensure the "Database" folder exists
   if (!fs.existsSync(directoryPath)) {
@@ -219,22 +179,26 @@ const addSubCategory = (req, res) => {
           ? `SUB${String(results[0].maxId + 1).padStart(2, "0")}`
           : "SUB01";
 
-      console.log("✅ Generated Unique Subcategory ID:", newSubId);
-
       // Handle the image file
       let imagePath = null;
       if (sub_image) {
-        const extension = path.extname(sub_image.originalname) || ".jpg"; // Default to .jpg if no extension
+        const extension = path.extname(sub_image.originalname) || ".jpg";
         const imageFileName = `${newSubId}${extension}`; // e.g., SUB01.jpg
-        const tempPath = sub_image.path; // Temporary path from multer
-        const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
+        const tempPath = sub_image.path; // Temporary path from multer (e.g., public/temp/123456.jpg)
+        const targetPath = path.join(directoryPath, imageFileName); // Final path (e.g., public/Database/SUB01.jpg)
         imagePath = `Database/${imageFileName}`; // Relative path for database storage
 
         try {
+          // Verify temp file exists before moving
+          if (!fs.existsSync(tempPath)) {
+            console.error("❌ Temp file not found:", tempPath);
+            return rollbackTransaction(res, "Temporary file not found");
+          }
           fs.renameSync(tempPath, targetPath); // Move file synchronously
+          console.log("✅ Image moved to:", targetPath);
         } catch (err) {
           console.error("❌ Error moving image:", err);
-          return rollbackTransaction(res, "Image upload failed");
+          return rollbackTransaction(res, "Image upload failed: " + err.message);
         }
       }
 
@@ -260,6 +224,7 @@ const addSubCategory = (req, res) => {
             res.json({
               message: "Subcategory added successfully",
               sub_id: newSubId,
+              imagePath: imagePath || null // Include imagePath in response
             });
           });
         }
@@ -285,8 +250,7 @@ const addSubSubCategory = (req, res) => {
     });
   }
 
-  // Define the directory path (public/Database)
-  const directoryPath = path.join(__dirname, "../../public/Database/");
+  const directoryPath = path.join(__dirname, "../../public/Database");
 
   // Ensure the "Database" folder exists
   if (!fs.existsSync(directoryPath)) {
@@ -308,17 +272,23 @@ const addSubSubCategory = (req, res) => {
     // Handle the image file
     let imagePath = null;
     if (ss_image) {
-      const extension = path.extname(ss_image.originalname) || ".jpg"; // Default to .jpg if no extension
+      const extension = path.extname(ss_image.originalname) || ".jpg";
       const imageFileName = `${newSsId}${extension}`; // e.g., SS01.jpg
-      const tempPath = ss_image.path; // Temporary path from multer
-      const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
+      const tempPath = ss_image.path; // Temporary path from multer (e.g., public/temp/123456.jpg)
+      const targetPath = path.join(directoryPath, imageFileName); // Final path (e.g., public/Database/SS01.jpg)
       imagePath = `Database/${imageFileName}`; // Relative path for database storage
 
       try {
+        // Verify temp file exists before moving
+        if (!fs.existsSync(tempPath)) {
+          console.error("❌ Temp file not found:", tempPath);
+          return res.status(500).json({ error: "Temporary file not found" });
+        }
         fs.renameSync(tempPath, targetPath); // Move file synchronously
+        console.log("✅ Image moved to:", targetPath);
       } catch (err) {
         console.error("❌ Error moving image:", err);
-        return res.status(500).json({ error: "Image upload failed" });
+        return res.status(500).json({ error: "Image upload failed: " + err.message });
       }
     }
 
@@ -331,14 +301,17 @@ const addSubSubCategory = (req, res) => {
           console.error("❌ Error inserting sub-subcategory:", err);
           return res.status(500).json({ error: "Database error: " + err.message });
         }
+        console.log("✅ Sub-Subcategory added successfully:", newSsId);
         res.json({
-          message: "✅ Sub-Subcategory added successfully",
+          message: "Sub-Subcategory added successfully",
           ss_id: newSsId,
+          imagePath: imagePath || null // Include imagePath in response
         });
       }
     );
   });
 };
+
 
 // ✅ Update Category with Image
 const updateCategory = (req, res) => {

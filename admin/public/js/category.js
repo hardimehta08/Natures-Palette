@@ -8,41 +8,57 @@ const fetchCategories = async () => {
     }
 
     const categories = await response.json();
+    console.log("Fetched categories:", categories); // Debug output
+
     const tableBody = document.getElementById("cat-list");
+    if (!tableBody) {
+      console.error("Table body element #cat-list not found");
+      return;
+    }
+
     tableBody.innerHTML = ""; // Clear existing data
+
+    if (!categories || categories.length === 0) {
+      tableBody.innerHTML = "<tr><td colspan='5'>No categories found</td></tr>";
+      return;
+    }
 
     categories.forEach((category) => {
       const imageSrc = category.category_image
         ? `/Database/${category.category_image.split('/').pop()}`
         : "/Database/default-image.jpg";
 
-      // Determine button text based on is_deleted value
-      const actionButtonText = category.is_deleted ? "Activate" : "Inactivate";
-      const actionFunction = category.is_deleted
+      // Assuming is_deleted isn't in your schema yet; set to false for now
+      const isDeleted = category.is_deleted || false;
+      const actionButtonText = isDeleted ? "Activate" : "Inactivate";
+      const actionFunction = isDeleted
         ? `activateCategory('${category.category_id}')`
         : `removeCategory('${category.category_id}')`;
 
       let row = `
-                <tr id="category-row-${category.category_id}">
-                    <td>${category.category_id}</td>
-                    <td id="cat-name-${category.category_id}">${category.category_name}</td>
-                    <td>${category.category_desc ? category.category_desc : "No description"}</td>
-                    <td>
-                        <img src="${imageSrc}" alt="${category.category_name}" width="50">
-                    </td>
-                    <td>
-                        <button class="btn" onclick="openUpdateModal('${category.category_id}', '${category.category_name}', '${category.category_desc ? category.category_desc : ""}', '${category.category_image ? category.category_image : ""}')">Update</button>
-                        <button class="btn" id="action-btn-${category.category_id}" onclick="${actionFunction}">${actionButtonText}</button>
-                    </td>
-                </tr>
-            `;
+        <tr id="category-row-${category.category_id}">
+          <td>${category.category_id}</td>
+          <td id="cat-name-${category.category_id}">${category.category_name}</td>
+          <td>${category.category_desc ? category.category_desc : "No description"}</td>
+          <td>
+            <img src="${imageSrc}" alt="${category.category_name}" width="50">
+          </td>
+          <td>
+            <button class="btn" onclick="openUpdateModal('${category.category_id}', '${category.category_name}', '${category.category_desc || ""}', '${category.category_image || ""}')">Update</button>
+            <button class="btn" id="action-btn-${category.category_id}" onclick="${actionFunction}">${actionButtonText}</button>
+          </td>
+        </tr>
+      `;
 
       tableBody.innerHTML += row;
     });
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    console.error("❌ Error fetching categories:", error);
   }
 };
+
+// Ensure this runs on load
+window.onload = fetchCategories;
 
 
 function handleCategoryChange() {
@@ -61,49 +77,49 @@ function handleCategoryChange() {
 }
 
 // Call the function when the page loads
-window.onload = fetchCategories;
-document
-  .getElementById("category-form")
-  .addEventListener("submit", async function (event) {
-    event.preventDefault(); // Prevent default form submission
+document.getElementById("category-form").addEventListener("submit", async function (event) {
+  event.preventDefault();
 
-    // ✅ Fetch input values safely
-    const name = document.getElementById("cy-name")?.value.trim() || "";
-    const desc = document.getElementById("cy-desc")?.value.trim() || "";
-    const imageInput = document.getElementById("cy-image")?.files[0] || null;
+  const name = document.getElementById("cy-name")?.value.trim() || "";
+  const desc = document.getElementById("cy-desc")?.value.trim() || "";
+  const imageInput = document.getElementById("cy-image")?.files[0] || null;
 
-    if (!name || !desc) {
+  if (!name || !desc) {
       alert("Category name and description cannot be empty!");
       return;
-    }
+  }
 
-    const formData = new FormData();
-    formData.append("cy_name", name);
-    formData.append("cy_desc", desc);
-    if (imageInput) {
+  const formData = new FormData();
+  formData.append("cy_name", name);
+  formData.append("cy_desc", desc);
+  if (imageInput) {
       formData.append("cy_image", imageInput);
-    }
+  }
 
-    try {
-      const response = await fetch("/category/categories", {
-        method: "POST",
-        body: formData,
+  try {
+      const response = await fetch("/category/categories", { // Line ~88
+          method: "POST",
+          body: formData,
       });
+
+      if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`); // Line ~94
+      }
 
       const data = await response.json();
       if (data.error) {
-        alert("Error adding category: " + data.error);
+          alert("Error adding category: " + data.error);
       } else {
-        alert("Category added successfully!");
-        fetchCategories(); // Refresh category list
-        document.getElementById("category-form").reset(); // Reset form
-        location.reload();
+          alert("Category added successfully!");
+          fetchCategories();
+          document.getElementById("category-form").reset();
+          location.reload();
       }
-    } catch (error) {
-      console.error("Error adding category:", error);
-    }
-  });
-
+  } catch (error) {
+      console.error("Error adding category:", error); // Line ~107
+      alert("Failed to add category. Please try again.");
+  }
+});
   function removeCategory(categoryId) {
     fetch(`/category/rcategories/${encodeURIComponent(categoryId)}`, {
       method: "PUT",
@@ -239,23 +255,20 @@ document
     const subcategoryDesc = document.getElementById("sc-desc").value.trim();
     const subcategoryImage = document.getElementById("sc-image").files[0];
 
-    // ✅ Validation: Ensure all required fields are filled
-    if (
-      !categoryId ||
-      !subcategoryName ||
-      !subcategoryDesc ||
-      !subcategoryImage
-    ) {
-      alert("⚠ All fields are required!");
+    // Validation: Ensure all required fields are filled
+    if (!categoryId || !subcategoryName || !subcategoryDesc) {
+      alert("⚠ All fields except image are required!");
       return;
     }
 
-    // ✅ Prepare FormData
+    // Prepare FormData
     const formData = new FormData();
     formData.append("cy_id", categoryId);
     formData.append("sub_name", subcategoryName);
     formData.append("sub_desc", subcategoryDesc);
-    formData.append("sub_image", subcategoryImage);
+    if (subcategoryImage) {
+      formData.append("sub_image", subcategoryImage);
+    }
 
     try {
       const response = await fetch("/category/subcategories", {
@@ -277,7 +290,6 @@ document
       alert("❌ Something went wrong. Try again.");
     }
   });
-
 // ✅ Fetch Subcategories and Display in the Table Based on Selected Category
 function fetchSubcategories() {
   const categoryId = document.getElementById("prod_cat1").value;
@@ -535,8 +547,9 @@ document
     const ssDesc = document.getElementById("ssc-desc").value.trim();
     const ssImage = document.getElementById("ssc-image").files[0];
 
-    if (!subcategoryId || !ssName || !ssDesc || !ssImage) {
-      alert("⚠ All fields are required!");
+    // Validation: Ensure all required fields except image are filled
+    if (!subcategoryId || !ssName || !ssDesc) {
+      alert("⚠ All fields except image are required!");
       return;
     }
 
@@ -544,7 +557,9 @@ document
     formData.append("sub_id", subcategoryId);
     formData.append("ss_name", ssName);
     formData.append("ss_desc", ssDesc);
-    formData.append("ss_image", ssImage);
+    if (ssImage) {
+      formData.append("ss_image", ssImage);
+    }
 
     try {
       const response = await fetch("/category/subsubcategories", {
