@@ -2,17 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta content='IE=edge' http-equiv="X-UA-Compatible">
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="description" content="">
     <meta name="author" content="">
     <title>Forgot Password</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link rel="stylesheet" type="text/css" href="../css/login.css">
+    <link rel="stylesheet" href="../css/login.css"> <!-- Verify this path -->
 </head>
 <body>
     <section class="login-wrapper">
-        <a href="index.html" class="logo"><img src="../ad-images/logo/logo.png" alt="MS Admin Panel" width="150" style="border-radius: 50%;"/></a>
+        <a href="index.html" class="logo">
+            <img src="../ad-images/logo/logo.png" alt="MS Admin Panel" width="150" style="border-radius: 50%;"/>
+        </a>
         <div class="login-form">
             <div class="row">
                 <div class="row1">
@@ -27,8 +29,8 @@
                         </div>
                         <div id="response-message" style="color: red; display: none;"></div>
                         <div class="forgot">
-                            <a href="login.html" class="btn btn-outline-primary waves-effect" style="padding: 21px 30px;width: 40%;">Back To Login</a>
-                            <button type="submit" class="btn btn-primary waves-effect waves-primary">Send Reset Link</button>
+                            <a href="/html/login.html" class="btn btn-outline-primary">Back To Login</a>
+                            <button type="submit" class="btn btn-primary">Send Reset Link</button>
                         </div>
                     </form>
                 </div>
@@ -73,6 +75,9 @@
                     responseMessage.style.color = "green";
                     responseMessage.textContent = result.message;
                     responseMessage.style.display = "block";
+                    setTimeout(() => {
+                        window.location.href = "/html/login.html";
+                    }, 3000); // Redirect after 3 seconds
                 } else {
                     responseMessage.style.color = "red";
                     responseMessage.textContent = result.message || "Failed to send reset email.";

@@ -8,57 +8,44 @@ const fetchCategories = async () => {
     }
 
     const categories = await response.json();
-    console.log("Fetched categories:", categories); // Debug output
-
     const tableBody = document.getElementById("cat-list");
-    if (!tableBody) {
-      console.error("Table body element #cat-list not found");
-      return;
-    }
-
     tableBody.innerHTML = ""; // Clear existing data
 
-    if (!categories || categories.length === 0) {
-      tableBody.innerHTML = "<tr><td colspan='5'>No categories found</td></tr>";
-      return;
-    }
-
     categories.forEach((category) => {
-      const imageSrc = category.category_image
-        ? `/Database/${category.category_image.split('/').pop()}`
-        : "/Database/default-image.jpg";
+      let imageSrc = category.category_image.startsWith("Database/")
+            ? `/${category.category_image}`  // Use image path as-is
+            : "/Database/default-image.jpg"; // Default image
 
-      // Assuming is_deleted isn't in your schema yet; set to false for now
-      const isDeleted = category.is_deleted || false;
-      const actionButtonText = isDeleted ? "Activate" : "Inactivate";
-      const actionFunction = isDeleted
+      // Determine button text based on is_deleted value
+      const actionButtonText = category.is_deleted ? "Activate" : "Inactive";
+      const actionFunction = category.is_deleted
         ? `activateCategory('${category.category_id}')`
         : `removeCategory('${category.category_id}')`;
 
       let row = `
-        <tr id="category-row-${category.category_id}">
-          <td>${category.category_id}</td>
-          <td id="cat-name-${category.category_id}">${category.category_name}</td>
-          <td>${category.category_desc ? category.category_desc : "No description"}</td>
-          <td>
-            <img src="${imageSrc}" alt="${category.category_name}" width="50">
-          </td>
-          <td>
-            <button class="btn" onclick="openUpdateModal('${category.category_id}', '${category.category_name}', '${category.category_desc || ""}', '${category.category_image || ""}')">Update</button>
-            <button class="btn" id="action-btn-${category.category_id}" onclick="${actionFunction}">${actionButtonText}</button>
-          </td>
-        </tr>
-      `;
+                <tr id="category-row-${category.category_id}">
+                    <td>${category.category_id}</td>
+                    <td id="cat-name-${category.category_id}">${category.category_name}</td>
+                    <td>${category.category_desc ? category.category_desc : "No description"}</td>
+                    <td>
+                        <img src="${imageSrc}" alt="${category.category_name}" width="50">
+                    </td>
+                    <td>
+                        <button class="btn" onclick="openUpdateModal('${category.category_id}', '${category.category_name}', '${category.category_desc ? category.category_desc : ""}', '${category.category_image ? category.category_image : ""}')">Update</button>
+                        <button class="btn" id="action-btn-${category.category_id}" onclick="${actionFunction}">${actionButtonText}</button>
+                    </td>
+                </tr>
+            `;
 
       tableBody.innerHTML += row;
     });
   } catch (error) {
-    console.error("❌ Error fetching categories:", error);
+    console.error("Error fetching categories:", error);
   }
 };
 
-// Ensure this runs on load
-window.onload = fetchCategories;
+
+document.addEventListener("DOMContentLoaded", fetchCategories);
 
 
 function handleCategoryChange() {
@@ -255,20 +242,23 @@ document
     const subcategoryDesc = document.getElementById("sc-desc").value.trim();
     const subcategoryImage = document.getElementById("sc-image").files[0];
 
-    // Validation: Ensure all required fields are filled
-    if (!categoryId || !subcategoryName || !subcategoryDesc) {
-      alert("⚠ All fields except image are required!");
+    // ✅ Validation: Ensure all required fields are filled
+    if (
+      !categoryId ||
+      !subcategoryName ||
+      !subcategoryDesc ||
+      !subcategoryImage
+    ) {
+      alert("⚠ All fields are required!");
       return;
     }
 
-    // Prepare FormData
+    // ✅ Prepare FormData
     const formData = new FormData();
     formData.append("cy_id", categoryId);
     formData.append("sub_name", subcategoryName);
     formData.append("sub_desc", subcategoryDesc);
-    if (subcategoryImage) {
-      formData.append("sub_image", subcategoryImage);
-    }
+    formData.append("sub_image", subcategoryImage);
 
     try {
       const response = await fetch("/category/subcategories", {
@@ -290,6 +280,7 @@ document
       alert("❌ Something went wrong. Try again.");
     }
   });
+
 // ✅ Fetch Subcategories and Display in the Table Based on Selected Category
 function fetchSubcategories() {
   const categoryId = document.getElementById("prod_cat1").value;
@@ -312,12 +303,12 @@ function fetchSubcategories() {
 
       if (subcategories.length > 0) {
         subcategories.forEach((sub) => {
-          const imageSrc = sub.sub_image
-            ? `/Database/${sub.sub_image.split('/').pop()}`
-            : "/Database/default-image.jpg";
+          let imageSrc = sub.sub_image.startsWith("Database/")
+            ? `/${sub.sub_image}`  // Use image path as-is
+            : "/Database/default-image.jpg"; // Default image
 
           // Determine button text and function based on is_deleted value
-          const actionButtonText = sub.is_deleted ? "Activate" : "Inactivate";
+          const actionButtonText = sub.is_deleted ? "Activate" : "Remove";
           const actionFunction = sub.is_deleted
             ? `activateSubcategory('${sub.sub_id}')`
             : `removeSubcategory('${sub.sub_id}')`;
@@ -343,7 +334,6 @@ function fetchSubcategories() {
     })
     .catch((error) => console.error("❌ Error fetching subcategories:", error));
 }
-
 
 function removeSubcategory(subId) {
   if (!confirm("Are you sure you want to remove this subcategory?")) return;
@@ -480,9 +470,9 @@ function fetchSubSubcategories() {
 
       if (subsubcategories.length > 0) {
         subsubcategories.forEach((ssc) => {
-          const imageSrc = ssc.ss_image
-            ? `/Database/${ssc.ss_image.split('/').pop()}`
-            : "/Database/default-image.jpg";
+          let imageSrc = ssc.ss_image.startsWith("Database/")
+            ? `/${ssc.ss_image}`  // Use image path as-is
+            : "/Database/default-image.jpg"; // Default image
 
           // Determine button text and function based on is_deleted value
           const actionButtonText = ssc.is_deleted ? "Activate" : "Remove";
@@ -511,6 +501,8 @@ function fetchSubSubcategories() {
     })
     .catch((error) => console.error("❌ Error fetching sub-subcategories:", error));
 }
+
+
 
 
 // ✅ Add event listeners for category selection
@@ -547,9 +539,8 @@ document
     const ssDesc = document.getElementById("ssc-desc").value.trim();
     const ssImage = document.getElementById("ssc-image").files[0];
 
-    // Validation: Ensure all required fields except image are filled
-    if (!subcategoryId || !ssName || !ssDesc) {
-      alert("⚠ All fields except image are required!");
+    if (!subcategoryId || !ssName || !ssDesc || !ssImage) {
+      alert("⚠ All fields are required!");
       return;
     }
 
@@ -557,9 +548,7 @@ document
     formData.append("sub_id", subcategoryId);
     formData.append("ss_name", ssName);
     formData.append("ss_desc", ssDesc);
-    if (ssImage) {
-      formData.append("ss_image", ssImage);
-    }
+    formData.append("ss_image", ssImage);
 
     try {
       const response = await fetch("/category/subsubcategories", {

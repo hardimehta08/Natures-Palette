@@ -112,6 +112,7 @@ const addCategory = (req, res) => {
           const targetPath = path.join(directoryPath, imageFileName);
           imagePath = `Database/${imageFileName}`;
 
+
           try {
               if (!fs.existsSync(tempPath)) {
                   console.error("❌ Temp file not found:", tempPath);
