@@ -289,7 +289,7 @@ const addProduct = (req, res) => {
           return res.status(500).json({ success: false, error: "No primary key found for the category table" });
         }
 
-        const query = `INSERT INTO ${tableName}_table SET ?`;
+        const query = `INSERT INTO ${tableName} SET ?`;
         db.query(query, productData, (err, result) => {
           if (err) {
             console.error("🔴 Error Inserting Product:", err);

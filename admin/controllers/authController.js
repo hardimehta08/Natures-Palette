@@ -136,7 +136,7 @@ exports.forgotPassword = async (req, res) => {
       }
 
       if (results.length === 0) {
-        return res.status(400).json({ success: false, message: "Email not found" });
+        return res.status(400).json({ success: false, message: "Email does not match..Please Enter valid email" });
       }
 
       const resetToken = Math.random().toString(36).slice(2);
