@@ -4,8 +4,8 @@ const mysql = require("mysql2");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 // Fetch all payments with optional status filter
@@ -52,7 +52,9 @@ exports.updatePayment = (req, res) => {
 
       // Validate inputs based on payment mode
       if (paymentMode !== "COD" && !PY_TRANSACTION_ID) {
-        return res.status(400).json({ error: "Transaction ID is required for non-COD payments" });
+        return res
+          .status(400)
+          .json({ error: "Transaction ID is required for non-COD payments" });
       }
 
       if (!PY_OTP) {
@@ -68,7 +70,7 @@ exports.updatePayment = (req, res) => {
       const queryParams = [
         paymentMode === "COD" && !PY_TRANSACTION_ID ? null : PY_TRANSACTION_ID,
         PY_OTP,
-        PY_ID
+        PY_ID,
       ];
 
       db.query(query, queryParams, (err, result) => {

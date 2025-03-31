@@ -6,8 +6,8 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 const generateCustomerId = (callback) => {
@@ -91,8 +91,7 @@ const registerUser = async (req, res) => {
                     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
                 )
                 .join(" ");
-              username
-               = capitalized;
+              username = capitalized;
               // Send welcome email
               sendMail(
                 email,

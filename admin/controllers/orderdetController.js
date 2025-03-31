@@ -4,8 +4,8 @@ const mysql = require("mysql");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 // Define the base URL for the client-side images
@@ -29,7 +29,14 @@ exports.getAllOrders = (req, res) => {
   const queryParams = [];
   if (
     status &&
-    ["PENDING","PLACED", "PROCESSING", "SHIPPING", "DELIVERED", "CANCELLED"].includes(status)
+    [
+      "PENDING",
+      "PLACED",
+      "PROCESSING",
+      "SHIPPING",
+      "DELIVERED",
+      "CANCELLED",
+    ].includes(status)
   ) {
     query += ` WHERE om.O_status = ?`;
     queryParams.push(status);
@@ -37,7 +44,8 @@ exports.getAllOrders = (req, res) => {
 
   // Add search by customer name if provided
   if (searchName) {
-    query += (query.includes("WHERE") ? " AND" : " WHERE") + ` c.c_username LIKE ?`;
+    query +=
+      (query.includes("WHERE") ? " AND" : " WHERE") + ` c.c_username LIKE ?`;
     queryParams.push(`%${searchName}%`);
   }
 
@@ -229,9 +237,7 @@ exports.updateOrderStatus = (req, res) => {
 
   if (
     !orderId ||
-    ![ "PROCESSING", "PLACED", "DELIVERED", "CANCELLED"].includes(
-      status
-    )
+    !["PROCESSING", "PLACED", "DELIVERED", "CANCELLED"].includes(status)
   ) {
     return res.status(400).json({ error: "Invalid order ID or status" });
   }

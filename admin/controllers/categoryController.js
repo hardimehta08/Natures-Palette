@@ -7,8 +7,8 @@ const path = require("path");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 const getCategories = (req, res) => {
@@ -29,11 +29,11 @@ const getCategories = (req, res) => {
     }
 
     // No need for complex hierarchy if frontend only expects flat data
-    const categories = results.map(row => ({
+    const categories = results.map((row) => ({
       category_id: row.category_id,
       category_name: row.category_name,
       category_desc: row.category_desc,
-      category_image: row.category_image
+      category_image: row.category_image,
     }));
 
     console.log("✅ Categories fetched:", categories); // Debug output
@@ -81,75 +81,82 @@ const addCategory = (req, res) => {
   const cy_image = req.file;
 
   if (!cy_name || !cy_desc) {
-      return res.status(400).json({ error: "Category name and description are required." });
+    return res
+      .status(400)
+      .json({ error: "Category name and description are required." });
   }
 
   const directoryPath = path.join(__dirname, "../../public/Database");
   if (!fs.existsSync(directoryPath)) {
-      fs.mkdirSync(directoryPath, { recursive: true });
+    fs.mkdirSync(directoryPath, { recursive: true });
   }
 
   const getMaxCategoryIdQuery = `SELECT MAX(cy_id) AS maxId FROM category`;
   conn.query(getMaxCategoryIdQuery, (err, result) => {
+    if (err) {
+      console.error("❌ Error fetching max category ID:", err);
+      return res.status(500).json({ error: "Database error: " + err.message });
+    }
+
+    let newCategoryId;
+    if (result[0].maxId) {
+      const lastIdNumber = parseInt(result[0].maxId.replace(/\D/g, ""), 10) + 1;
+      newCategoryId = `CY${String(lastIdNumber).padStart(2, "0")}`;
+    } else {
+      newCategoryId = "CY01";
+    }
+
+    let imagePath = null;
+    if (cy_image) {
+      const extension = path.extname(cy_image.originalname) || ".jpg";
+      const imageFileName = `${newCategoryId}${extension}`;
+      const tempPath = cy_image.path;
+      const targetPath = path.join(directoryPath, imageFileName);
+      imagePath = `Database/${imageFileName}`;
+
+      try {
+        if (!fs.existsSync(tempPath)) {
+          console.error("❌ Temp file not found:", tempPath);
+          return res.status(500).json({ error: "Temporary file not found" });
+        }
+        fs.renameSync(tempPath, targetPath);
+      } catch (err) {
+        console.error("❌ Error handling image:", err);
+        return res
+          .status(500)
+          .json({ error: "Image processing failed: " + err.message });
+      }
+    }
+
+    const insertQuery = `INSERT INTO category (cy_id, cy_name, cy_desc, cy_image) VALUES (?, ?, ?, ?)`;
+    const params = [newCategoryId, cy_name, cy_desc || null, imagePath || null];
+
+    conn.query(insertQuery, params, (err) => {
       if (err) {
-          console.error("❌ Error fetching max category ID:", err);
-          return res.status(500).json({ error: "Database error: " + err.message });
+        console.error("❌ Error inserting category:", err);
+        return res
+          .status(500)
+          .json({ error: "Database error: " + err.message });
       }
 
-      let newCategoryId;
-      if (result[0].maxId) {
-          const lastIdNumber = parseInt(result[0].maxId.replace(/\D/g, ""), 10) + 1;
-          newCategoryId = `CY${String(lastIdNumber).padStart(2, "0")}`;
-      } else {
-          newCategoryId = "CY01";
-      }
-
-      let imagePath = null;
-      if (cy_image) {
-          const extension = path.extname(cy_image.originalname) || ".jpg";
-          const imageFileName = `${newCategoryId}${extension}`;
-          const tempPath = cy_image.path;
-          const targetPath = path.join(directoryPath, imageFileName);
-          imagePath = `Database/${imageFileName}`;
-
-          try {
-              if (!fs.existsSync(tempPath)) {
-                  console.error("❌ Temp file not found:", tempPath);
-                  return res.status(500).json({ error: "Temporary file not found" });
-              }
-              fs.renameSync(tempPath, targetPath);
-          } catch (err) {
-              console.error("❌ Error handling image:", err);
-              return res.status(500).json({ error: "Image processing failed: " + err.message });
-          }
-      }
-
-      const insertQuery = `INSERT INTO category (cy_id, cy_name, cy_desc, cy_image) VALUES (?, ?, ?, ?)`;
-      const params = [newCategoryId, cy_name, cy_desc || null, imagePath || null];
-
-      conn.query(insertQuery, params, (err) => {
-          if (err) {
-              console.error("❌ Error inserting category:", err);
-              return res.status(500).json({ error: "Database error: " + err.message });
-          }
-
-          console.log("✅ Category added successfully:", newCategoryId);
-          res.json({
-              message: "Category added successfully",
-              id: newCategoryId,
-              imagePath: imagePath || null
-          });
+      console.log("✅ Category added successfully:", newCategoryId);
+      res.json({
+        message: "Category added successfully",
+        id: newCategoryId,
+        imagePath: imagePath || null,
       });
+    });
   });
 };
-
 
 const addSubCategory = (req, res) => {
   const { sub_name, sub_desc, cy_id } = req.body;
   const sub_image = req.file; // File from multer
 
   if (!sub_name || !sub_desc || !cy_id) {
-    return res.status(400).json({ error: "All fields except image are required" });
+    return res
+      .status(400)
+      .json({ error: "All fields except image are required" });
   }
 
   const directoryPath = path.join(__dirname, "../../public/Database");
@@ -171,7 +178,10 @@ const addSubCategory = (req, res) => {
     conn.query(getMaxSubIdQuery, (err, results) => {
       if (err) {
         console.error("❌ Error fetching max subcategory ID:", err);
-        return rollbackTransaction(res, "Database error while fetching subcategory ID");
+        return rollbackTransaction(
+          res,
+          "Database error while fetching subcategory ID"
+        );
       }
 
       let newSubId =
@@ -198,7 +208,10 @@ const addSubCategory = (req, res) => {
           console.log("✅ Image moved to:", targetPath);
         } catch (err) {
           console.error("❌ Error moving image:", err);
-          return rollbackTransaction(res, "Image upload failed: " + err.message);
+          return rollbackTransaction(
+            res,
+            "Image upload failed: " + err.message
+          );
         }
       }
 
@@ -210,7 +223,10 @@ const addSubCategory = (req, res) => {
         (err, result) => {
           if (err) {
             console.error("❌ Error inserting subcategory:", err);
-            return rollbackTransaction(res, "Database error while inserting subcategory");
+            return rollbackTransaction(
+              res,
+              "Database error while inserting subcategory"
+            );
           }
 
           // Commit transaction
@@ -224,7 +240,7 @@ const addSubCategory = (req, res) => {
             res.json({
               message: "Subcategory added successfully",
               sub_id: newSubId,
-              imagePath: imagePath || null // Include imagePath in response
+              imagePath: imagePath || null, // Include imagePath in response
             });
           });
         }
@@ -288,7 +304,9 @@ const addSubSubCategory = (req, res) => {
         console.log("✅ Image moved to:", targetPath);
       } catch (err) {
         console.error("❌ Error moving image:", err);
-        return res.status(500).json({ error: "Image upload failed: " + err.message });
+        return res
+          .status(500)
+          .json({ error: "Image upload failed: " + err.message });
       }
     }
 
@@ -299,19 +317,20 @@ const addSubSubCategory = (req, res) => {
       (err, result) => {
         if (err) {
           console.error("❌ Error inserting sub-subcategory:", err);
-          return res.status(500).json({ error: "Database error: " + err.message });
+          return res
+            .status(500)
+            .json({ error: "Database error: " + err.message });
         }
         console.log("✅ Sub-Subcategory added successfully:", newSsId);
         res.json({
           message: "Sub-Subcategory added successfully",
           ss_id: newSsId,
-          imagePath: imagePath || null // Include imagePath in response
+          imagePath: imagePath || null, // Include imagePath in response
         });
       }
     );
   });
 };
-
 
 // ✅ Update Category with Image
 const updateCategory = (req, res) => {
@@ -360,7 +379,10 @@ const updateCategory = (req, res) => {
 
         // Delete the old image if it exists and is different
         if (oldImagePath && oldImagePath !== newImagePath) {
-          const oldImageFullPath = path.join(directoryPath, path.basename(oldImagePath));
+          const oldImageFullPath = path.join(
+            directoryPath,
+            path.basename(oldImagePath)
+          );
           if (fs.existsSync(oldImageFullPath)) {
             fs.unlinkSync(oldImageFullPath);
           }
@@ -372,13 +394,16 @@ const updateCategory = (req, res) => {
     }
 
     // Step 3: Update category in the database
-    const query = "UPDATE category SET cy_name = ?, cy_desc = ?, cy_image = ? WHERE cy_id = ?";
+    const query =
+      "UPDATE category SET cy_name = ?, cy_desc = ?, cy_image = ? WHERE cy_id = ?";
     const params = [cy_name, cy_desc || null, newImagePath || null, categoryId];
 
     conn.query(query, params, (err, result) => {
       if (err) {
         console.error("❌ Error updating category:", err);
-        return res.status(500).json({ error: "Database error: " + err.message });
+        return res
+          .status(500)
+          .json({ error: "Database error: " + err.message });
       }
 
       console.log("✅ Category updated successfully:", categoryId);
@@ -431,7 +456,10 @@ const updateSubcategory = (req, res) => {
 
         // Delete the old image if it exists and is different
         if (oldImagePath && oldImagePath !== newImagePath) {
-          const oldImageFullPath = path.join(directoryPath, path.basename(oldImagePath));
+          const oldImageFullPath = path.join(
+            directoryPath,
+            path.basename(oldImagePath)
+          );
           if (fs.existsSync(oldImageFullPath)) {
             fs.unlinkSync(oldImageFullPath);
           }
@@ -443,13 +471,16 @@ const updateSubcategory = (req, res) => {
     }
 
     // Step 3: Update subcategory in the database
-    const query = "UPDATE subcategory SET sub_name = ?, sub_desc = ?, sub_image = ? WHERE sub_id = ?";
+    const query =
+      "UPDATE subcategory SET sub_name = ?, sub_desc = ?, sub_image = ? WHERE sub_id = ?";
     const params = [sub_name, sub_desc, newImagePath || null, subcategoryId];
 
     conn.query(query, params, (err, result) => {
       if (err) {
         console.error("❌ Error updating subcategory:", err);
-        return res.status(500).json({ error: "Database error: " + err.message });
+        return res
+          .status(500)
+          .json({ error: "Database error: " + err.message });
       }
 
       console.log("✅ Subcategory updated successfully:", subcategoryId);
@@ -504,7 +535,10 @@ const updateSubSubcategory = (req, res) => {
 
         // Delete the old image if it exists and is different
         if (oldImagePath && oldImagePath !== newImagePath) {
-          const oldImageFullPath = path.join(directoryPath, path.basename(oldImagePath));
+          const oldImageFullPath = path.join(
+            directoryPath,
+            path.basename(oldImagePath)
+          );
           if (fs.existsSync(oldImageFullPath)) {
             fs.unlinkSync(oldImageFullPath);
           }
@@ -516,13 +550,21 @@ const updateSubSubcategory = (req, res) => {
     }
 
     // Step 3: Update sub-subcategory in the database
-    const query = "UPDATE subsubcategory SET ss_name = ?, ss_desc = ?, ss_image = ? WHERE ss_id = ?";
-    const params = [ss_name, ss_desc || null, newImagePath || null, subsubcategoryId];
+    const query =
+      "UPDATE subsubcategory SET ss_name = ?, ss_desc = ?, ss_image = ? WHERE ss_id = ?";
+    const params = [
+      ss_name,
+      ss_desc || null,
+      newImagePath || null,
+      subsubcategoryId,
+    ];
 
     conn.query(query, params, (err, result) => {
       if (err) {
         console.error("❌ Error updating sub-subcategory:", err);
-        return res.status(500).json({ error: "Database error: " + err.message });
+        return res
+          .status(500)
+          .json({ error: "Database error: " + err.message });
       }
 
       console.log("✅ Sub-Subcategory updated successfully:", subsubcategoryId);
@@ -558,7 +600,6 @@ const activateCategory = (req, res) => {
     res.json({ message: "✅ Category activated successfully" });
   });
 };
-
 
 const removeSubCategory = (req, res) => {
   const subcategoryId = req.params.id;
@@ -599,7 +640,6 @@ const activateSubCategory = (req, res) => {
     res.json({ message: "✅ Subcategory activated successfully" });
   });
 };
-
 
 const removeSubSubCategory = (req, res) => {
   const subsubcategoryId = req.params.id;
@@ -642,7 +682,6 @@ const activateSubSubCategory = (req, res) => {
     res.json({ message: "✅ Sub-subcategory activated successfully" });
   });
 };
-
 
 // ✅ Function to Reorder Subcategory IDs
 function reorderSubcategoryIDs(callback) {

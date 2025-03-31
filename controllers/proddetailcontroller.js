@@ -3,8 +3,8 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 // Connect to the database
@@ -23,7 +23,7 @@ const getProductDetails = (req, res) => {
   const viewsQuery = `
     SELECT table_name 
     FROM INFORMATION_SCHEMA.views 
-    WHERE table_schema = 'main_project';
+    WHERE table_schema = 'project(1)';
   `;
 
   conn.query(viewsQuery, (err, viewsResult) => {
@@ -60,8 +60,13 @@ const getProductDetails = (req, res) => {
 
       conn.query(productQuery, [productName], (err, results) => {
         if (err) {
-          console.error(`Error executing product query on view ${view.TABLE_NAME}:`, err);
-          res.status(500).json({ error: `Error executing product query on view ${view.TABLE_NAME}` });
+          console.error(
+            `Error executing product query on view ${view.TABLE_NAME}:`,
+            err
+          );
+          res.status(500).json({
+            error: `Error executing product query on view ${view.TABLE_NAME}`,
+          });
           return;
         }
 
@@ -85,28 +90,34 @@ const getProductDetails = (req, res) => {
               f.product_id = ?
           `;
 
-          conn.query(feedbackQuery, [product.productId], (err, feedbackResults) => {
-            if (err) {
-              console.error("Error executing feedback query:", err);
-              res.status(500).json({ error: "Error executing feedback query" });
-              return;
+          conn.query(
+            feedbackQuery,
+            [product.productId],
+            (err, feedbackResults) => {
+              if (err) {
+                console.error("Error executing feedback query:", err);
+                res
+                  .status(500)
+                  .json({ error: "Error executing feedback query" });
+                return;
+              }
+
+              const responseData = {
+                productId: product.productId,
+                name: product.name,
+                price: product.price,
+                images: [
+                  product.image1 ? product.image1.toString() : null,
+                  product.image2 ? product.image2.toString() : null,
+                  product.image3 ? product.image3.toString() : null,
+                ].filter(Boolean),
+                description: product.description,
+                feedback: feedbackResults,
+              };
+
+              res.json(responseData);
             }
-
-            const responseData = {
-              productId: product.productId,
-              name: product.name,
-              price: product.price,
-              images: [
-                product.image1 ? product.image1.toString() : null,
-                product.image2 ? product.image2.toString() : null,
-                product.image3 ? product.image3.toString() : null,
-              ].filter(Boolean),
-              description: product.description,
-              feedback: feedbackResults,
-            };
-
-            res.json(responseData);
-          });
+          );
         }
 
         completed++;

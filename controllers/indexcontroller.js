@@ -3,8 +3,8 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 conn.connect((err) => {
@@ -17,7 +17,6 @@ conn.connect((err) => {
 
 // Route to get best-selling and new arrivals products
 const bs = (req, res) => {
-
   const bestSellingQuery = `
     SELECT Product_id, SUM(ODETAILS_QTY) AS TotalQuantity
     FROM order_details
@@ -44,7 +43,7 @@ const bs = (req, res) => {
     const viewsQuery = `
       SELECT table_name
       FROM INFORMATION_SCHEMA.views
-      WHERE table_schema = 'main_project';
+      WHERE table_schema = 'project(1)';
     `;
 
     conn.query(viewsQuery, (err, viewsResult) => {
@@ -151,7 +150,7 @@ const fa = (req, res) => {
     const viewsQuery = `
       SELECT table_name
       FROM INFORMATION_SCHEMA.views
-      WHERE table_schema = 'main_project';
+      WHERE table_schema = 'project(1)';
     `;
 
     conn.query(viewsQuery, (err, viewsResult) => {
@@ -171,7 +170,6 @@ const fa = (req, res) => {
       let processedViews = 0;
 
       viewsResult.forEach((view) => {
-
         productIds.forEach((productId) => {
           const checkProductDetailsQuery = `
             SELECT id AS Product_id, name AS Product_name, price AS Product_price
@@ -182,7 +180,8 @@ const fa = (req, res) => {
           conn.query(checkProductDetailsQuery, (err, result) => {
             if (err) {
               console.error(
-                `Error querying view ${view.TABLE_NAME} with Product_id ${productId}: ` + err.message
+                `Error querying view ${view.TABLE_NAME} with Product_id ${productId}: ` +
+                  err.message
               );
             } else if (result.length > 0) {
               productDetailsArray = productDetailsArray.concat(result);
@@ -203,7 +202,9 @@ const fa = (req, res) => {
               const imageQuery = `
                 SELECT PRODUCT_ID, PATH1
                 FROM IMAGE
-                WHERE PRODUCT_ID IN (${productIds.map((id) => `'${id}'`).join(",")});
+                WHERE PRODUCT_ID IN (${productIds
+                  .map((id) => `'${id}'`)
+                  .join(",")});
               `;
 
               conn.query(imageQuery, (err, imageResult) => {

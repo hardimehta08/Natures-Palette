@@ -18,10 +18,7 @@ section {
   width: 100%;
   height: 100%;
   display: flex;
-  background: rgb(184, 215, 184);
-  background: url(../images/icon/20.jpg);
-  background-repeat: no-repeat;
-  background-size: cover;
+  background: linear-gradient(to right, rgb(255, 233, 222), #ffe5d1);
 }
 
 section .login-page {
@@ -34,7 +31,6 @@ section .login-page {
 .form-box {
   width: 380px;
   height: 550px;
-  /* margin: 10% auto; */
   padding: 10px;
   position: relative;
   overflow: hidden;
@@ -44,21 +40,18 @@ section .login-page {
 .form-box1 {
   width: 400px;
   height: 350px;
-  /* margin: 10% auto; */
   padding: 10px;
   position: relative;
   overflow: hidden;
   background-color: white;
   border-radius: 10px;
 }
-/* .pagetitle{
-	margin-top: 50px;
-} */
+
 .button-box {
   width: 220px;
-  margin: 95px auto;
+  margin: 40px auto;
   position: relative;
-  box-shadow: 0 0 20px 9px #ff61241f;
+  box-shadow: 0 0 20px 9px #6aff001f;
   border-radius: 30px;
 }
 .toggle-btn {
@@ -80,13 +73,13 @@ section .login-page {
   transition: 0.5s;
 }
 .input-group-login {
-  top: 200px;
+  top: 150px;
   position: absolute;
   width: 280px;
   transition: 0.5s;
 }
 .input-group-register {
-  top: 180px;
+  top: 100px;
   position: absolute;
   width: 280px;
   transition: 0.5s;

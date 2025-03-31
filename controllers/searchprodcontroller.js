@@ -4,12 +4,12 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 const getViewsAndSearchProducts = (searchTerm, callback) => {
-  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'project(1)'`;
 
   conn.query(viewsQuery, (err, views) => {
     if (err) {
@@ -19,13 +19,15 @@ const getViewsAndSearchProducts = (searchTerm, callback) => {
 
     const searchPattern = `%${searchTerm}%`;
 
-    const searchQueries = views.map((view) => {
-      return `
+    const searchQueries = views
+      .map((view) => {
+        return `
         SELECT '${view.TABLE_NAME}' AS category, id, name, price, description
         FROM ${view.TABLE_NAME}
         WHERE name LIKE ?
       `;
-    }).join(" UNION ALL ");
+      })
+      .join(" UNION ALL ");
 
     const query = `${searchQueries}`;
 
@@ -58,7 +60,7 @@ const searchProducts = (req, res) => {
   });
 };
 const getViewsAndSearchKeywords = (searchTerm, callback) => {
-  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'project(1)'`;
 
   conn.query(viewsQuery, (err, views) => {
     if (err) {
@@ -68,13 +70,15 @@ const getViewsAndSearchKeywords = (searchTerm, callback) => {
 
     const searchPattern = `%${searchTerm}%`;
 
-    const searchQueries = views.map((view) => {
-      return `
+    const searchQueries = views
+      .map((view) => {
+        return `
         SELECT name AS keyword
         FROM ${view.TABLE_NAME}
         WHERE name LIKE ?
       `;
-    }).join(" UNION ");
+      })
+      .join(" UNION ");
 
     const query = `${searchQueries}`;
 

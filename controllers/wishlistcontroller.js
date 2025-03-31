@@ -4,8 +4,8 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 // Generate a unique wishlist ID
@@ -42,22 +42,42 @@ const addItemToWishlist = (req, res) => {
     return res.status(400).json({ error: "Product ID is required." });
   }
 
-  generateWishlistId((err, newWishlistId) => {
-    if (err)
-      return res.status(500).json({ error: "Error generating wishlist ID." });
+  // Check if the product already exists in the wishlist
+  const checkWishlistQuery =
+    "SELECT * FROM wishlist WHERE product_id = ? AND c_id = ?";
+  conn.query(
+    checkWishlistQuery,
+    [productId, req.session.userId],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: "Database error." });
 
-    const sql =
-      "INSERT INTO wishlist (w_id, c_id, product_id) VALUES (?, ?, ?)";
-    conn.query(
-      sql,
-      [newWishlistId, req.session.userId, productId],
-      (err, result) => {
-        if (err) return res.status(500).json({ error: "Database error." });
-
-        res.status(200).json({ message: "Item added to wishlist." });
+      if (results.length > 0) {
+        // If the product already exists, return a message
+        return res.status(200).json({ message: "Item is already in the wishlist." });
       }
-    );
-  });
+
+      // If the product does not exist, add it to the wishlist
+      generateWishlistId((err, newWishlistId) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ error: "Error generating wishlist ID." });
+
+        const sql =
+          "INSERT INTO wishlist (w_id, c_id, product_id) VALUES (?, ?, ?)";
+        conn.query(
+          sql,
+          [newWishlistId, req.session.userId, productId],
+          (err, result) => {
+            if (err)
+              return res.status(500).json({ error: "Database error." });
+
+            res.status(200).json({ message: "Item added to wishlist." });
+          }
+        );
+      });
+    }
+  );
 };
 
 // Get User Wishlist
@@ -65,10 +85,10 @@ const getUserWishlist = (req, res) => {
   if (!req.session.userId) {
     return res
       .status(401)
-      .json({ message : "Please login to view your wishlist." });
+      .json({ message: "Please login to view your wishlist." });
   }
 
-  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'project(1)'`;
 
   conn.query(viewsQuery, (err, views) => {
     if (err) return res.status(500).json({ error: "Database error." });
@@ -149,29 +169,61 @@ const moveItemToCart = (req, res) => {
       conn.query(removeSql, [wishlistId], (err, result) => {
         if (err) return res.status(500).json({ error: "Database error." });
 
-        // Add the item to the cart
-        generateCartId((err, newCartId) => {
-          if (err)
-            return res.status(500).json({ error: "Error generating cart ID." });
+        // Check if the product already exists in the cart
+        const checkCartQuery =
+          "SELECT ca_qty FROM cart WHERE product_id = ? AND c_id = ?";
+        conn.query(
+          checkCartQuery,
+          [productId, req.session.userId],
+          (err, cartResults) => {
+            if (err) return res.status(500).json({ error: "Database error." });
 
-          const sql =
-            "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
-          conn.query(
-            sql,
-            [newCartId, req.session.userId, productId, quantity],
-            (err, result) => {
-              if (err)
-                return res.status(500).json({ error: "Database error." });
+            if (cartResults.length > 0) {
+              // Product exists in the cart, update its quantity
+              const existingQuantity = cartResults[0].ca_qty;
+              const newQuantity = existingQuantity + quantity;
 
-              res.status(200).json({ message: "Item moved to cart." });
+              const updateQuery =
+                "UPDATE cart SET ca_qty = ? WHERE product_id = ? AND c_id = ?";
+              conn.query(
+                updateQuery,
+                [newQuantity, productId, req.session.userId],
+                (err, updateResult) => {
+                  if (err)
+                    return res.status(500).json({ error: "Database error." });
+                  res
+                    .status(200)
+                    .json({ message: "Cart updated successfully!" });
+                }
+              );
+            } else {
+              // Product does not exist in the cart, insert a new entry
+              generateCartId((err, newCartId) => {
+                if (err)
+                  return res
+                    .status(500)
+                    .json({ error: "Error generating cart ID." });
+
+                const sql =
+                  "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
+                conn.query(
+                  sql,
+                  [newCartId, req.session.userId, productId, quantity],
+                  (err, result) => {
+                    if (err)
+                      return res.status(500).json({ error: "Database error." });
+
+                    res.status(200).json({ message: "Item moved to cart." });
+                  }
+                );
+              });
             }
-          );
-        });
+          }
+        );
       });
     }
   );
 };
-
 // Generate a unique cart ID
 const generateCartId = (callback) => {
   const sql = "SELECT MAX(ca_id) AS maxId FROM cart";
@@ -195,7 +247,7 @@ const generateCartId = (callback) => {
 // Get Wishlist Count for a Specific User
 const getWishlistCount = (req, res) => {
   if (!req.session.userId) {
-    return res.json({count:"0" });
+    return res.json({ count: "0" });
   }
 
   const sql = "SELECT COUNT(*) AS count FROM wishlist WHERE c_id = ?";

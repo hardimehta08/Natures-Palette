@@ -4,8 +4,8 @@ const mysql = require("mysql");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 const fetchDataCat = (req, res) => {
@@ -84,8 +84,6 @@ const fetchDataCat = (req, res) => {
 
 const fetchDataSubCat = (req, res) => {
   const { category, subcategory } = req.params;
-
-  // First, get sub_id from the subcategory table
   const subCategoryQuery = `
     SELECT sub_id 
     FROM subcategory 
@@ -106,7 +104,6 @@ const fetchDataSubCat = (req, res) => {
 
     const sub_id = subResult[0].sub_id;
 
-    // Next, check if sub_id is present in the subsubcategory table
     const subSubCategoryQuery = `
       SELECT ss_id, ss_desc AS des 
       FROM subsubcategory 
@@ -121,7 +118,6 @@ const fetchDataSubCat = (req, res) => {
       }
 
       if (subSubResult.length > 0) {
-        // Subsubcategory found in the subsubcategory table
         const ss_id = subSubResult[0].ss_id;
         const desc = subSubResult[0].des;
 
@@ -158,7 +154,6 @@ const fetchDataSubCat = (req, res) => {
           res.json(response);
         });
       } else {
-        // Subsubcategory not found, handle exception
         handleSubSubcategoryNotFound(category, subcategory, res);
       }
     });
@@ -226,7 +221,7 @@ const fetchFilters = async (req, res) => {
       const checkQuery = `
         SELECT COLUMN_NAME 
         FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_NAME = ? AND COLUMN_NAME = ? AND TABLE_SCHEMA = 'main_project';
+        WHERE TABLE_NAME = ? AND COLUMN_NAME = ? AND TABLE_SCHEMA = 'project(1)';
       `;
       db.query(checkQuery, [category, column], (err, result) => {
         if (err) reject(err);

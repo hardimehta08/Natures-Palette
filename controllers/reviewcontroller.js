@@ -4,8 +4,8 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 // Generate a unique feedback ID
@@ -77,7 +77,7 @@ const userfeedback = async (req, res) => {
     const viewsSql = `
       SELECT *
       FROM INFORMATION_SCHEMA.VIEWS
-      WHERE TABLE_SCHEMA = 'main_project';
+      WHERE TABLE_SCHEMA = 'project(1)';
     `;
     conn.query(viewsSql, (err, viewsResult) => {
       if (err) throw err;
@@ -138,7 +138,7 @@ const feedbacks = async (req, res) => {
     const viewsSql = `
       SELECT *
       FROM INFORMATION_SCHEMA.VIEWS
-      WHERE TABLE_SCHEMA = 'main_project';
+      WHERE TABLE_SCHEMA = 'project(1)';
     `;
     conn.query(viewsSql, (err, viewsResult) => {
       if (err) throw err;
@@ -214,5 +214,5 @@ module.exports = {
   feedbacks,
   addFeedback,
   deleteFeedback,
-  userfeedback
+  userfeedback,
 };

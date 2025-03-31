@@ -3,8 +3,8 @@ const mysql = require("mysql2/promise");
 const conn = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405", // Your database password
-  database: "main_project", // Your database name
+  password: "Hardi@sql8705", // Your database password
+  database: "project(1)", // Your database name
   waitForConnections: true,
   connectionLimit: 10, // Maximum number of concurrent connections
   queueLimit: 0, // Unlimited queue length
@@ -57,7 +57,7 @@ const placeOrder = async (req, res) => {
       const viewsQuery = `
         SELECT table_name
         FROM INFORMATION_SCHEMA.views
-        WHERE table_schema = 'main_project';
+        WHERE table_schema = 'project(1)';
       `;
       const [viewsResult] = await connection.query(viewsQuery);
 
@@ -185,7 +185,7 @@ const getOrdersByCustomerId = async (req, res) => {
     const viewsQuery = `
     SELECT table_name
     FROM INFORMATION_SCHEMA.views
-    WHERE table_schema = 'main_project';
+    WHERE table_schema = 'project(1)';
     `;
     const [viewsResult] = await connection.query(viewsQuery);
 

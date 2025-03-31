@@ -8,8 +8,8 @@ const nodemailer = require("nodemailer");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 // Connect to the database
@@ -192,7 +192,7 @@ exports.confirmQRCodePayment = (req, res) => {
                   const viewsQuery = `
                     SELECT table_name
                     FROM INFORMATION_SCHEMA.views
-                    WHERE table_schema = 'main_project';`;
+                    WHERE table_schema = 'project(1)';`;
                   db.query(viewsQuery, (err, viewsResult) => {
                     if (err || viewsResult.length === 0)
                       return db.rollback(() =>
@@ -224,12 +224,10 @@ exports.confirmQRCodePayment = (req, res) => {
                                 (err, productResult) => {
                                   if (err || productResult.length === 0)
                                     return db.rollback(() =>
-                                      res
-                                        .status(500)
-                                        .json({
-                                          error:
-                                            "Failed to fetch product details",
-                                        })
+                                      res.status(500).json({
+                                        error:
+                                          "Failed to fetch product details",
+                                      })
                                     );
 
                                   productDetails.push({
@@ -247,12 +245,9 @@ exports.confirmQRCodePayment = (req, res) => {
                                     (err) => {
                                       if (err)
                                         return db.rollback(() =>
-                                          res
-                                            .status(500)
-                                            .json({
-                                              error:
-                                                "Failed to delete cart item",
-                                            })
+                                          res.status(500).json({
+                                            error: "Failed to delete cart item",
+                                          })
                                         );
                                     }
                                   );
@@ -263,12 +258,9 @@ exports.confirmQRCodePayment = (req, res) => {
                                     db.commit((err) => {
                                       if (err)
                                         return db.rollback(() =>
-                                          res
-                                            .status(500)
-                                            .json({
-                                              error:
-                                                "Transaction commit failed",
-                                            })
+                                          res.status(500).json({
+                                            error: "Transaction commit failed",
+                                          })
                                         );
 
                                       // Generate PDF bill and send final response
@@ -418,7 +410,7 @@ exports.createPaymentWithBill = (req, res) => {
                 const viewsQuery = `
               SELECT table_name
               FROM INFORMATION_SCHEMA.views
-              WHERE table_schema = 'main_project';
+              WHERE table_schema = 'project(1)';
             `;
 
                 db.query(viewsQuery, (err, viewsResult) => {
@@ -659,7 +651,7 @@ WHERE o.O_ID = ?
     const viewsQuery = `
       SELECT table_name
       FROM INFORMATION_SCHEMA.views
-      WHERE table_schema = 'main_project';`;
+      WHERE table_schema = 'project(1)';`;
 
     db.query(viewsQuery, (err, viewsResult) => {
       if (err || viewsResult.length === 0) {

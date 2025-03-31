@@ -60,7 +60,17 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .catch((error) => {
         console.log("Error: ", error);
-        alert("Error: " + error.message);
+
+        try {
+          // Attempt to parse the error message as JSON
+          const parsedError = JSON.parse(error.message);
+          alert(
+            "Error: " + (parsedError.error || "An unexpected error occurred")
+          );
+        } catch (e) {
+          // If parsing fails, fallback to the generic error message
+          alert("Error: " + error.message);
+        }
       });
   }
 });
@@ -72,11 +82,11 @@ document
 
     const uname = document.getElementById("un").value.trim();
     const email = document.getElementById("em").value.trim();
-    const password = document.getElementById("pw").value.trim();
+    const password = document.getElementById("pw1").value.trim();
+    const confirmPassword = document.getElementById("pw2").value.trim(); // Retrieve pw2 value
     const address = document.getElementById("ad").value.trim();
     const pincode = document.getElementById("pc").value.trim();
     const mobile = document.getElementById("mb").value;
-    const form = document.getElementById("register");
 
     let isValid = true;
 
@@ -87,7 +97,6 @@ document
     const validEmailPattern =
       /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     const validMobilePattern = /^[0-9]{10}$/;
-    const validPincodePattern = /^[0-9]$/;
 
     // Clear previous error messages
     document.getElementById("error_message1").textContent = "";
@@ -96,6 +105,7 @@ document
     document.getElementById("error_message4").textContent = "";
     document.getElementById("error_message5").textContent = "";
     document.getElementById("error_message6").textContent = "";
+
     // Username validation
     if (uname === "") {
       document.getElementById("error_message1").textContent =
@@ -165,6 +175,13 @@ document
       isValid = false;
     }
 
+    // Password confirmation validation
+    if (password !== confirmPassword) {
+      document.getElementById("error_message6").textContent =
+        "Passwords do not match.";
+      isValid = false;
+    }
+
     // If all validations pass, submit the form
     if (isValid) {
       const RegisterData = {
@@ -205,10 +222,19 @@ function RegisterUser(RegisterData) {
     })
     .catch((error) => {
       console.log("Error: ", error);
-      alert("Error: " + error.message);
+
+      try {
+        // Attempt to parse the error message as JSON
+        const parsedError = JSON.parse(error.message);
+        alert(
+          "Error: " + (parsedError.error || "An unexpected error occurred")
+        );
+      } catch (e) {
+        // If parsing fails, fallback to the generic error message
+        alert("Error: " + error.message);
+      }
     });
 }
-
 async function loadNav() {
   try {
     const response = await fetch("/header");

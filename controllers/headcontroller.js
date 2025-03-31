@@ -6,8 +6,8 @@ const sendfileController = require("./filecontroller");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 // db.connect((err) => {
@@ -175,7 +175,6 @@ const getSubCategoryData = (app) => {
 
 const getSubSubCategoryData = (req, res) => {
   const { subcategory, subsubcategory } = req.params;
-
   getCategoryName(subcategory, (categoryName) => {
     if (!categoryName) {
       res.status(404).json({ error: "Category not found" });

@@ -8,8 +8,8 @@ const { constrainedMemory } = require("process");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 exports.generateBill = (req, res) => {
@@ -57,7 +57,7 @@ exports.generateBill = (req, res) => {
       const viewsQuery = `
           SELECT table_name
           FROM INFORMATION_SCHEMA.views
-          WHERE table_schema = 'main_project';
+          WHERE table_schema = 'project(1)';
         `;
 
       conn.query(viewsQuery, (err, viewsResult) => {

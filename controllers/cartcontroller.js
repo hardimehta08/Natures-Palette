@@ -4,8 +4,8 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 // Generate a unique cart ID
@@ -42,7 +42,7 @@ const addItemToCart = (req, res) => {
     return res.status(400).json({ error: "Product ID is required." });
   }
 
-  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'project(1)'`;
 
   conn.query(viewsQuery, (err, views) => {
     if (err) return res.status(500).json({ error: "Database error." });
@@ -65,23 +65,55 @@ const addItemToCart = (req, res) => {
           return res.status(400).json({ error: "Invalid product ID." });
         }
 
-        generateCartId((err, newCartId) => {
-          if (err)
-            return res.status(500).json({ error: "Error generating cart ID." });
+        // Check if the product already exists in the cart
+        const checkCartQuery =
+          "SELECT ca_qty FROM cart WHERE product_id = ? AND c_id = ?";
+        conn.query(
+          checkCartQuery,
+          [productId, req.session.userId],
+          (err, cartResults) => {
+            if (err) return res.status(500).json({ error: "Database error." });
 
-          const sql =
-            "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
-          conn.query(
-            sql,
-            [newCartId, req.session.userId, productId, 1],
-            (err, result) => {
-              if (err)
-                return res.status(500).json({ error: "Database error." });
+            if (cartResults.length > 0) {
+              // Product exists in the cart, update its quantity
+              const existingQuantity = cartResults[0].ca_qty;
+              const newQuantity = existingQuantity + 1;
 
-              res.status(200).json({ message: "Item added to cart." });
+              const updateQuery =
+                "UPDATE cart SET ca_qty = ? WHERE product_id = ? AND c_id = ?";
+              conn.query(
+                updateQuery,
+                [newQuantity, productId, req.session.userId],
+                (err, updateResult) => {
+                  if (err)
+                    return res.status(500).json({ error: "Database error." });
+                  res.status(200).json({ message: "Cart updated successfully!" });
+                }
+              );
+            } else {
+              // Product does not exist in the cart, insert a new entry
+              generateCartId((err, newCartId) => {
+                if (err)
+                  return res
+                    .status(500)
+                    .json({ error: "Error generating cart ID." });
+
+                const sql =
+                  "INSERT INTO cart (ca_id, c_id, product_id, ca_qty) VALUES (?, ?, ?, ?)";
+                conn.query(
+                  sql,
+                  [newCartId, req.session.userId, productId, 1],
+                  (err, result) => {
+                    if (err)
+                      return res.status(500).json({ error: "Database error." });
+
+                    res.status(200).json({ message: "Item added to cart." });
+                  }
+                );
+              });
             }
-          );
-        });
+          }
+        );
       }
     );
   });
@@ -99,7 +131,7 @@ const addItemToCartFromProduct = (req, res) => {
     return res.status(400).json({ error: "Product name is required." });
   }
 
-  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'project(1)'`;
 
   conn.query(viewsQuery, (err, views) => {
     if (err) return res.status(500).json({ error: "Database error." });
@@ -184,7 +216,7 @@ const getUserCart = (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Please login to view your cart." });
   }
-  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'main_project'`;
+  const viewsQuery = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'project(1)'`;
   conn.query(viewsQuery, (err, views) => {
     if (err) return res.status(500).json({ error: "Database error." });
 

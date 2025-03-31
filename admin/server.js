@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 3000;
 const con = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
-  database: "main_project",
+  password: "Hardi@sql8705",
+  database: "project(1)",
 });
 
 con.connect((err) => {
@@ -32,11 +32,13 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(path.join(__dirname, "public", "html")));
-app.use("/Database", express.static(path.join(__dirname, "../public/Database")));
+app.use(
+  "/Database",
+  express.static(path.join(__dirname, "../public/Database"))
+);
 // app.use('/images', express.static(path.join(__dirname, 'public/images')));
 app.use(bodyParser.json({ limit: "100mb" }));
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
-
 
 app.use(
   session({
@@ -79,7 +81,6 @@ app.use("/report", reportRoutes);
 
 const paymentRoutes = require("./routes/paymentRoutes");
 app.use("/payment", paymentRoutes);
-
 
 const feedbackRoutes = require("./routes/feedbackRoutes");
 app.use("/feedback", feedbackRoutes);

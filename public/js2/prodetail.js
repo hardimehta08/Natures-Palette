@@ -11,9 +11,13 @@ fetch(`/product/${productName}`)
   .then((response) => response.json())
   .then((data) => {
     prodid = data.productId;
-    document.getElementById("product-title").textContent = data.name;
+    document.getElementById("product-title").textContent = data.name.replace(
+      /_/g,
+      " "
+    );
     document.getElementById("product-price").textContent += data.price;
-    document.getElementById("product-description").innerHTML = data.description;
+    document.getElementById("product-description").innerHTML =
+      data.description.replace(/_/g, " ");
     document.getElementById("featured-image").src = "../" + data.images[0];
     const reviewContainer = document.getElementById("review-container");
 
