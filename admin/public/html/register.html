@@ -1,29 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
-    <meta content='IE=edge' http-equiv=X-UA-Compatible>
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="description" content="">
     <meta name="author" content="">
-
     <title>Register Panel</title>
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="../css/login.css">
+    <link rel="stylesheet" href="../css/login.css"> <!-- Verify this path -->
 </head>
-
 <body>
-    <!-- ########## START: Registration Form ########## -->
     <section class="login-wrapper">
         <a href="index.html" class="logo">
             <img src="../ad-images/logo/logo.png" alt="Admin Panel" width="150" style="border-radius: 50%; margin-top: 6rem;"/>
         </a>
-        
         <div class="login-form">
             <div class="row">
                 <div class="row1">
@@ -31,42 +22,30 @@
                         <h2>Create Account</h2>
                         <span>Fill the form to create a new account.</span>
                     </div>
-
                     <form id="registerForm" method="POST">
                         <div class="form-group">
                             <label>Username</label>
                             <input type="text" class="form-control" placeholder="Username" name="username" required>
                         </div>
-
                         <div class="form-group mb-4">
                             <label>Email Id</label>
                             <input type="email" class="form-control" placeholder="john.doe@domain.com" name="email" required>
                         </div>
-
                         <div class="form-group mb-4">
                             <label>Password</label>
                             <input type="password" class="form-control" placeholder="Password" name="password" required>
                         </div>
-
                         <div class="form-group mb-4">
                             <label>Confirm Password</label>
                             <input type="password" class="form-control" placeholder="Confirm Password" name="cpassword" required>
                         </div>
-
-                        <!-- <div class="form-group checkbox">
-                            <input type="checkbox" name="checkbox" id="check1" required>
-                            <label for="check1">I accept the terms & conditions.</label>
-                        </div> -->
-
                         <div id="response-message" class="form-group" style="color: red; font-weight: bold;"></div>
-
                         <div class="forgot">
-                            <a href="login.html" class="btn btn-login">Login</a>
+                            <a href="/html/login.html" class="btn btn-login">Login</a>
                             <button type="submit" class="btn btn-register">Register</button>
                         </div>
                     </form>
                 </div>
-
                 <div class="row2">
                     <img src="../ad-images/login-mockup.svg" alt="">
                 </div>
@@ -74,7 +53,7 @@
         </div>
     </section>
 
-    <!-- <script>
+    <script>
         document.getElementById("registerForm").addEventListener("submit", async function(event) {
             event.preventDefault();
             const responseMessage = document.getElementById("response-message");
@@ -84,7 +63,11 @@
             const password = this.password.value;
             const cpassword = this.cpassword.value;
 
-            // ✅ Check if passwords match
+            if (!username || !email || !password || !cpassword) {
+                responseMessage.innerText = "All fields are required!";
+                return;
+            }
+
             if (password !== cpassword) {
                 responseMessage.innerText = "Passwords do not match!";
                 return;
@@ -99,69 +82,26 @@
                     body: JSON.stringify(formData)
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
                 const result = await response.json();
 
                 if (result.success) {
                     responseMessage.style.color = "green";
                     responseMessage.innerText = "Registration successful! Redirecting to login...";
-                    setTimeout(() => window.location.href = "login.html", 2000);
-                } else {
-                    responseMessage.innerText = result.error || "Registration failed. Please try again.";
-                }
-            } catch (error) {
-                console.error("Error:", error);
-                responseMessage.innerText = "Server error. Please try again.";
-            }
-        });
-    </script> -->
-    <script>
-        document.getElementById("registerForm").addEventListener("submit", async function(event) {
-            event.preventDefault();
-            const responseMessage = document.getElementById("response-message");
-    
-            const username = this.username.value.trim();
-            const email = this.email.value.trim();
-            const password = this.password.value;
-            const cpassword = this.cpassword.value;
-    
-            // ✅ Check if all fields are filled
-            if (!username || !email || !password || !cpassword) {
-                responseMessage.innerText = "All fields are required!";
-                return;
-            }
-    
-            // ✅ Check if passwords match
-            if (password !== cpassword) {
-                responseMessage.innerText = "Passwords do not match!";
-                return;
-            }
-    
-            const formData = { username, email, password, cpassword }; // ✅ Now sending cpassword too
-    
-            try {
-                const response = await fetch("/auth/register", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(formData)
-                });
-    
-                const result = await response.json();
-    
-                if (result.success) {
-                    responseMessage.style.color = "green";
-                    responseMessage.innerText = "Registration successful! Redirecting to login...";
-                    setTimeout(() => window.location.href = "login.html", 2000);
+                    setTimeout(() => window.location.href = "/html/login.html", 2000);
                 } else {
                     responseMessage.style.color = "red";
                     responseMessage.innerText = result.message || "Registration failed. Please try again.";
                 }
             } catch (error) {
-                console.error("Error:", error);
+                console.error("Registration error:", error);
                 responseMessage.style.color = "red";
-                responseMessage.innerText = "Server error. Please try again.";
+                responseMessage.innerText = "Email is already used...Please try again with different email";
             }
         });
     </script>
-    
 </body>
 </html>

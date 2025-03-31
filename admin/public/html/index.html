@@ -4,11 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard</title>
-
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Sharp" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Font awsome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="../css/style.css" type="text/css" rel="stylesheet" />
   </head>
@@ -1130,6 +1126,9 @@
     </button>
     <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="../js/auth.js" ></script>
     <script src="../js/index.js" ></script>
     <script src="../js/customer.js"></script>
     <script src="../js/orderdet.js"></script>
@@ -1140,8 +1139,6 @@
     <script src="../js/delivery.js"></script>
     <script src="../js/review.js"></script>
     <script src="../js/payment.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     showSection('dashboard'); // Show dashboard by default
@@ -1240,39 +1237,6 @@ window.addEventListener("scroll", () => {
     } else {
         icon.classList.replace("fa-arrow-down", "fa-arrow-up");
     }
-});
-
-// Session check and logout
-fetch("/auth/check-session")
-    .then(response => response.json())
-    .then(data => {
-        if (!data.loggedIn) {
-            window.location.href = "html/login.html";
-        }
-    })
-    .catch(error => console.error("Error checking session:", error));
-    document.addEventListener("DOMContentLoaded", () => {
-    const logoutBtn = document.getElementById("logoutBtn");
-    if (!logoutBtn) {
-        console.error("Logout button not found in the DOM");
-        return;
-    }
-
-    logoutBtn.addEventListener("click", async () => {
-        try {
-            const response = await fetch("/auth/logout", { method: "POST" });
-            if (!response.ok) throw new Error(`Logout failed: ${response.statusText}`);
-            const result = await response.json();
-            if (result.success) {
-                window.location.href = "html/login.html";
-            } else {
-                alert("Logout failed. Please try again.");
-            }
-        } catch (error) {
-            console.error("Error logging out:", error);
-            alert("Error logging out. Please try again.");
-        }
-    });
 });
 </script>
 

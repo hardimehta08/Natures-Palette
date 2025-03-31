@@ -9,10 +9,12 @@ const cookieParser = require("cookie-parser");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Database Connection
+// Database Connection
 const con = mysql.createConnection({
   host: "localhost",
   user: "root",
+  password: "Hetalsql@1405", // Consider using environment variables
+  database: "main_project",
   password: "Hardi@sql8705",
   database: "project(1)",
 });
@@ -25,7 +27,7 @@ con.connect((err) => {
   console.log("✅ Connected to MySQL database");
 });
 
-// ✅ Middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
@@ -42,25 +44,25 @@ app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
 
 app.use(
   session({
-    secret: "your_secret_key", // Change this to a secure secret key
+    secret: "my_secure_secret_key_12345", // Use a strong, unique secret
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false }, // Set 'true' if using HTTPS
+    cookie: { secure: false }, // Set to true with HTTPS
   })
 );
 
+// Routes
 app.get("/", (req, res) => {
-  if (!req.session.registered) {
-    res.sendFile(path.join(__dirname, "public", "html", "register.html"));
-  } else {
-    res.sendFile(path.join(__dirname, "public", "html", "login.html"));
-  }
+  res.sendFile(path.join(__dirname, "public", "html", "login.html")); // Default to login
 });
 
-// ✅ Import and use authentication routes
+app.get("/register", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "html", "register.html"));
+});
+
 const authRoutes = require("./routes/authRoutes");
 app.use("/auth", authRoutes);
-// Route Import
+
 const customerRoutes = require("./routes/customerRoutes");
 app.use("/customers", customerRoutes);
 

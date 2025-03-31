@@ -1,15 +1,16 @@
-const mysql = require("mysql2");
+const mysql = require("mysql2/promise"); // Use promise-based MySQL
 const bcrypt = require("bcryptjs");
-const path = require("path");
 const { sendMail } = require("./mailer");
 
-const con = mysql.createConnection({
+// Database Connection (using promise-based API)
+const con = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "Hardi@sql8705",
   database: "project(1)",
 });
 
+// Middleware to ensure user is authenticated
 const ensureAuthenticated = (req, res, next) => {
   if (!req.session.user) {
     return res
@@ -19,110 +20,98 @@ const ensureAuthenticated = (req, res, next) => {
   next();
 };
 
-// ✅ **Register User**
+// Register User
 exports.registerUser = async (req, res) => {
-  const { username, email, password, cpassword } = req.body;
+  const { username, email, password } = req.body; // Removed cpassword since frontend validates it
 
-  if (!username || !email || !password || !cpassword) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
-  if (password !== cpassword) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Passwords do not match" });
+  if (!username || !email || !password) {
+    return res.status(400).json({ success: false, message: "All fields are required" });
   }
 
   try {
-    // ✅ Check if the email already exists before registering
-    con.query(
+    const connection = await con.getConnection();
+    
+    // Check if email already exists
+    const [existingUsers] = await connection.query(
       "SELECT * FROM admin WHERE a_email = ?",
-      [email],
-      async (err, result) => {
-        if (err) {
-          console.error("Error checking existing user:", err);
-          return res.status(500).json({ error: "Database error" });
-        }
-
-        if (result.length > 0) {
-          return res
-            .status(400)
-            .json({ error: "Email already registered. Please login." });
-        }
-
-        // ✅ Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // ✅ Insert new user into the database
-        con.query(
-          "INSERT INTO admin (a_username, a_email, a_password) VALUES (?, ?, ?)",
-          [username, email, hashedPassword],
-          (err, result) => {
-            if (err) {
-              console.error("Error registering user:", err);
-              return res.status(500).json({ error: "Database error" });
-            }
-
-            req.session.registered = true; // ✅ Mark user as registered
-            res.json({
-              success: true,
-              message: "User registered successfully",
-              redirect: "html/login.html",
-            });
-          }
-        );
-      }
+      [email]
     );
+    
+    if (existingUsers.length > 0) {
+      connection.release();
+      return res.status(400).json({ success: false, message: "Email already registered. Please login." });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert new user
+    await connection.query(
+      "INSERT INTO admin (a_username, a_email, a_password) VALUES (?, ?, ?)",
+      [username, email, hashedPassword]
+    );
+
+    connection.release();
+    req.session.registered = true; // Optional: only if you use this elsewhere
+    
+    res.json({
+      success: true,
+      message: "User registered successfully",
+      redirect: "/html/login.html" // Match frontend path
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Error registering user", error });
+    console.error("Error registering user:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-exports.loginUser = (req, res) => {
+// Login User
+exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ error: "All fields are required" });
+    return res.status(400).json({ success: false, message: "All fields are required" });
   }
 
-  con.query(
-    "SELECT * FROM admin WHERE a_email = ?",
-    [email],
-    async (err, results) => {
-      if (err) {
-        console.error("Error fetching user:", err);
-        return res.status(500).json({ error: "Database error" });
-      }
+  try {
+    const connection = await con.getConnection();
+    const [users] = await connection.query(
+      "SELECT * FROM admin WHERE a_email = ?",
+      [email]
+    );
 
-      // ✅ Check if user exists
-      if (results.length === 0) {
-        return res.status(401).json({ error: "Invalid email or password" });
-      }
-
-      const user = results[0];
-      const passwordMatch = await bcrypt.compare(password, user.a_password);
-
-      if (!passwordMatch) {
-        return res.status(401).json({ error: "Invalid email or password" });
-      }
-
-      req.session.user = {
-        id: user.a_id,
-        username: user.a_username,
-        email: user.a_email,
-      };
-
-      res.json({
-        success: true,
-        message: "Login successful",
-        redirect: "html/index.html",
-      });
+    if (users.length === 0) {
+      connection.release();
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
-  );
+
+    const user = users[0];
+    const passwordMatch = await bcrypt.compare(password, user.a_password);
+
+    if (!passwordMatch) {
+      connection.release();
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
+    }
+
+    req.session.user = {
+      id: user.a_id,
+      username: user.a_username,
+      email: user.a_email,
+    };
+
+    connection.release();
+    res.json({
+      success: true,
+      message: "Login successful",
+      redirect: "/html/index.html" // Match frontend path
+    });
+  } catch (error) {
+    console.error("Error logging in user:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 };
 
-// ✅ **Forgot Password**
+// Forgot Password
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -180,11 +169,11 @@ exports.forgotPassword = async (req, res) => {
     );
   } catch (error) {
     console.error("Error in forgotPassword:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Failed to send reset email" });
   }
 };
 
-// ✅ **Reset Password**
+// Reset Password
 exports.resetPassword = async (req, res) => {
   const { email, token, newPassword, confirmPassword } = req.body;
 
@@ -207,7 +196,6 @@ exports.resetPassword = async (req, res) => {
     });
   }
 
-  // Verify reset token
   const resetData = req.session.resetToken;
   if (
     !resetData ||
@@ -221,9 +209,10 @@ exports.resetPassword = async (req, res) => {
   }
 
   try {
+    const connection = await con.getConnection();
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    con.query(
+    const [result] = await connection.query(
       "UPDATE admin SET a_password = ? WHERE a_email = ?",
       [hashedPassword, email],
       (err, result) => {
@@ -252,28 +241,29 @@ exports.resetPassword = async (req, res) => {
       }
     );
   } catch (error) {
-    console.error("Error hashing password:", error);
+    console.error("Error resetting password:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// ✅ **Logout User**
+// Logout User
 exports.logoutUser = (req, res) => {
   req.session.destroy((err) => {
     if (err) {
-      return res.status(500).json({ error: "Failed to logout" });
+      console.error("Error logging out:", err);
+      return res.status(500).json({ success: false, message: "Failed to logout" });
     }
-    res.clearCookie("connect.sid"); // Clear session cookie
-    res.json({ success: true, message: "Logged out successfully" });
+    res.clearCookie("connect.sid");
+    res.json({ success: true, message: "Logged out successfully", redirect: "/html/login.html" });
   });
 };
 
-// ✅ **Check Session**
+// Check Session
 exports.checkSession = (req, res) => {
   if (req.session.user) {
-    res.json({ loggedIn: true, user: req.session.user });
+    res.json({ success: true, loggedIn: true, user: req.session.user });
   } else {
-    res.json({ loggedIn: false });
+    res.json({ success: true, loggedIn: false });
   }
 };
 
