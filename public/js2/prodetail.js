@@ -177,8 +177,10 @@ document.getElementById("write-review").addEventListener("click", () => {
   stars.forEach((star) => {
     star.addEventListener("click", () => {
       starRating = star.getAttribute("data-rating");
+  
+      // Reset all stars to their default state
       stars.forEach((s, index) => {
-        s.classList.toggle("selected", index < starRating);
+        s.style.color = index < starRating ? "yellow" : "black"; // Change to yellow for selected stars
       });
     });
   });

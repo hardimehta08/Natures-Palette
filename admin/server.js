@@ -13,8 +13,6 @@ const PORT = process.env.PORT || 3000;
 const con = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405", // Consider using environment variables
-  database: "main_project",
   password: "Hardi@sql8705",
   database: "project(1)",
 });

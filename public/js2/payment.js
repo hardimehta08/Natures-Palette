@@ -23,8 +23,9 @@ document.addEventListener("DOMContentLoaded", function () {
       document.getElementById(
         "address"
       ).innerHTML = `${data.S_ADDRESS}<br>${data.S_PINCODE}<br>${data.S_CONTACTNO}`;
-      currency = data.Total_Product_Cost;
+      currency = data.ODETAILS_PRICE;
       document.getElementById("total").innerHTML = `&#8377;${currency}`;
+      console.log("Total innerHTML Updated");
     })
     .catch((error) =>
       console.error("❌ Error fetching payment details:", error)

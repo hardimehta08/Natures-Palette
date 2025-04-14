@@ -2,7 +2,6 @@ const mysql = require("mysql");
 const nodemailer = require("nodemailer");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
-const { constrainedMemory } = require("process");
 
 // Database connection
 const conn = mysql.createConnection({

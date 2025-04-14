@@ -301,8 +301,7 @@ exports.getPaymentDetails = (req, res) => {
   const orderId = req.params.orderId;
   const query = `SELECT 
       om.O_ID, om.O_DATE, om.O_STATUS, om.C_ID, 
-      sa.S_ADDRESS, sa.S_PINCODE, sa.S_CONTACTNO, od.ODETAILS_ID, od.ODETAILS_QTY, od.ODETAILS_PRICE,
-      (od.ODETAILS_QTY * od.ODETAILS_PRICE) AS Total_Product_Cost
+      sa.S_ADDRESS, sa.S_PINCODE, sa.S_CONTACTNO, od.ODETAILS_ID, od.ODETAILS_QTY, od.ODETAILS_PRICE
       FROM ORDER_MASTER om LEFT JOIN ORDER_SHIPPING_ADDRESS sa ON om.O_ID = sa.O_ID
       LEFT JOIN ORDER_DETAILS od ON om.O_ID = od.O_ID
       WHERE om.O_ID = ? and om.O_STATUS IN ('PLACED','PROCESSING')`;
@@ -586,6 +585,7 @@ function generatePDFBill(
 
 // ✅ Function to Send Invoice via Email
 function sendInvoiceEmail(order, customerEmail, filePath, res) {
+
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
