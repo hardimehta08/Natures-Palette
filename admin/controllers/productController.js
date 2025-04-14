@@ -6,7 +6,7 @@ const formidable = require("formidable");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "project(1)",
 });
 
@@ -111,6 +111,7 @@ const getProductsByTable = (req, res) => {
 
           // Fetch the products
           db.query(productQuery, queryParams, (err, results) => {
+            console.log(results);
             if (err) {
               console.error("Error fetching products:", err);
               return res
@@ -120,11 +121,10 @@ const getProductsByTable = (req, res) => {
 
             // Process BLOB data to Base64
             const processedResults = results.map((row) => {
-              if (row.image) {
-                row.image = Buffer.from(row.image).toString();
-              }
+              // No need to process image path
               return row;
             });
+            
 
             // If searching by productId, pagination is not needed
             const totalPages = productId ? 1 : Math.ceil(totalCount / limit);

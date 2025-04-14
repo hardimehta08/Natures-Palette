@@ -3,7 +3,7 @@ const mysql = require("mysql2/promise");
 const conn = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705", // Your database password
+  password: "Hetalsql@1405", // Your database password
   database: "project(1)", // Your database name
   waitForConnections: true,
   connectionLimit: 10, // Maximum number of concurrent connections

@@ -6,7 +6,7 @@ const { sendMail } = require("./mailer");
 const con = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "project(1)",
 });
 
@@ -296,7 +296,7 @@ exports.getAdminProfile = [
             name: admin.a_username,
             email: admin.a_email,
             role: "Admin", // Hardcoded as per your schema; adjust if you have a role field
-            photo: admin.a_photo || "/ad-images/profile/default.jpg", // Default photo if none exists
+            photo: admin.a_photo || "/ad-images/default.jpg", // Default photo if none exists
           },
         });
       }

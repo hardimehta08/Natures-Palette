@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const con = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "project(1)",
 });
 
@@ -31,7 +31,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.static(path.join(__dirname, "public", "html")));
+// app.use(express.static(path.join(__dirname, "public", "html")));
 app.use(
   "/Database",
   express.static(path.join(__dirname, "../public/Database"))

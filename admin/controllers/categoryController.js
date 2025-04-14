@@ -7,7 +7,7 @@ const path = require("path");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hardi@sql8705",
+  password: "Hetalsql@1405",
   database: "project(1)",
 });
 
@@ -196,7 +196,7 @@ const addSubCategory = (req, res) => {
         const imageFileName = `${newSubId}${extension}`; // e.g., SUB01.jpg
         const tempPath = sub_image.path; // Temporary path from multer (e.g., public/temp/123456.jpg)
         const targetPath = path.join(directoryPath, imageFileName); // Final path (e.g., public/Database/SUB01.jpg)
-        imagePath = `Database/${imageFileName}`; // Relative path for database storage
+        imagePath = `../Database/${imageFileName}`; // Relative path for database storage
 
         try {
           // Verify temp file exists before moving
@@ -292,7 +292,7 @@ const addSubSubCategory = (req, res) => {
       const imageFileName = `${newSsId}${extension}`; // e.g., SS01.jpg
       const tempPath = ss_image.path; // Temporary path from multer (e.g., public/temp/123456.jpg)
       const targetPath = path.join(directoryPath, imageFileName); // Final path (e.g., public/Database/SS01.jpg)
-      imagePath = `Database/${imageFileName}`; // Relative path for database storage
+      imagePath = `../Database/${imageFileName}`; // Relative path for database storage
 
       try {
         // Verify temp file exists before moving
@@ -448,7 +448,7 @@ const updateSubcategory = (req, res) => {
       const imageFileName = `${subcategoryId}${extension}`; // e.g., SUB01.jpg
       const tempPath = sub_image.path; // Temporary path from multer
       const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
-      newImagePath = `Database/${imageFileName}`; // Relative path for database
+      newImagePath = `../Database/${imageFileName}`; // Relative path for database
 
       try {
         // Move the new image to the target location
@@ -527,7 +527,7 @@ const updateSubSubcategory = (req, res) => {
       const imageFileName = `${subsubcategoryId}${extension}`; // e.g., SS01.jpg
       const tempPath = ss_image.path; // Temporary path from multer
       const targetPath = path.join(directoryPath, imageFileName); // Full path to save the file
-      newImagePath = `Database/${imageFileName}`; // Relative path for database
+      newImagePath = `../Database/${imageFileName}`; // Relative path for database
 
       try {
         // Move the new image to the target location

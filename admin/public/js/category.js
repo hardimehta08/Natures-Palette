@@ -303,9 +303,9 @@ function fetchSubcategories() {
 
       if (subcategories.length > 0) {
         subcategories.forEach((sub) => {
-          let imageSrc = sub.sub_image.startsWith("Database/")
+          let imageSrc = sub.sub_image.startsWith("../Database/")
             ? `/${sub.sub_image}`  // Use image path as-is
-            : "/Database/default-image.jpg"; // Default image
+            : "../Database/default-image.jpg"; // Default image
 
           // Determine button text and function based on is_deleted value
           const actionButtonText = sub.is_deleted ? "Activate" : "Remove";
@@ -470,9 +470,9 @@ function fetchSubSubcategories() {
 
       if (subsubcategories.length > 0) {
         subsubcategories.forEach((ssc) => {
-          let imageSrc = ssc.ss_image.startsWith("Database/")
+          let imageSrc = ssc.ss_image.startsWith("../Database/")
             ? `/${ssc.ss_image}`  // Use image path as-is
-            : "/Database/default-image.jpg"; // Default image
+            : "../Database/default-image.jpg"; // Default image
 
           // Determine button text and function based on is_deleted value
           const actionButtonText = ssc.is_deleted ? "Activate" : "Remove";
