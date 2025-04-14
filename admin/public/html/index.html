@@ -72,6 +72,9 @@
                 <p class="account__tab" data-target="#profile" onclick="showSection('profile')">
                     <img src="../ad-images/icon/user.png" alt="">My Account
                 </p>
+                <p class="account__tab" data-target="#contact-messages" onclick="showSection('contact-messages')">
+                    <img src="../ad-images/icon/email.png" alt="">Messages
+                </p>
                 <p class="account__tab">
                     <button id="logoutBtn" class="logout-btn">
                         <img src="../ad-images/icon/logout.png" alt="Logout Icon">Log Out
@@ -1103,6 +1106,27 @@
                     </div>
                 </div>
             </div>
+            <div class="tab__content" content id="contact-messages">
+                <h3 class="tab__header">Contact Form Submissions</h3>
+                <div id="contact-messages-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Subject</th>
+                                <th>Message</th>
+                                <th>Submitted At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contact-table-body">
+                            <!-- Records will be dynamically added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
             <!-- Add this to your main HTML (e.g., index.html) -->
             <!-- Updated notification toggle without count -->
             <button id="notificationToggle" class="notification-toggle">
@@ -1239,10 +1263,6 @@ window.addEventListener("scroll", () => {
     }
 });
 </script>
-<script>
-    document.addEventListener('DOMContentLoaded', loadAdminProfile);
-</script>
-
   </body>
 </html>
 

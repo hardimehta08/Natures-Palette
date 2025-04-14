@@ -161,3 +161,16 @@ exports.unassignDelivery = (req, res) => {
     }
   );
 };
+
+
+
+exports.fetchContactMessages = (req, res) => {
+  const query = 'SELECT * FROM contact ORDER BY submitted_at DESC';
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send('Error fetching contact messages');
+    }
+    res.json(results); // Send the results to the frontend
+  });
+};

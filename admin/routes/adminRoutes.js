@@ -17,4 +17,6 @@ router.get("/deliverypersons", adminController.getDeliveryPerson);
 
 router.put('/update/:personId', adminController.updateDeliveryPersonStatus);
 
+router.get('/fetch-contact-messages', adminController.fetchContactMessages);
+
 module.exports = router;

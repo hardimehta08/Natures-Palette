@@ -97,6 +97,8 @@ exports.loginUser = async (req, res) => {
       id: user.a_id,
       username: user.a_username,
       email: user.a_email,
+      role: user.a_role || "Admin",  // Default to 'Admin' if no role is provided
+      photo: user.a_photo || "/ad-images/default.jpg",  // Default to '/ad-images/default.jpg' if no photo exists
     };
 
     connection.release();
@@ -268,34 +270,32 @@ exports.checkSession = (req, res) => {
 };
 
 exports.getAdminProfile = [
-  ensureAuthenticated,
+  ensureAuthenticated, // Ensure the user is authenticated before fetching the profile
   (req, res) => {
-    const adminId = req.session.user.id;
+    const adminId = req.session.user.id; // Assuming session holds user ID for logged-in admin
 
+    // Query the database for the admin profile using the admin ID from the session
     con.query(
-      "SELECT a_id, a_username, a_email, a_photo FROM admin WHERE a_id = ?",
+      "SELECT a_id, a_username, a_email, a_photo FROM admin WHERE a_id = ?", // Include a_role if available
       [adminId],
       (err, results) => {
         if (err) {
           console.error("Error fetching admin profile:", err);
-          return res
-            .status(500)
-            .json({ success: false, message: "Database error" });
+          return res.status(500).json({ success: false, message: "Database error" });
         }
 
         if (results.length === 0) {
-          return res
-            .status(404)
-            .json({ success: false, message: "Admin not found" });
+          return res.status(404).json({ success: false, message: "Admin not found" });
         }
 
         const admin = results[0];
+        // Send the admin profile details back as JSON
         res.json({
           success: true,
           admin: {
             name: admin.a_username,
             email: admin.a_email,
-            role: "Admin", // Hardcoded as per your schema; adjust if you have a role field
+            role: admin.a_role || "Admin", // Default to "Admin" if no role is provided
             photo: admin.a_photo || "/ad-images/default.jpg", // Default photo if none exists
           },
         });
@@ -303,6 +303,7 @@ exports.getAdminProfile = [
     );
   },
 ];
+
 
 // ✅ **Update Profile Photo**
 exports.updateProfilePhoto = [
@@ -348,6 +349,8 @@ exports.updateProfile = [
   ensureAuthenticated,
   (req, res) => {
     const { name, email } = req.body;
+    console.log(req.body);
+
     const adminId = req.session.user.id;
 
     if (!name || !email) {
