@@ -196,181 +196,64 @@ function loadCategories() {
   document.addEventListener("DOMContentLoaded", function() {
     loadCategories(); // Load first page
   });
-
-// Load admin profile details when the profile section is opened
-function loadAdminProfile() {
-    fetch('/auth/admin-profile')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update profile details on the page
-                const profileName = document.getElementById('profileName');
-                const profileEmail = document.getElementById('profileEmail');
-                const profileRole = document.getElementById('profileRole');
-                const userName = document.getElementById('userName');
-                const userRole = document.getElementById('userRole');
-                const profilePhoto = document.getElementById('profilePhoto');
-                const navProfilePhoto = document.getElementById('navProfilePhoto');
-                const dropdownProfilePhoto = document.getElementById('dropdownProfilePhoto');
-
-                // Check if elements exist before updating
-                if (profileName) profileName.textContent = data.admin.name;
-                if (profileEmail) profileEmail.textContent = data.admin.email;
-                if (profileRole) profileRole.textContent = data.admin.role || 'Admin';
-                if (userName) userName.textContent = data.admin.name;
-                if (userRole) userRole.textContent = data.admin.role || 'Admin';
-
-                const photoUrl = data.admin.photo || '../ad-images/profile/default.jpg';
-                if (profilePhoto) profilePhoto.src = photoUrl;
-                if (navProfilePhoto) navProfilePhoto.src = photoUrl;
-                if (dropdownProfilePhoto) dropdownProfilePhoto.src = photoUrl;
-            } else {
-                alert('Failed to load profile details. Please try again.');
-            }
-        })
-        .catch(error => {
-            console.error('Error loading profile:', error);
-            alert('Error loading profile details. Please try again.');
-        });
-}
-
-// Update profile photo directly from the profile page
-function updateProfilePhoto(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('profilePic', file);
-
-    fetch('/auth/update-profile-photo', {
-        method: 'POST',
-        body: formData
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update the profile photo on the page
-                const newPhotoUrl = data.photoUrl;
-                const profilePhoto = document.getElementById('profilePhoto');
-                const navProfilePhoto = document.getElementById('navProfilePhoto');
-                const dropdownProfilePhoto = document.getElementById('dropdownProfilePhoto');
-
-                if (profilePhoto) profilePhoto.src = newPhotoUrl;
-                if (navProfilePhoto) navProfilePhoto.src = newPhotoUrl;
-                if (dropdownProfilePhoto) dropdownProfilePhoto.src = newPhotoUrl;
-                alert('Profile photo updated successfully!');
-            } else {
-                alert('Failed to update profile photo: ' + (data.message || 'Unknown error'));
-            }
-        })
-        .catch(error => {
-            console.error('Error updating profile photo:', error);
-            alert('Error updating profile photo. Please try again.');
-        });
-}
-
-// Open the Edit Profile modal and prefill the form
-function openEditProfileModal() {
-    const modal = document.getElementById('editProfileModal');
-    const editName = document.getElementById('editName');
-    const editEmail = document.getElementById('editEmail');
-
-    // Prefill the form with current values
-    const profileName = document.getElementById('profileName');
-    const profileEmail = document.getElementById('profileEmail');
-
-    if (editName && profileName) editName.value = profileName.textContent;
-    if (editEmail && profileEmail) editEmail.value = profileEmail.textContent;
-
-    if (modal) modal.style.display = 'block';
-}
-
-// Close the Edit Profile modal
-function closeEditProfileModal() {
-    const modal = document.getElementById('editProfileModal');
-    if (modal) modal.style.display = 'none';
-}
-
-// Save changes to name and email
-function saveProfileChanges(event) {
-    event.preventDefault();
-
-    const name = document.getElementById('editName').value;
-    const email = document.getElementById('editEmail').value;
-
-    fetch('/auth/update-profile', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name, email })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update the profile details on the page
-                const profileName = document.getElementById('profileName');
-                const profileEmail = document.getElementById('profileEmail');
-                const userName = document.getElementById('userName');
-
-                if (profileName) profileName.textContent = name;
-                if (profileEmail) profileEmail.textContent = email;
-                if (userName) userName.textContent = name;
-                closeEditProfileModal();
-                alert('Profile updated successfully!');
-            } else {
-                alert('Failed to update profile: ' + (data.message || 'Unknown error'));
-            }
-        })
-        .catch(error => {
-            console.error('Error updating profile:', error);
-            alert('Error updating profile. Please try again.');
-        });
-}
-
-// Open the Change Password modal
-function openChangePasswordModal() {
-    const modal = document.getElementById('changePasswordModal');
-    if (modal) modal.style.display = 'block';
-}
-
-// Close the Change Password modal
-function closeChangePasswordModal() {
-    const modal = document.getElementById('changePasswordModal');
-    if (modal) modal.style.display = 'none';
-}
-
-// Handle password change
-function changePassword(event) {
-    event.preventDefault();
-
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-
-    if (newPassword !== confirmPassword) {
-        alert('New password and confirm password do not match.');
-        return;
-    }
-
-    fetch('/auth/change-password', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ currentPassword, newPassword })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeChangePasswordModal();
-                alert('Password updated successfully!');
-            } else {
-                alert('Failed to update password: ' + (data.message || 'Unknown error'));
-            }
-        })
-        .catch(error => {
-            console.error('Error changing password:', error);
-            alert('Error changing password. Please try again.');
-        });
-}
+  let lastMessageIds = new Set();
+  let notificationCount = 0;
+  
+  // Function to update the notification count
+  function updateNotificationCount(count) {
+      const badge = document.querySelector('.message-count');
+      if (badge) {
+          badge.textContent = count;
+          badge.style.display = count > 0 ? 'inline-block' : 'none';
+      }
+  }
+  
+  async function fetchContactMessages() {
+      try {
+          const response = await fetch('/admin/fetch-contact-messages');
+          const data = await response.json();
+          const tableBody = document.getElementById('contact-table-body');
+          tableBody.innerHTML = '';
+  
+          // Collect current message IDs
+          const currentMessageIds = new Set(data.map((message) => message.id));
+  
+          // Detect new messages by comparing with last known IDs
+          data.forEach((message) => {
+              if (!lastMessageIds.has(message.id)) {
+                  notificationCount += 1; // Increment count for new messages
+              }
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                  <td>${message.id}</td>
+                  <td>${message.name}</td>
+                  <td>${message.email}</td>
+                  <td>${message.subject}</td>
+                  <td>${message.message}</td>
+                  <td>${new Date(message.submitted_at).toLocaleDateString()}</td>
+              `;
+              tableBody.appendChild(row);
+          });
+  
+          // Update the last known message IDs
+          lastMessageIds = currentMessageIds;
+  
+          // Update the notification badge
+          updateNotificationCount(notificationCount);
+  
+          // Reset count when viewing the contact-messages section
+          if (document.getElementById('contact-messages').style.display === 'block') {
+              notificationCount = 0;
+              updateNotificationCount(0);
+          }
+      } catch (error) {
+          console.error('Error fetching contact messages:', error);
+      }
+  }
+  
+  // Periodically check for new messages (e.g., every 30 seconds)
+  setInterval(fetchContactMessages, 30000);
+  
+  
+  // Call the function to load the contact messages when the page loads
+  document.addEventListener('DOMContentLoaded', fetchContactMessages);

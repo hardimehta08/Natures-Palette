@@ -72,14 +72,6 @@
                 <p class="account__tab" data-target="#profile" onclick="showSection('profile')">
                     <img src="../ad-images/icon/user.png" alt="">My Account
                 </p>
-                <p class="account__tab" data-target="#contact-messages" onclick="showSection('contact-messages')">
-                    <img src="../ad-images/icon/email.png" alt="">Messages
-                </p>
-                <p class="account__tab">
-                    <button id="logoutBtn" class="logout-btn">
-                        <img src="../ad-images/icon/logout.png" alt="Logout Icon">Log Out
-                    </button>
-                </p>
                 
             </div>
         </div>
@@ -91,6 +83,18 @@
             <!-- <i class="fas fa-bars"></i> -->
           </button>       
         </div>
+        <div class="nav-items">
+            <div class="message-section" class="account__tab" data-target="#contact-messages" onclick="showSection('contact-messages')">
+              <img src="../ad-images/icon/email.png" alt="Messages" style="width: 30px; height: 30px; cursor: pointer;">
+              <span class="message-count" style="display: none;">0</span>
+            </div>
+            <button id="notificationToggle" class="notification-toggle">
+                <i id="notificationBell" class="fas fa-bell" style="font-size: 30px;"></i>
+              </button>
+            <button id="logoutBtn" class="logout-btn">
+              <img src="../ad-images/icon/logout.png" alt="Logout Icon" style="height: 30px;"> 
+            </button>
+          </div>
         <div class="cards">
             <div class="tab__content active-tab" content id="dashboard">
                 <h3 class="tab__header">Dashboard</h3>
@@ -1127,11 +1131,6 @@
                 </div>
             </div>
             
-            <!-- Add this to your main HTML (e.g., index.html) -->
-            <!-- Updated notification toggle without count -->
-            <button id="notificationToggle" class="notification-toggle">
-                <i id="notificationBell" class="fas fa-bell" style="font-size: 24px;"></i>
-            </button>
             
             <div id="notificationDrawer" class="notification-drawer hidden">
                 <div class="notification-header">
@@ -1163,6 +1162,7 @@
     <script src="../js/delivery.js"></script>
     <script src="../js/review.js"></script>
     <script src="../js/payment.js"></script>
+    <script src="../js/profile.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     showSection('dashboard'); // Show dashboard by default
@@ -1217,6 +1217,12 @@ function showSection(sectionId, reportType = null) {
 
     if (sectionId === 'profile') {
         loadAdminProfile();
+    }
+
+    if (sectionId === 'contact-messages') {
+        notificationCount = 0;
+        updateNotificationCount(0);
+        fetchContactMessages(); // Refresh messages
     }
 }
 

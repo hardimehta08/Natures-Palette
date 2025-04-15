@@ -42,12 +42,26 @@ app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
 
 app.use(
   session({
-    secret: "my_secure_secret_key_12345", // Use a strong, unique secret
+    secret: "my_secure_secret_key_12345", // should be long & unique
     resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false }, // Set to true with HTTPS
+    saveUninitialized: false, // <-- change this to false for better control
+    cookie: {
+      secure: false, // only true if you're using HTTPS (like in production)
+      httpOnly: true, // adds security by restricting access to cookie via JS
+      maxAge: 1000 * 60 * 60 * 24, // session cookie lasts 1 day
+    },
   })
 );
+
+app.use((req, res, next) => {
+  console.log("Session:", req.session);
+  next();
+});
+
+app.use((err, req, res, next) => {
+  console.error("Server error:", err.stack);
+  res.status(500).json({ message: "Internal server error", error: err.message });
+});
 
 // Routes
 app.get("/", (req, res) => {
@@ -81,6 +95,9 @@ app.use("/report", reportRoutes);
 
 const paymentRoutes = require("./routes/paymentRoutes");
 app.use("/payment", paymentRoutes);
+
+const profileRoutes = require("./routes/profileRoutes");
+app.use("/profile", profileRoutes);
 
 const feedbackRoutes = require("./routes/feedbackRoutes");
 app.use("/feedback", feedbackRoutes);

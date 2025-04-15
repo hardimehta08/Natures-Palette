@@ -53,13 +53,5 @@ router.post("/reset-password", authController.resetPassword);
 // Route for Logout
 router.post("/logout", authController.logoutUser);
 
-// Check Session Route
-router.get("/check-session", authController.checkSession);
-
-
-router.get("/admin-profile", authController.getAdminProfile); // Fetch admin profile
-router.post("/update-profile-photo", upload.single("profilePic"), authController.updateProfilePhoto); // Update profile photo
-router.post("/update-profile", authController.updateProfile); // Update name and email
-router.post("/change-password", authController.changePassword); // Change password
 
 module.exports = router;
