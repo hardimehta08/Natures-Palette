@@ -11,7 +11,7 @@ const cors = require("cors");
 const connection = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -118,6 +118,9 @@ app.use("/feedback", feedback);
 app.get("/contactus.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "contactus.html"));
 });
+const contact=require("./routes/contactroutes");
+app.use("/contacts", contact);
+
 app.get("/privacy.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "html", "privacy.html"));
 });

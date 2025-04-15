@@ -39,9 +39,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await response.json();
         alert(
           data.message ||
-            "Password reset successful! Please log in with your new password."
+            "Password reset successful! Close this page and go to the website and log in with your new password."
         );
-        window.location.href = "/login.html"; // Redirect to login page
       } else {
         const error = await response.json();
         errorMessage.textContent = error.message || "Failed to reset password.";

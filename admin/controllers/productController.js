@@ -6,7 +6,7 @@ const formidable = require("formidable");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -124,7 +124,6 @@ const getProductsByTable = (req, res) => {
               // No need to process image path
               return row;
             });
-            
 
             // If searching by productId, pagination is not needed
             const totalPages = productId ? 1 : Math.ceil(totalCount / limit);

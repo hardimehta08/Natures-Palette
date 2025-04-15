@@ -1,52 +1,77 @@
 var username = document.getElementById("username");
 var userdesc = document.getElementById("userdescription");
 
+// Fetch User Profile
 fetch("/user/profile")
-  .then((response) => {
-    if (response.status === 401) {
-      // Create the login link
+  .then((response) => response.json())
+  .then((data) => {
+    if (data.message === "Please login to access this information.") {
+      // Create the login link for unauthorized users
       var login = document.createElement("a");
       login.href = "../html/login.html";
       login.textContent = "Login";
       userdesc.innerHTML += "<br><br>";
       userdesc.appendChild(login);
-      throw new Error("Unauthorized");
-    } else {
-      return response.json();
-    }
-  })
-  .then((data) => {
-    if (data && data.c_username) {
+      document.getElementById("order_btn").style.display = "none";
+      document.getElementById("feedback_btn").style.display = "none";
+      document.getElementById("update_btn").style.display = "none";
+      document.getElementById("change_btn").style.display = "none";
+      document.getElementById("logout").style.display = "none";
+    } else if (data && data.c_username) {
+      // Update the username
       username.innerHTML += data.c_username;
 
-      fetch("/order/customer/orders")
-        .then((response) => response.json())
+      // Fetch Customer Orders
+      return fetch("/order/customer/orders")
+        .then((response) => response.json()) // Parse order data
         .then((data) => {
-          if (data.message == "Order not found") {
-            document.getElementById("order_name").innerHTML =
-              "No orders placed yet!";
+          console.log(data);
+          if (data.message === "Unauthorized") {
+            // Display login message for orders
+            const orderContainer = document.getElementById("order_container");
+            orderContainer.innerHTML = "Please login to view your orders.";
 
-            // Hide other elements
-            document.getElementById("order_image").style.display = "none";
-            document.getElementById("order_price").style.display = "none";
-            document.getElementById("order_id").style.display = "none";
-            document.getElementById("order_date").style.display = "none";
-            document.getElementById("order_status").style.display = "none";
+            // Hide child elements of the container
+            Array.from(orderContainer.children).forEach((child) => {
+              child.style.display = "none";
+            });
+          } else {
+            const orderContainer = document.getElementById("order_container");
+
+            if (data.message === "Unauthorized") {
+              // Display login message for orders
+              orderContainer.innerHTML = "Please login to view your orders.";
+
+              // Hide child elements of the container
+              Array.from(orderContainer.children).forEach((child) => {
+                child.style.display = "none";
+              });
+            } else if (data.message === "Order not found") {
+              // Display "no orders found" message
+              document.getElementById("order_name").innerHTML =
+                "No orders placed yet!";
+              document.getElementById("order_image").style.display = "none";
+              document.getElementById("order_price").style.display = "none";
+              document.getElementById("order_id").style.display = "none";
+              document.getElementById("order_date").style.display = "none";
+              document.getElementById("order_status").style.display = "none";
+            } else {
+              // Populate order details
+              document.getElementById("order_image").src = "../" + data.image;
+              document.getElementById("order_name").innerHTML =
+                data.name.replace(/_/g, " ");
+              document.getElementById("order_price").innerHTML += data.price;
+              document.getElementById("order_id").innerHTML += data.o_id;
+              document.getElementById("order_date").innerHTML += new Date(
+                data.o_date
+              ).toLocaleDateString("en-GB");
+              document.getElementById("order_status").innerHTML +=
+                data.o_status;
+            }
           }
-          document.getElementById("order_image").src = "../" + data.image;
-          document.getElementById("order_name").innerHTML = data.name.replace(
-            /_/g,
-            " "
-          );
-          document.getElementById("order_price").innerHTML += data.price;
-          document.getElementById("order_id").innerHTML += data.o_id;
-          document.getElementById("order_date").innerHTML += new Date(
-            data.o_date
-          ).toLocaleDateString("en-GB");
-          document.getElementById("order_status").innerHTML += data.o_status;
         });
     } else {
-      console.error("Invalid data structure:", data);
+      throw new Error("Invalid user data");
     }
   })
   .catch((error) => {
@@ -60,17 +85,14 @@ function logout() {
       "Content-Type": "application/json",
     },
   })
-    .then((response) => {
-      if (!response.ok) {
-        return response.text().then((text) => {
-          throw new Error(text);
-        });
-      }
-      return response.text(); // Parse the response as plain text
-    })
+    .then((response) => response.json())
     .then((data) => {
-      alert("Logout successful!");
-      window.location.href = "/";
+      if (data.message == "You need to login to logout.") {
+        alert(data.message);
+      } else {
+        alert("Logout successful!");
+        window.location.href = "/";
+      }
     })
     .catch((error) => {
       console.log("Error: ", error);
@@ -109,10 +131,10 @@ function updateUser() {
       return response.json(); // Parse the response as JSON
     })
     .then((data) => {
-      // Ensure the data contains the expected fields
-      if (data.message) {
-        var up = document.getElementById("updateprofile");
-        alert("Profile Updated Successfully!"); // Update the message
+      if (data.message == "Please login to update your profile.") {
+        alert("Please login to update your profile.");
+      } else if (data.message) {
+        alert("Profile Updated Successfully!");
       } else {
         throw new Error("Unexpected response format");
       }
@@ -149,7 +171,11 @@ function changepass() {
       return response.json(); // Parse the response as JSON
     })
     .then((data) => {
-      alert("Password Updated Successfully!");
+      if (data.message == "Please login to update your password.") {
+        alert("Please login to update your password.");
+      } else {
+        alert("Password Updated Successfully!");
+      }
     })
     .catch((error) => {
       console.log("Error:", error);
@@ -161,14 +187,13 @@ fetch("/feedback/customer")
   .then((data) => {
     // console.log(data);
     const feedbackContainer = document.getElementById("f_container");
-    if (data.error == "No feedback data found.") {
+    if (data.message == "No feedback data found.") {
       feedbackContainer.innerHTML = "<h3>No feedbacks found!</h3>";
-    }
-
-    data.forEach((item) => {
-      // Create a new div for each feedback item
-      const feedbackCard = document.createElement("div");
-      feedbackCard.style = `
+    } else {
+      data.forEach((item) => {
+        // Create a new div for each feedback item
+        const feedbackCard = document.createElement("div");
+        feedbackCard.style = `
     background-color: white;
     height: auto;
     width: 19cm;
@@ -179,7 +204,7 @@ fetch("/feedback/customer")
     margin-bottom: 20px;  // Add margin to separate each card
   `;
 
-      const cardContent = `
+        const cardContent = `
     <div
       style="
         width: 100%;
@@ -211,9 +236,10 @@ fetch("/feedback/customer")
     </div>
   `;
 
-      feedbackCard.innerHTML = cardContent;
-      feedbackContainer.appendChild(feedbackCard);
-    });
+        feedbackCard.innerHTML = cardContent;
+        feedbackContainer.appendChild(feedbackCard);
+      });
+    }
   });
 
 function delfeedback(f_id) {

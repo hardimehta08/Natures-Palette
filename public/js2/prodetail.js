@@ -10,7 +10,12 @@ const productName = getProductNameFromURL();
 fetch(`/product/${productName}`)
   .then((response) => response.json())
   .then((data) => {
+    console.log(data);
+
+    // Store product details globally
     prodid = data.productId;
+
+    // Update product details on the page
     document.getElementById("product-title").textContent = data.name.replace(
       /_/g,
       " "
@@ -19,30 +24,17 @@ fetch(`/product/${productName}`)
     document.getElementById("product-description").innerHTML =
       data.description.replace(/_/g, " ");
     document.getElementById("featured-image").src = "../" + data.images[0];
-    const reviewContainer = document.getElementById("review-container");
 
-    // Clear any existing content in the review container
-    reviewContainer.innerHTML = "";
+    // Display stock quantity on the page
+    const stockElement = document.createElement("p");
+    stockElement.id = "product-stock";
+    stockElement.textContent = `Stock available: ${data.stock}`;
+    document.getElementById("product-stock").appendChild(stockElement);
 
-    // Loop through the feedback array and create elements to display the feedback
-    data.feedback.forEach((feedback) => {
-      const reviewElement = document.createElement("div");
-      reviewElement.classList.add("review");
+    // Store stock quantity globally for validation
+    window.productStock = data.stock;
 
-      reviewElement.innerHTML = `
-    <div class="profile">
-      <strong>${feedback.username}</strong>
-      <div class="stars">${"⭐".repeat(feedback.star_rating)}</div>
-      <div class="date">${new Date(feedback.f_date).toLocaleDateString(
-        "en-GB"
-      )}</div>
-      <div class="comment">${feedback.f_desc}</div>
-    </div>
-  `;
-
-      reviewContainer.appendChild(reviewElement);
-    });
-
+    // Generate thumbnail images dynamically
     const thumbnailContainer = document.getElementById("thumbnail-container");
     data.images.forEach((src, index) => {
       const img = document.createElement("img");
@@ -54,8 +46,27 @@ fetch(`/product/${productName}`)
       });
       thumbnailContainer.appendChild(img);
     });
-  });
 
+    // Display feedback dynamically
+    const reviewContainer = document.getElementById("review-container");
+    reviewContainer.innerHTML = ""; // Clear existing feedback
+    data.feedback.forEach((feedback) => {
+      const reviewElement = document.createElement("div");
+      reviewElement.classList.add("review");
+
+      reviewElement.innerHTML = `
+        <div class="profile">
+          <strong>${feedback.username}</strong>
+          <div class="stars">${"⭐".repeat(feedback.star_rating)}</div>
+          <div class="date">${new Date(feedback.f_date).toLocaleDateString(
+            "en-GB"
+          )}</div>
+          <div class="comment">${feedback.f_desc}</div>
+        </div>
+      `;
+      reviewContainer.appendChild(reviewElement);
+    });
+  });
 function wishlist() {
   fetch("/wishlist/add", {
     method: "POST",
@@ -85,10 +96,22 @@ function wishlist() {
 const quantity = document.getElementById("quantity");
 let quantityValue;
 function addtocart() {
-  quantityValue = quantity.valueAsNumber;
-  if (isNaN(quantityValue) || quantityValue <= 0) {
-    quantityValue = 1; // Set default value to 1 if the input is invalid
+  const quantityValue = quantity.valueAsNumber; // Get user input
+
+  // Check if quantity exceeds available stock
+  if (quantityValue > window.productStock) {
+    alert(
+      `You cannot order more than the available stock (${window.productStock}).`
+    );
+    return; // Stop the function here
   }
+
+  if (isNaN(quantityValue) || quantityValue <= 0) {
+    alert("Please enter a valid quantity.");
+    return;
+  }
+
+  // Proceed to add to cart
   fetch("/cart/addFromProduct", {
     method: "POST",
     headers: {
@@ -109,6 +132,12 @@ function addtocart() {
     })
     .then((data) => {
       document.getElementById("message").innerHTML = data.message;
+
+      // Update stock dynamically
+      window.productStock -= quantityValue; // Subtract ordered quantity from stock
+      document.getElementById(
+        "product-stock"
+      ).textContent = `Stock available: ${window.productStock}`;
     })
     .catch((error) => {
       const errorObj = JSON.parse(error.message);
@@ -177,7 +206,7 @@ document.getElementById("write-review").addEventListener("click", () => {
   stars.forEach((star) => {
     star.addEventListener("click", () => {
       starRating = star.getAttribute("data-rating");
-  
+
       // Reset all stars to their default state
       stars.forEach((s, index) => {
         s.style.color = index < starRating ? "yellow" : "black"; // Change to yellow for selected stars

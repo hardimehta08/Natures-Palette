@@ -4,7 +4,7 @@ const mysql = require("mysql2");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -162,14 +162,12 @@ exports.unassignDelivery = (req, res) => {
   );
 };
 
-
-
 exports.fetchContactMessages = (req, res) => {
-  const query = 'SELECT * FROM contact ORDER BY submitted_at DESC';
+  const query = "SELECT * FROM contact ORDER BY submitted_at DESC";
   db.query(query, (err, results) => {
     if (err) {
       console.error(err);
-      return res.status(500).send('Error fetching contact messages');
+      return res.status(500).send("Error fetching contact messages");
     }
     res.json(results); // Send the results to the frontend
   });

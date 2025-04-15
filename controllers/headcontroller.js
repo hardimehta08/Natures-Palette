@@ -6,7 +6,7 @@ const sendfileController = require("./filecontroller");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -174,76 +174,75 @@ const getSubCategoryData = (app) => {
 };
 
 const getSubSubCategoryData = (req, res) => {
-  const { subcategory, subsubcategory } = req.params;
-  getCategoryName(subcategory, (categoryName) => {
-    if (!categoryName) {
-      res.status(404).json({ error: "Category not found" });
+  const { subcategory,subsubcategory } = req.params;
+
+  const fetchSubIdQuery = `SELECT sub_id FROM subsubcategory WHERE ss_name = ?`;
+  db.query(fetchSubIdQuery, [subsubcategory], (err, subResult) => {
+    if (err || subResult.length === 0) {
+      console.error("Error fetching sub_id:", err);
+      res.status(404).json({ error: "Subcategory not found" });
       return;
     }
 
-    const sql = `SELECT ss_desc as description FROM subsubcategory WHERE ss_name = ?`;
-    db.query(sql, [subsubcategory], (err, result) => {
-      if (err) {
-        console.error("Error executing description query:", err);
-        res.status(500).json({ error: "Error executing description query" });
+    const subId = subResult[0].sub_id;
+    getCategoryName(subId, (categoryName) => {
+      if (!categoryName) {
+        res.status(404).json({ error: "Category not found" });
         return;
       }
-      const desc = result.length > 0 ? result[0].description : null;
-
-      const query = `
-        SELECT id, name, price, PATH1 as image
-        FROM ${categoryName}
-        JOIN image ON ${categoryName}.id = image.product_id
-        WHERE ${subcategory} LIKE ?
-      `;
-
-      db.query(query, [`%${subsubcategory}%`], (err, results) => {
+      const descriptionQuery = `SELECT ss_desc as description FROM subsubcategory WHERE ss_name = ?`;
+      db.query(descriptionQuery, [subsubcategory], (err, descResult) => {
         if (err) {
-          console.error("Error executing query:", err);
-          res.status(500).json({ error: "Error executing query" });
+          console.error("Error fetching description:", err);
+          res.status(500).json({ error: "Error fetching description" });
           return;
         }
-        results.map((result) => {
-          result.image = result.image.toString();
+
+        const desc = descResult.length > 0 ? descResult[0].description : null;
+
+        // Fetch final data
+        const finalQuery = `
+          SELECT id, name, price, PATH1 as image
+          FROM ${categoryName}
+          JOIN image ON ${categoryName}.id = image.product_id
+          WHERE ${subcategory} LIKE ?
+        `;
+        db.query(finalQuery, [`%${subsubcategory}%`], (err, results) => {
+          if (err) {
+            console.error("Error fetching final data:", err);
+            res.status(500).json({ error: "Error fetching final data" });
+            return;
+          }
+          results.map((result) => {
+            result.image = result.image.toString();
+          });
+          res.json({ items: results, description: desc });
         });
-        res.json({ items: results, description: desc });
       });
     });
   });
 };
 
-const getCategoryName = (subcategory, callback) => {
-  const subcategoryQuery = `
-    SELECT cy_id 
-    FROM Subcategory 
-    WHERE sub_name = ?
+const getCategoryName = (subId, callback) => {
+  const categoryQuery = `
+    SELECT cy_name 
+    FROM Category 
+    WHERE cy_id = (
+      SELECT cy_id 
+      FROM Subcategory 
+      WHERE sub_id = ?
+    )
   `;
 
-  db.query(subcategoryQuery, [subcategory], (err, subResults) => {
-    if (err || subResults.length === 0) {
-      console.error("Error executing subcategory query:", err);
+  db.query(categoryQuery, [subId], (err, catResults) => {
+    if (err || catResults.length === 0) {
+      console.error("Error fetching category name:", err);
       callback(null);
       return;
     }
 
-    const categoryId = subResults[0].cy_id;
-
-    const categoryQuery = `
-      SELECT cy_name 
-      FROM Category 
-      WHERE cy_id = ?
-    `;
-
-    db.query(categoryQuery, [categoryId], (err, catResults) => {
-      if (err || catResults.length === 0) {
-        console.error("Error executing category query:", err);
-        callback(null);
-        return;
-      }
-
-      const categoryName = catResults[0].cy_name;
-      callback(categoryName);
-    });
+    const categoryName = catResults[0].cy_name;
+    callback(categoryName);
   });
 };
 

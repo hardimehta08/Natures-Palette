@@ -6,7 +6,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -143,9 +143,7 @@ const loginUser = (req, res) => {
 // Get User Profile
 const getUserProfile = (req, res) => {
   if (!req.session.userId) {
-    return res
-      .status(401)
-      .json({ error: "Please login to access this information." });
+    return res.json({ message: "Please login to access this information." });
   }
 
   const sql =
@@ -164,9 +162,7 @@ const getUserProfile = (req, res) => {
 // Update User Profile
 const updateUserProfile = (req, res) => {
   if (!req.session.userId) {
-    return res
-      .status(401)
-      .json({ message: "Please login to update your profile." });
+    return res.json({ message: "Please login to update your profile." });
   }
 
   const { username, email, address, pincode, mobile } = req.body;
@@ -216,9 +212,7 @@ const updateUserProfile = (req, res) => {
 // Update Password
 const updatePassword = (req, res) => {
   if (!req.session.userId) {
-    return res
-      .status(401)
-      .json({ message: "Please login to update your password." });
+    return res.json({ message: "Please login to update your password." });
   }
 
   const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -270,6 +264,9 @@ const updatePassword = (req, res) => {
 
 // Logout User
 const logoutUser = (req, res) => {
+  if (!req.session.userId) {
+    return res.json({ message: "You need to login to logout." });
+  }
   req.session.destroy((err) => {
     if (err) return res.status(500).json({ error: "Error logging out." });
     res.status(200).json({ message: "Logout successful." });

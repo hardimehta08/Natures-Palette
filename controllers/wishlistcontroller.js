@@ -4,7 +4,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -53,7 +53,9 @@ const addItemToWishlist = (req, res) => {
 
       if (results.length > 0) {
         // If the product already exists, return a message
-        return res.status(200).json({ message: "Item is already in the wishlist." });
+        return res
+          .status(200)
+          .json({ message: "Item is already in the wishlist." });
       }
 
       // If the product does not exist, add it to the wishlist
@@ -69,8 +71,7 @@ const addItemToWishlist = (req, res) => {
           sql,
           [newWishlistId, req.session.userId, productId],
           (err, result) => {
-            if (err)
-              return res.status(500).json({ error: "Database error." });
+            if (err) return res.status(500).json({ error: "Database error." });
 
             res.status(200).json({ message: "Item added to wishlist." });
           }

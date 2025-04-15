@@ -8,7 +8,7 @@ const nodemailer = require("nodemailer");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -585,7 +585,6 @@ function generatePDFBill(
 
 // ✅ Function to Send Invoice via Email
 function sendInvoiceEmail(order, customerEmail, filePath, res) {
-
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,

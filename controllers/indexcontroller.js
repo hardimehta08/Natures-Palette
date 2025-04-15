@@ -3,7 +3,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -127,7 +127,7 @@ const fa = (req, res) => {
   const maxIdQuery = `
     SELECT PRODUCT_ID AS MaxProductId
     FROM image
-    WHERE IMG_ID LIKE 'IT%'
+    WHERE IMG_ID LIKE 'IMG%'
     ORDER BY PRODUCT_ID DESC
     LIMIT 8;
   `;

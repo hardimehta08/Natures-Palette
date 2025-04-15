@@ -18,181 +18,7 @@
 
     <!--=============== CSS ===============-->
     <link rel="stylesheet" href="../css/style.css" />
-    <style>
-      img#order_image {
-        height: 150px;
-        width: 150px;
-      }
-      /*=============== ACCOUNTS ===============*/
-      .accounts {
-        margin-top: 5rem;
-      }
-      .accounts__container {
-        grid-template-columns: 4fr 8fr;
-        font-size: 1.6rem;
-      }
-
-      .account__tabs {
-        border: 1px solid gray;
-        border-radius: 0.25rem;
-      }
-
-      .account__tab {
-        padding: 1rem 2rem;
-        color: hsl(0, 0%, 13%);
-        display: flex;
-        column-gap: 0.625rem;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0, 0, 0.05, 1);
-      }
-
-      .account__tab.active-tab {
-        background-color: hsl(160, 21%, 61%);
-        color: black;
-      }
-
-      .account__tab:not(:last-child) {
-        border-bottom: 1px solid hsl(113, 15%, 90%);
-      }
-
-      .tab__content:not(.active-tab) {
-        display: none;
-      }
-
-      .tab__content {
-        border: 1px solid hsl(113, 15%, 90%);
-      }
-
-      .tab__header {
-        background-color: hsl(0, 0%, 93%);
-        border-bottom: 1px solid hsl(113, 15%, 90%);
-        padding: 1rem;
-        /* font-size: 1rem; */
-      }
-
-      .tab__body {
-        padding: 1rem;
-      }
-      .placed__order-table {
-        width: 100%;
-      }
-      .placed__order-table thead tr th {
-        color: hsl(0, 0%, 13%);
-        text-align: left;
-      }
-
-      .placed__order-table thead tr th,
-      .placed__order-table tbody tr td {
-        border: 1px solid hsl(113, 15%, 90%);
-        padding: 0.5rem;
-        /* font-size: 1rem; */
-      }
-
-      .view__order,
-      .edit {
-        color: hsl(176, 88%, 27%);
-      }
-
-      .address {
-        font-style: normal;
-        /* font-size: 1rem; */
-        line-height: 1.5;
-      }
-
-      .city {
-        margin-bottom: 0.25rem;
-      }
-
-      .edit {
-        padding-top: 1rem;
-      }
-      .btn {
-        display: inline-block;
-        border: 2px solid hsl(176, 88%, 27%);
-        color: black;
-        padding-inline: 1.75rem;
-        /* padding: 0.75rem 1.75rem; */
-        height: 49px;
-        line-height: 43px;
-        font-weight: 700;
-        border-radius: 0.25rem;
-        transition: all 0.4s cubic-bezier(0, 0, 0.05, 1);
-      }
-
-      .btn:hover {
-        color: white;
-        background-color: hsl(176, 88%, 27%);
-      }
-
-      .btn--md {
-        height: 45px;
-        line-height: 40px;
-      }
-      .form__input {
-        padding: 10px;
-      }
-      /*=============== BREAKPOINTS ===============*/
-      /* For large devices */
-      @media screen and (max-width: 1400px) {
-        .accounts__container {
-          grid-template-columns: 3fr 9fr;
-        }
-      }
-      /* For medium devices */
-      @media screen and (max-width: 992px) {
-        .accounts__container {
-          grid-template-columns: 1fr;
-        }
-
-        .table thead tr th:nth-child(1),
-        .table tbody tr td:nth-child(1) {
-          width: 140px;
-        }
-
-        .table thead tr th:nth-child(2),
-        .table tbody tr td:nth-child(2) {
-          width: 330px;
-        }
-
-        .table thead tr th:nth-child(3),
-        .table tbody tr td:nth-child(3) {
-          width: 80px;
-        }
-
-        .table thead tr th:nth-child(4),
-        .table tbody tr td:nth-child(4) {
-          width: 220px;
-        }
-
-        .table thead tr th:nth-child(5),
-        .table tbody tr td:nth-child(5) {
-          width: 160px;
-        }
-
-        .table thead tr th:nth-child(6),
-        .table tbody tr td:nth-child(6) {
-          width: 100px;
-        }
-      }
-
-      @media screen and (max-width: 768px) {
-        .tab__header,
-        .tab__body {
-          padding: 0.75rem;
-        }
-      }
-      #del_feedback {
-        display: inline;
-        padding: 5px;
-        position: absolute;
-        right: 10px;
-        border: 3px solid red;
-      }
-      #del_feedback:hover {
-        background-color: red;
-        color: white;
-      }
-    </style>
+    <link rel="stylesheet" href="../css/myaccount.css" />
     <title>My Account</title>
   </head>
   <body>
@@ -210,16 +36,28 @@
             <p class="account__tab active-tab" data-target="#dashboard">
               <i class="fi fi-rs-settings-sliders"></i> Dashboard
             </p>
-            <p class="account__tab" data-target="#orders">
+            <p class="account__tab" data-target="#orders" id="order_btn">
               <i class="fi fi-rs-shopping-bag"></i> Orders
             </p>
-            <p class="account__tab" data-target="#feedback-user">
+            <p
+              class="account__tab"
+              data-target="#feedback-user"
+              id="feedback_btn"
+            >
               <i class="fi fi-rs-user"></i> Feedback
             </p>
-            <p class="account__tab" data-target="#update-profile">
+            <p
+              class="account__tab"
+              data-target="#update-profile"
+              id="update_btn"
+            >
               <i class="fi fi-rs-user"></i> Update Profile
             </p>
-            <p class="account__tab" data-target="#change-password">
+            <p
+              class="account__tab"
+              data-target="#change-password"
+              id="change_btn"
+            >
               <i class="fi fi-rs-settings-sliders"></i> Change Password
             </p>
             <button id="logout" onclick="logout()">
@@ -251,6 +89,7 @@
                       display: flex;
                       align-items: left !important;
                     "
+                    id="order_container"
                   >
                     <div style="width: 50%; padding: 1rem !important">
                       <img

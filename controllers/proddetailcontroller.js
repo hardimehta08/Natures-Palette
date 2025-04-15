@@ -3,7 +3,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -19,7 +19,6 @@ conn.connect((err) => {
 const getProductDetails = (req, res) => {
   const productName = req.params.name;
 
-  // Step 1: Get views from INFORMATION_SCHEMA
   const viewsQuery = `
     SELECT table_name 
     FROM INFORMATION_SCHEMA.views 
@@ -38,8 +37,6 @@ const getProductDetails = (req, res) => {
       return;
     }
 
-    // Step 2: Loop through the views to find the product details
-    const productDetails = [];
     let completed = 0;
     let found = false;
 
@@ -49,6 +46,7 @@ const getProductDetails = (req, res) => {
           pd.id AS productId,
           pd.name AS name,
           pd.price AS price,
+          pd.stock AS stock,
           img.PATH1 AS image1,
           img.PATH2 AS image2,
           img.PATH3 AS image3,
@@ -106,6 +104,7 @@ const getProductDetails = (req, res) => {
                 productId: product.productId,
                 name: product.name,
                 price: product.price,
+                stock: product.stock,
                 images: [
                   product.image1 ? product.image1.toString() : null,
                   product.image2 ? product.image2.toString() : null,

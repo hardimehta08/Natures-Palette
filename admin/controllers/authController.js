@@ -6,38 +6,46 @@ const { sendMail } = require("./mailer");
 const con = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
 const ensureAuthenticated = (req, res, next) => {
   if (!req.session.user) {
-    return res.status(401).json({ success: false, message: "Unauthorized: Please log in" });
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized: Please log in" });
   }
   next();
 };
-
 
 // Register User
 exports.registerUser = async (req, res) => {
   const { username, email, password } = req.body; // Removed cpassword since frontend validates it
 
   if (!username || !email || !password) {
-    return res.status(400).json({ success: false, message: "All fields are required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "All fields are required" });
   }
 
   try {
     const connection = await con.getConnection();
-    
+
     // Check if email already exists
     const [existingUsers] = await connection.query(
       "SELECT * FROM admin WHERE a_email = ?",
       [email]
     );
-    
+
     if (existingUsers.length > 0) {
       connection.release();
-      return res.status(400).json({ success: false, message: "Email already registered. Please login." });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Email already registered. Please login.",
+        });
     }
 
     // Hash password
@@ -51,11 +59,11 @@ exports.registerUser = async (req, res) => {
 
     connection.release();
     req.session.registered = true; // Optional: only if you use this elsewhere
-    
+
     res.json({
       success: true,
       message: "User registered successfully",
-      redirect: "/html/login.html" // Match frontend path
+      redirect: "/html/login.html", // Match frontend path
     });
   } catch (error) {
     console.error("Error registering user:", error);
@@ -68,7 +76,9 @@ exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ success: false, message: "All fields are required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "All fields are required" });
   }
 
   try {
@@ -80,7 +90,9 @@ exports.loginUser = async (req, res) => {
 
     if (users.length === 0) {
       connection.release();
-      return res.status(401).json({ success: false, message: "Invalid email or password" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
     }
 
     const user = users[0];
@@ -88,22 +100,24 @@ exports.loginUser = async (req, res) => {
 
     if (!passwordMatch) {
       connection.release();
-      return res.status(401).json({ success: false, message: "Invalid email or password" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
     }
 
     req.session.user = {
       a_id: user.a_id,
       username: user.a_username,
       email: user.a_email,
-      role: user.a_role || "Admin",  // Default to 'Admin' if no role is provided
-      photo: user.a_photo || "/ad-images/default.jpg",  // Default to '/ad-images/default.jpg' if no photo exists
+      role: user.a_role || "Admin", // Default to 'Admin' if no role is provided
+      photo: user.a_photo || "/ad-images/default.jpg", // Default to '/ad-images/default.jpg' if no photo exists
     };
 
     connection.release();
     res.json({
       success: true,
       message: "Login successful",
-      redirect: "/html/index.html" // Match frontend path
+      redirect: "/html/index.html", // Match frontend path
     });
   } catch (error) {
     console.error("Error logging in user:", error);
@@ -169,7 +183,9 @@ exports.forgotPassword = async (req, res) => {
     );
   } catch (error) {
     console.error("Error in forgotPassword:", error);
-    res.status(500).json({ success: false, message: "Failed to send reset email" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to send reset email" });
   }
 };
 
@@ -251,10 +267,15 @@ exports.logoutUser = (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       console.error("Error logging out:", err);
-      return res.status(500).json({ success: false, message: "Failed to logout" });
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to logout" });
     }
     res.clearCookie("connect.sid");
-    res.json({ success: true, message: "Logged out successfully", redirect: "/html/login.html" });
+    res.json({
+      success: true,
+      message: "Logged out successfully",
+      redirect: "/html/login.html",
+    });
   });
 };
-

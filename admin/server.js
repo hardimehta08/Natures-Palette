@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const con = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -60,7 +60,9 @@ app.use((req, res, next) => {
 
 app.use((err, req, res, next) => {
   console.error("Server error:", err.stack);
-  res.status(500).json({ message: "Internal server error", error: err.message });
+  res
+    .status(500)
+    .json({ message: "Internal server error", error: err.message });
 });
 
 // Routes

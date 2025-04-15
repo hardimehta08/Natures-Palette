@@ -3,7 +3,7 @@ const mysql = require("mysql2/promise");
 const conn = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405", // Your database password
+  password: "Hardi@sql8705", // Your database password
   database: "project(1)", // Your database name
   waitForConnections: true,
   connectionLimit: 10, // Maximum number of concurrent connections
@@ -163,8 +163,10 @@ const getAllOrders = async (req, res) => {
 
 const getOrdersByCustomerId = async (req, res) => {
   try {
+    if (req.session.userId == "") {
+      return res.json({ message: "Unauthorized" });
+    }
     const connection = await conn;
-    // Step 1: Retrieve the order details
     const orderQuery = `
       SELECT o.o_id, o.o_date, o.o_status, od.Product_id
       FROM order_master AS o
@@ -181,7 +183,6 @@ const getOrdersByCustomerId = async (req, res) => {
 
     const productId = orderResult[0].Product_id;
 
-    // Step 2: Dynamically fetch the views
     const viewsQuery = `
     SELECT table_name
     FROM INFORMATION_SCHEMA.views
@@ -195,7 +196,6 @@ const getOrdersByCustomerId = async (req, res) => {
 
     let productDetailsTable = null;
 
-    // Step 3: Search for the product ID in each view
     for (const view of viewsResult) {
       const checkProductIdQuery = `
       SELECT COUNT(*) AS count
@@ -215,7 +215,6 @@ const getOrdersByCustomerId = async (req, res) => {
         .json({ message: "Product ID not found in any views" });
     }
 
-    // Step 4: Fetch the product details
     const productQuery = `
       SELECT pd.name, pd.price, img.PATH1 as image
       FROM ${productDetailsTable} AS pd
@@ -228,7 +227,6 @@ const getOrdersByCustomerId = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Combine order and product details in response
     const response = {
       o_id: orderResult[0].o_id,
       o_date: orderResult[0].o_date,

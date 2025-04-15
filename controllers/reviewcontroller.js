@@ -4,7 +4,7 @@ const mysql = require("mysql");
 const conn = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Hetalsql@1405",
+  password: "Hardi@sql8705",
   database: "project(1)",
 });
 
@@ -114,7 +114,7 @@ const userfeedback = async (req, res) => {
         .then((results) => {
           const feedbackData = results.flat();
           if (feedbackData.length === 0) {
-            return res.status(404).json({ error: "No feedback data found." });
+            return res.json({ message: "No feedback data found." });
           }
           res.status(200).json(feedbackData);
         })
