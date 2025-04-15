@@ -56,13 +56,11 @@ body {
 
 .section__title span {
   color: #684929;
-  /* color: hsl(176, 88%, 27%); */
   letter-spacing: 0.1rem;
 }
 
 .new__price {
   color: #443826;
-  /* color: hsl(176, 88%, 27%); */
   font-weight: 600;
   font-size: 2rem;
 }
@@ -2290,8 +2288,7 @@ button.cta:hover {
   padding: 12px;
   border-radius: 0 0 18px 18px;
   transition: 0.4s;
-  text-shadow: 0 0 5px #ffe346, /* soft yellow glow */ 0 0 10px #ffd700,
-    0 0 15px #f9b536; /* deeper orange glow */
+  text-shadow: 0 0 5px #ffe346, 0 0 10px #ffd700, 0 0 15px #f9b536;
   visibility: hidden;
 }
 
@@ -2343,4 +2340,28 @@ button.cta:hover {
   font-size: 2rem;
   margin-top: 5px;
   margin-bottom: 5px;
+}
+#heading1 {
+  font-size: 5rem;
+  text-align: center;
+  font-weight: 400;
+  color: #333;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+  text-decoration: underline;
+}
+#resetFilters {
+  padding: 5px;
+  margin-top: -20px;
+  margin-left: 20px;
+  font-size: large;
+  border: 5px solid #27ae60;
+}
+#resetFilters:hover {
+  color: white;
+  margin-top: -20px;
+  margin-left: 20px;
+  background-color: #27ae60;
+  font-size: large;
+  border: 5px solid #27ae60;
 }

@@ -66,13 +66,13 @@
 /*********************************
 6.2 Cart
 *********************************/
-/* Align items perfectly within the container */
+
 .box2 {
   display: flex;
   justify-content: space-between;
-  align-items: center; /* Center items vertically */
-  padding: 10px 0; /* Add padding for better readability */
-  border: none; /* Keeping borders as you prefer */
+  align-items: center;
+  padding: 10px 0;
+  border: none;
 }
 
 .cart_total {
@@ -87,13 +87,13 @@
 }
 
 .cart_total ul li {
-  display: flex; /* Align items properly */
-  justify-content: space-between; /* Align items perfectly within the container */
+  display: flex;
+  justify-content: space-between;
   width: 100%;
   font-size: 14px;
   color: #2f2f2f;
   border-bottom: solid 1px #000000;
-  padding: 50px 0; /* Adjust padding for better readability */
+  padding: 50px 0;
 }
 
 .cart_total_price {
@@ -109,7 +109,7 @@
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  margin-top: 42px; /* Adjusted to one value */
+  margin-top: 42px;
   cursor: pointer;
   transition: all 200ms ease;
   margin-bottom: 3rem;
@@ -117,8 +117,8 @@
 
 .cart_total_button a {
   font-size: 15px;
-  color: #ffffff; /* Ensure text color is white for contrast */
-  text-decoration: none; /* Remove underline */
+  color: #ffffff;
+  text-decoration: none;
 }
 
 .cart_total_button:hover {

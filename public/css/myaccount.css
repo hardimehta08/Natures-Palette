@@ -46,7 +46,6 @@ img#order_image {
   background-color: hsl(0, 0%, 93%);
   border-bottom: 1px solid hsl(113, 15%, 90%);
   padding: 1rem;
-  /* font-size: 1rem; */
 }
 
 .tab__body {
@@ -64,7 +63,6 @@ img#order_image {
 .placed__order-table tbody tr td {
   border: 1px solid hsl(113, 15%, 90%);
   padding: 0.5rem;
-  /* font-size: 1rem; */
 }
 
 .view__order,
@@ -74,7 +72,6 @@ img#order_image {
 
 .address {
   font-style: normal;
-  /* font-size: 1rem; */
   line-height: 1.5;
 }
 
@@ -90,7 +87,6 @@ img#order_image {
   border: 2px solid hsl(176, 88%, 27%);
   color: black;
   padding-inline: 1.75rem;
-  /* padding: 0.75rem 1.75rem; */
   height: 49px;
   line-height: 43px;
   font-weight: 700;
