@@ -1,35 +1,32 @@
-const nodemailer = require('nodemailer');
+const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
   auth: {
-    user: 'Natures.Palette099@gmail.com',
-    pass: 'edtf trae flab nrit',
+    user: "Natures.Palette099@gmail.com",
+    pass: "edtf trae flab nrit",
   },
 });
 
-async function sendMail(to, subject, text, retries = 3) {
+function sendMail(to, subject, text, retries = 3) {
   const mailOptions = {
-    from: 'Natures.Palette099@gmail.com',
+    from: "Natures.Palette099@gmail.com",
     to: to,
     subject: subject,
-    html: text, // Use HTML to ensure clickable link
+    text: text,
   };
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const info = await transporter.sendMail(mailOptions);
-      console.log('Email sent:', info.response);
-      return info;
-    } catch (error) {
-      console.log('Error sending email:', error);
-      if (attempt < retries) {
-        console.log(`Retrying... (${retries - attempt} retries left)`);
-      } else {
-        throw error;
+  transporter.sendMail(mailOptions, function (error, info) {
+    if (error) {
+      console.log("Error sending email:", error);
+      if (retries > 0) {
+        console.log(`Retrying... (${retries} retries left)`);
+        sendMail(to, subject, text, retries - 1);
       }
+    } else {
+      console.log("Email sent:", info.response);
     }
-  }
+  });
 }
 
 module.exports = { sendMail };
