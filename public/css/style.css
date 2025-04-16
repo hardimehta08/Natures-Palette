@@ -59,11 +59,6 @@ body {
   letter-spacing: 0.1rem;
 }
 
-.new__price {
-  color: #443826;
-  font-weight: 600;
-  font-size: 2rem;
-}
 .slider {
   display: flex;
   align-items: center;
@@ -89,7 +84,7 @@ body {
   margin: 0;
   z-index: 1000;
   font-size: medium;
-  font-family: Quicksand;
+  font-family: "Quicksand", sans-serif;
 }
 
 #dropdown-menu li {
@@ -727,23 +722,6 @@ a {
   text-align: center;
   margin-bottom: 30px;
 }
-.filter-button {
-  font-weight: 600;
-  font-size: 1.25rem;
-  padding: 15px 20px;
-  margin-right: 15px;
-  border: none;
-  background-color: #e4c09a;
-  color: black;
-  cursor: pointer;
-  border-radius: 5px;
-}
-.filter-button:hover {
-  background-color: #61d68c;
-}
-.filter-button.active {
-  background-color: #61d68c;
-}
 /* Product Grid */
 .product-section {
   position: relative;
@@ -841,33 +819,6 @@ a {
   letter-spacing: 0.2rem;
   line-height: 1.5;
 }
-/* Icons Container */
-.product-icons {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  gap: 10px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-/* Show Icons on Hover */
-.product-card:hover .product-icons {
-  opacity: 1;
-}
-
-.product__icons {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  display: flex;
-  column-gap: 0.5rem;
-  transform: translate(-50%, -50%);
-  transition: all 0.2s cubic-bezier(0, 0, 0.05, 1);
-}
-
 .product-section {
   margin-bottom: 5rem;
 }
@@ -878,50 +829,13 @@ a {
   position: relative;
 }
 .title-text {
-  font-family: Quicksand;
+  font-family: "Quicksand", sans-serif;
   font-size: 3.5rem;
   font-weight: 500;
   text-align: center;
   letter-spacing: 0.3rem;
   margin-bottom: 4rem;
   position: relative;
-}
-
-.story {
-  width: 95%;
-  margin: 0 auto;
-  padding: 4rem;
-  font-size: 1.6rem;
-}
-
-.story__text {
-  font-size: 1.3rem;
-}
-
-.story__text .heading-tertiary {
-  font-size: 1.6rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
-  padding-top: 2rem;
-}
-
-.story__text p {
-  letter-spacing: 0.2rem;
-  line-height: 1.5;
-}
-
-.rate__btn {
-  display: flex;
-  align-items: flex-end;
-  margin-top: 3rem;
-  border: 2px solid #088178;
-  font-size: 1.2rem;
-  background-color: transparent;
-  padding: 10px 30px;
-}
-.rate__btn:hover {
-  background-color: #088178;
-  color: white;
 }
 @media screen and (max-width: 600px) {
   .rating .title-text {
@@ -960,8 +874,6 @@ a {
 
 .footer__link {
   font-style: normal;
-  color: purple;
-  font-size: 1.5rem;
   letter-spacing: 0.1rem;
   margin-bottom: 1rem;
   display: block;
@@ -1202,9 +1114,6 @@ a {
   justify-content: space-between;
   flex-wrap: wrap;
 }
-.shop-page-text p {
-  font-size: 2rem;
-}
 .top {
   display: flex;
   align-items: center;
@@ -1214,11 +1123,6 @@ a {
 .top form {
   margin-left: 3.5rem;
   margin-bottom: 2rem;
-}
-.__title {
-  font-size: 2rem;
-  font-weight: 500;
-  letter-spacing: 0.1rem;
 }
 
 .top select {
@@ -1292,7 +1196,7 @@ a {
 
 .main img {
   width: 100%;
-  max-width: 500px;
+  max-width: 400px;
   height: auto;
   border: 2px solid gray;
   padding: 5px;
@@ -1460,7 +1364,7 @@ a {
 }
 
 .product-description .product-about :where(h2, p) {
-  font-family: QuickSand, sans-serif;
+  font-family: "Quicksand", sans-serif;
   margin-bottom: 15px;
 }
 .product-about p {
