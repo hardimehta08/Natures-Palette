@@ -9,7 +9,7 @@ const db = mysql.createConnection({
 });
 
 // Define the base URL for the client-side images
-const CLIENT_IMAGE_BASE_URL = "http://localhost:4000/images/"; // Adjust this to your client server's URL
+const CLIENT_IMAGE_BASE_URL = "http://localhost:3000/"; // Adjust this to your client server's URL
 
 // Fetch all orders with optional status filter
 exports.getAllOrders = (req, res) => {
@@ -182,7 +182,10 @@ WHERE od.O_id = ? AND od.Product_id IN (?)
                     return;
                   }
                   results.forEach((result) => {
-                    if (result.image) result.image = result.image.toString();
+                    if (result.image) {
+                      result.image = result.image.replace(/^Database\//, ""); // Remove leading "Database/" if present
+                      result.image = `${CLIENT_IMAGE_BASE_URL}${result.image}`;
+                    }
                   });
                   console.log(`Results from ${tableName}:`, results);
                   resolve(

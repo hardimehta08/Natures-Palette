@@ -40,7 +40,8 @@ document.addEventListener("DOMContentLoaded", () => {
         alert(
           data.message ||
             "Password reset successful! Close this page and go to the website and log in with your new password."
-        );
+          );
+          window.location.href = "/login";
       } else {
         const error = await response.json();
         errorMessage.textContent = error.message || "Failed to reset password.";

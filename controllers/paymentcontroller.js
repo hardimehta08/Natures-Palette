@@ -21,7 +21,24 @@ db.connect((err) => {
 });
 const generateQRCode = async (paymentDetails) => {
   try {
-    const qrCodeData = `upi://pay?pa=${paymentDetails.recipient}&pn=Nature's Palette&mc=&tid=${paymentDetails.orderId}&tn=${paymentDetails.purpose}&am=${paymentDetails.amount}&cu=INR`;
+    console.log(paymentDetails);
+    // Validate required fields
+    if (!paymentDetails.recipient || !paymentDetails.amount) {
+      throw new Error("Missing required payment details!");
+    }
+
+    // Construct UPI URI with proper encoding
+    const qrCodeData = `upi://pay?pa=${encodeURIComponent(
+      paymentDetails.recipient
+    )}&pn=${encodeURIComponent(
+      "Nature's Palette"
+    )}&mc=&tid=${encodeURIComponent(
+      paymentDetails.orderId
+    )}&tn=${encodeURIComponent(paymentDetails.purpose)}&am=${encodeURIComponent(
+      paymentDetails.amount
+    )}&cu=INR`;
+
+    // Generate QR Code
     return await QRCode.toDataURL(qrCodeData);
   } catch (error) {
     console.error("QR Code generation error:", error);

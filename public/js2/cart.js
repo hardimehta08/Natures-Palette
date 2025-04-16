@@ -17,7 +17,7 @@ function loadCart(data) {
         <td><img src="${item.image}" alt="${item.name}" width="50"></td>
         <td><a href="/product.html?product=${item.name}">${item.name}</a></td>
         <td>&#8377; ${item.price}</td>
-        <td><input type="number" value="${item.CA_QTY}" id="qty_num${item.CA_ID}" style="width:30px;" onchange="updatecart('${item.CA_ID}', this.value)"></td>
+        <td><input type="number" value="${item.CA_QTY}" id="qty_num${item.CA_ID}" style="width:40px;height:40px;font-size:20px;text-align:center;" onchange="updatecart('${item.CA_ID}', this.value)"></td>
         <td>&#8377; ${item.total}</td>
         <td><button class="add-btn" onclick="removeFromCart('${item.CA_ID}'); updateCartAndWishlistCounts();">Remove</button></td>
       </tr>

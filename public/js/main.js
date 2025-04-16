@@ -53,17 +53,19 @@ tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     const target = document.querySelector(tab.dataset.target);
 
-    tabsContents.forEach((tabsContent) => {
-      tabsContent.classList.remove("active-tab");
-    });
-
-    target.classList.add("active-tab");
-
+    // First, remove 'active-tab' class from all tabs
     tabs.forEach((tab) => {
       tab.classList.remove("active-tab");
     });
 
+    // Then, remove 'active-tab' class from all content sections
+    tabsContents.forEach((tabsContent) => {
+      tabsContent.classList.remove("active-tab");
+    });
+
+    // Add 'active-tab' class to the clicked tab and the corresponding content
     tab.classList.add("active-tab");
+    target.classList.add("active-tab");
   });
 });
 
